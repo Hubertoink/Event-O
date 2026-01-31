@@ -527,6 +527,17 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
             $out .= '</div>';
         }
 
+        // Price card in sidebar
+        if ($showPrice && $price !== '') {
+            $out .= '<div class="event-o-price-card">';
+            $out .= '<h4 class="event-o-sidebar-title">' . esc_html__('EINTRITT', 'event-o') . '</h4>';
+            $out .= '<div class="event-o-price-value">';
+            $out .= '<svg class="event-o-icon" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M22 10V6c0-1.1-.9-2-2-2H4c-1.1 0-1.99.9-1.99 2v4c1.1 0 1.99.9 1.99 2s-.89 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2zm-2-1.46c-1.19.69-2 1.99-2 3.46s.81 2.77 2 3.46V18H4v-2.54c1.19-.69 2-1.99 2-3.46 0-1.48-.8-2.77-1.99-3.46L4 6h16v2.54zM11 15h2v2h-2zm0-4h2v2h-2zm0-4h2v2h-2z"/></svg>';
+            $out .= '<span>' . esc_html($price) . '</span>';
+            $out .= '</div>';
+            $out .= '</div>';
+        }
+
         $out .= '</aside>';
 
         // Right main content area with event image prominently displayed.
@@ -683,6 +694,7 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
     $showOrganizer = !empty($attrs['showOrganizer']);
     $showCategory = isset($attrs['showCategory']) ? $attrs['showCategory'] : true;
     $showVenue = !empty($attrs['showVenue']);
+    $showPrice = !empty($attrs['showPrice']);
 
     // Accent color override.
     $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? $attrs['accentColor'] : '';
@@ -705,6 +717,14 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
         $startTs = (int) get_post_meta($postId, EVENT_O_META_START_TS, true);
         if ($startTs <= 0) {
             $startTs = (int) get_post_meta($postId, EVENT_O_LEGACY_META_START_TS, true);
+        }
+
+        $price = '';
+        if ($showPrice) {
+            $price = (string) get_post_meta($postId, EVENT_O_META_PRICE, true);
+            if ($price === '') {
+                $price = (string) get_post_meta($postId, EVENT_O_LEGACY_META_PRICE, true);
+            }
         }
 
         $title = get_the_title();
@@ -755,6 +775,12 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
         }
         if ($venueName !== '') {
             $out .= '<div class="event-o-grid-venue">' . esc_html($venueName) . '</div>';
+        }
+        if ($showPrice && $price !== '') {
+            $out .= '<div class="event-o-grid-price">';
+            $out .= '<svg class="event-o-icon" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M22 10V6c0-1.1-.9-2-2-2H4c-1.1 0-1.99.9-1.99 2v4c1.1 0 1.99.9 1.99 2s-.89 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2zm-2-1.46c-1.19.69-2 1.99-2 3.46s.81 2.77 2 3.46V18H4v-2.54c1.19-.69 2-1.99 2-3.46 0-1.48-.8-2.77-1.99-3.46L4 6h16v2.54zM11 15h2v2h-2zm0-4h2v2h-2zm0-4h2v2h-2z"/></svg>';
+            $out .= '<span>' . esc_html($price) . '</span>';
+            $out .= '</div>';
         }
 
         $out .= '</div>';

@@ -103,6 +103,10 @@ Navigate to **Settings → Event_O** in your WordPress admin:
 
 ## Changelog
 
+### 0.8.0
+- Show price in Event List sidebar (when set)
+- Show price in Event Grid cards (when set)
+
 ### 0.7.0
 - Added Event Grid block with date badges
 - Added configurable dark/light mode selectors

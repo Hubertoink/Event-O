@@ -352,6 +352,27 @@
     line-height: 1.5;
 }
 
+/* Price card in sidebar */
+.event-o-price-card{
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.event-o-price-value{
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--event-o-text);
+}
+
+.event-o-price-value .event-o-icon{
+    flex-shrink: 0;
+    color: var(--event-o-muted);
+}
+
 /* ==========================================================================
    Main Content Area
    ========================================================================== */
@@ -1195,6 +1216,22 @@
     font-size: 14px;
     color: var(--event-o-muted);
     line-height: 1.4;
+}
+
+/* Price in grid card */
+.event-o-grid-price{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--event-o-muted);
+    margin-top: 4px;
+}
+
+.event-o-grid-price .event-o-icon{
+    flex-shrink: 0;
+    opacity: .7;
 }
 
 /* Grid Responsive */

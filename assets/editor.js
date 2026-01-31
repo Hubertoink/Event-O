@@ -265,6 +265,7 @@
             showOrganizer: { type: 'boolean', default: true },
             showCategory: { type: 'boolean', default: true },
             showVenue: { type: 'boolean', default: false },
+            showPrice: { type: 'boolean', default: true },
             accentColor: { type: 'string', default: '' }
         },
         edit: function (props) {
@@ -332,6 +333,11 @@
                             label: __('Show venue', 'event-o'),
                             checked: a.showVenue,
                             onChange: function (v) { setAttributes({ showVenue: v }); }
+                        }),
+                        el(ToggleControl, {
+                            label: __('Show price', 'event-o'),
+                            checked: a.showPrice,
+                            onChange: function (v) { setAttributes({ showPrice: v }); }
                         })
                     ),
                     el(PanelBody, { title: __('Colors', 'event-o'), initialOpen: false },

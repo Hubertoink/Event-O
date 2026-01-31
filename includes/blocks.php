@@ -57,6 +57,7 @@ function event_o_register_blocks(): void
             'showOrganizer' => ['type' => 'boolean', 'default' => true],
             'showCategory' => ['type' => 'boolean', 'default' => true],
             'showVenue' => ['type' => 'boolean', 'default' => false],
+            'showPrice' => ['type' => 'boolean', 'default' => true],
             'accentColor' => ['type' => 'string', 'default' => ''],
         ],
     ]);

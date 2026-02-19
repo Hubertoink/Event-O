@@ -1307,3 +1307,94 @@
         transform: scale(1.2);
     }
 }
+
+/* ── Filter Bar ── */
+.event-o-filter-bar{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 14px 16px;
+    background: var(--event-o-sidebar-bg);
+    border: 1px solid var(--event-o-border);
+    border-radius: 6px;
+    align-items: center;
+}
+
+.event-o-filter-bar::before{
+    content: '';
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    margin-right: 4px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236a6a6a'%3E%3Cpath d='M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z'/%3E%3C/svg%3E");
+    background-size: contain;
+    background-repeat: no-repeat;
+    flex-shrink: 0;
+}
+
+.event-o-filter-group{
+    position: relative;
+    flex: 1;
+    min-width: 160px;
+}
+
+.event-o-filter-select{
+    width: 100%;
+    padding: 9px 36px 9px 12px;
+    font-family: inherit;
+    font-size: .875rem;
+    line-height: 1.4;
+    color: var(--event-o-text);
+    background-color: var(--event-o-bg);
+    border: 1px solid var(--event-o-border);
+    border-radius: 4px;
+    cursor: pointer;
+    -moz-appearance: none;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236a6a6a'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 20px;
+    transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+.event-o-filter-select:hover{
+    border-color: var(--event-o-muted);
+}
+
+.event-o-filter-select:focus{
+    outline: none;
+    border-color: var(--event-o-active-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--event-o-active-accent) 20%, transparent);
+}
+
+.event-o-filter-select option{
+    padding: 6px 12px;
+}
+
+/* Active filter indicator */
+.event-o-filter-select:not([value=""]):valid{
+    border-color: var(--event-o-active-accent);
+}
+
+/* Empty message when all events are filtered out */
+.event-o-filter-empty{
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--event-o-muted);
+    font-size: .95rem;
+    font-style: italic;
+}
+
+/* Responsive filter bar */
+@media (max-width: 600px){
+    .event-o-filter-bar{
+        flex-direction: column;
+        gap: 8px;
+    }
+    .event-o-filter-group{
+        min-width: 100%;
+    }
+}

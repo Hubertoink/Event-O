@@ -163,51 +163,223 @@
     }
 
     function initAccordionAnimations() {
+        // Shared set so we can reset animation state of any item externally
+        var animating = new WeakSet();
+        // Transition duration in CSS is .35s – use 400ms as safety timeout
+        var TRANSITION_MS = 400;
+
+        function finishAnimation(details, panel) {
+            details._accordionTimer = 0;
+            panel.style.gridTemplateRows = '';
+            animating.delete(details);
+        }
+
+        function forceClose(details) {
+            var p = details.querySelector('.event-o-accordion-panel');
+            if (details._accordionTimer) { clearTimeout(details._accordionTimer); details._accordionTimer = 0; }
+            details.open = false;
+            if (p) p.style.gridTemplateRows = '';
+            animating.delete(details);
+        }
+
+        function animateClose(details) {
+            var p = details.querySelector('.event-o-accordion-panel');
+            if (!p || !details.open) return;
+            animating.add(details);
+
+            // Force the starting value so the transition always has a real delta
+            p.style.gridTemplateRows = '1fr';
+            // Read layout to flush the value before changing it
+            void p.offsetHeight;
+            p.style.gridTemplateRows = '0fr';
+
+            function done() {
+                if (details._accordionTimer) { clearTimeout(details._accordionTimer); details._accordionTimer = 0; }
+                details.open = false;
+                finishAnimation(details, p);
+            }
+
+            p.addEventListener('transitionend', function handler(ev) {
+                if (ev.target !== p) return;
+                p.removeEventListener('transitionend', handler);
+                done();
+            });
+            details._accordionTimer = setTimeout(done, TRANSITION_MS);
+        }
+
         var accordions = document.querySelectorAll('.event-o-accordion-item');
         accordions.forEach(function (details) {
             var summary = details.querySelector('.event-o-accordion-summary');
             var panel = details.querySelector('.event-o-accordion-panel');
             if (!summary || !panel) return;
 
-            var isAnimating = false;
-
             summary.addEventListener('click', function (e) {
                 e.preventDefault();
 
-                if (isAnimating) return;
+                if (animating.has(details)) return;
 
                 if (details.open) {
                     // Closing animation
-                    isAnimating = true;
-                    panel.style.gridTemplateRows = '1fr';
-                    requestAnimationFrame(function () {
-                        panel.style.gridTemplateRows = '0fr';
-                    });
-
-                    panel.addEventListener('transitionend', function handler() {
-                        panel.removeEventListener('transitionend', handler);
-                        details.open = false;
-                        isAnimating = false;
-                    }, { once: true });
+                    animateClose(details);
                 } else {
+                    // --- single-open: close siblings first ---
+                    var blockRoot = details.closest('.event-o-event-list');
+                    var singleOpen = blockRoot && blockRoot.getAttribute('data-single-open') === '1';
+
+                    if (singleOpen && blockRoot) {
+                        var openSiblings = blockRoot.querySelectorAll('.event-o-accordion-item[open]');
+                        var detailsRect = details.getBoundingClientRect();
+                        var removedHeight = 0;
+
+                        openSiblings.forEach(function (sibling) {
+                            if (sibling === details) return;
+                            var sp = sibling.querySelector('.event-o-accordion-panel');
+                            if (sp && sibling.getBoundingClientRect().top < detailsRect.top) {
+                                removedHeight += sp.getBoundingClientRect().height;
+                            }
+                            forceClose(sibling);
+                        });
+
+                        if (removedHeight > 0) {
+                            window.scrollBy(0, -removedHeight);
+                        }
+                    }
+
                     // Opening animation
                     details.open = true;
-                    isAnimating = true;
+                    animating.add(details);
                     panel.style.gridTemplateRows = '0fr';
-                    requestAnimationFrame(function () {
-                        requestAnimationFrame(function () {
-                            panel.style.gridTemplateRows = '1fr';
-                        });
-                    });
+                    void panel.offsetHeight; // flush
+                    panel.style.gridTemplateRows = '1fr';
 
-                    panel.addEventListener('transitionend', function handler() {
+                    // Scroll so the opened item aligns with the top of the viewport
+                    details.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                    function openDone() {
+                        if (details._accordionTimer) { clearTimeout(details._accordionTimer); details._accordionTimer = 0; }
+                        finishAnimation(details, panel);
+                    }
+
+                    panel.addEventListener('transitionend', function handler(ev) {
+                        if (ev.target !== panel) return;
                         panel.removeEventListener('transitionend', handler);
-                        panel.style.gridTemplateRows = '';
-                        isAnimating = false;
-                    }, { once: true });
+                        openDone();
+                    });
+                    details._accordionTimer = setTimeout(openDone, TRANSITION_MS);
                 }
             });
         });
+    }
+
+    function initFilters() {
+        var blocks = document.querySelectorAll('.event-o.has-filters');
+        blocks.forEach(function (block) {
+            var selects = block.querySelectorAll('.event-o-filter-select');
+            if (selects.length === 0) return;
+
+            selects.forEach(function (select) {
+                select.addEventListener('change', function () {
+                    applyFilters(block);
+                });
+            });
+        });
+    }
+
+    function applyFilters(block) {
+        var selects = block.querySelectorAll('.event-o-filter-select');
+        var activeFilters = {};
+        selects.forEach(function (select) {
+            var filterType = select.getAttribute('data-filter');
+            var value = select.value;
+            if (value) {
+                activeFilters[filterType] = value;
+            }
+        });
+
+        // Determine item selector based on block type
+        var items;
+        var isListBlock = block.classList.contains('event-o-event-list');
+        var isCarousel = block.classList.contains('event-o-carousel');
+        var isGrid = block.classList.contains('event-o-grid');
+
+        if (isListBlock) {
+            items = block.querySelectorAll('.event-o-accordion-item');
+        } else if (isCarousel) {
+            items = block.querySelectorAll('.event-o-card');
+        } else if (isGrid) {
+            items = block.querySelectorAll('.event-o-grid-card');
+        }
+
+        if (!items) return;
+
+        var visibleCount = 0;
+
+        items.forEach(function (item) {
+            var show = true;
+
+            if (activeFilters.category) {
+                var cats = (item.getAttribute('data-categories') || '').split(',');
+                if (cats.indexOf(activeFilters.category) === -1) show = false;
+            }
+            if (activeFilters.venue) {
+                var venues = (item.getAttribute('data-venues') || '').split(',');
+                if (venues.indexOf(activeFilters.venue) === -1) show = false;
+            }
+            if (activeFilters.organizer) {
+                var orgs = (item.getAttribute('data-organizers') || '').split(',');
+                if (orgs.indexOf(activeFilters.organizer) === -1) show = false;
+            }
+
+            item.style.display = show ? '' : 'none';
+            if (show) visibleCount++;
+        });
+
+        // For list blocks: hide month headers that have no visible items
+        if (isListBlock) {
+            var headers = block.querySelectorAll('.event-o-month');
+            headers.forEach(function (header) {
+                var nextEl = header.nextElementSibling;
+                var hasVisible = false;
+                while (nextEl && !nextEl.classList.contains('event-o-month')) {
+                    if (nextEl.classList.contains('event-o-accordion-item') && nextEl.style.display !== 'none') {
+                        hasVisible = true;
+                        break;
+                    }
+                    nextEl = nextEl.nextElementSibling;
+                }
+                header.style.display = hasVisible ? '' : 'none';
+            });
+        }
+
+        // For grid blocks: update dots
+        if (isGrid) {
+            var dots = block.querySelectorAll('.event-o-grid-dot');
+            var visibleCards = block.querySelectorAll('.event-o-grid-card:not([style*="display: none"])');
+            dots.forEach(function (dot, i) {
+                dot.style.display = i < visibleCards.length ? '' : 'none';
+                dot.classList.toggle('is-active', i === 0);
+            });
+        }
+
+        // Show/hide empty message
+        var emptyMsg = block.querySelector('.event-o-filter-empty');
+        if (visibleCount === 0) {
+            if (!emptyMsg) {
+                emptyMsg = document.createElement('p');
+                emptyMsg.className = 'event-o-filter-empty';
+                emptyMsg.textContent = 'Keine Veranstaltungen gefunden.';
+                // Insert after filter bar
+                var filterBar = block.querySelector('.event-o-filter-bar');
+                if (filterBar && filterBar.nextSibling) {
+                    block.insertBefore(emptyMsg, filterBar.nextSibling);
+                } else {
+                    block.appendChild(emptyMsg);
+                }
+            }
+            emptyMsg.style.display = '';
+        } else if (emptyMsg) {
+            emptyMsg.style.display = 'none';
+        }
     }
 
     function boot() {
@@ -218,6 +390,7 @@
         initCalendarDropdowns();
         initGridSliders();
         initAccordionAnimations();
+        initFilters();
     }
 
     if (document.readyState === 'loading') {

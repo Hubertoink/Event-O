@@ -11,6 +11,143 @@ function event_o_parse_slug_list(string $raw): array
     return $parts;
 }
 
+/**
+ * Collect taxonomy terms from queried posts for filter dropdowns.
+ */
+function event_o_collect_filter_terms(WP_Query $q, array $attrs): array
+{
+    $filterByCategory = !empty($attrs['filterByCategory']);
+    $filterByVenue = !empty($attrs['filterByVenue']);
+    $filterByOrganizer = !empty($attrs['filterByOrganizer']);
+
+    $categories = [];
+    $venues = [];
+    $organizers = [];
+
+    $posts = $q->posts;
+    foreach ($posts as $post) {
+        $pid = $post->ID;
+
+        if ($filterByCategory) {
+            $terms = get_the_terms($pid, 'event_o_category');
+            if (is_array($terms)) {
+                foreach ($terms as $t) {
+                    $categories[$t->slug] = $t->name;
+                }
+            }
+        }
+        if ($filterByVenue) {
+            $terms = get_the_terms($pid, 'event_o_venue');
+            if (is_array($terms)) {
+                foreach ($terms as $t) {
+                    $venues[$t->slug] = $t->name;
+                }
+            }
+        }
+        if ($filterByOrganizer) {
+            $terms = get_the_terms($pid, 'event_o_organizer');
+            if (is_array($terms)) {
+                foreach ($terms as $t) {
+                    $organizers[$t->slug] = $t->name;
+                }
+            }
+        }
+    }
+
+    asort($categories);
+    asort($venues);
+    asort($organizers);
+
+    return [
+        'categories' => $categories,
+        'venues' => $venues,
+        'organizers' => $organizers,
+    ];
+}
+
+/**
+ * Render the filter bar HTML.
+ */
+function event_o_render_filter_bar(array $filterTerms, array $attrs): string
+{
+    $filterByCategory = !empty($attrs['filterByCategory']);
+    $filterByVenue = !empty($attrs['filterByVenue']);
+    $filterByOrganizer = !empty($attrs['filterByOrganizer']);
+
+    $out = '<div class="event-o-filter-bar">';
+
+    if ($filterByCategory && !empty($filterTerms['categories'])) {
+        $out .= '<div class="event-o-filter-group">';
+        $out .= '<select class="event-o-filter-select" data-filter="category">';
+        $out .= '<option value="">' . esc_html__('Alle Kategorien', 'event-o') . '</option>';
+        foreach ($filterTerms['categories'] as $slug => $name) {
+            $out .= '<option value="' . esc_attr($slug) . '">' . esc_html($name) . '</option>';
+        }
+        $out .= '</select>';
+        $out .= '</div>';
+    }
+
+    if ($filterByVenue && !empty($filterTerms['venues'])) {
+        $out .= '<div class="event-o-filter-group">';
+        $out .= '<select class="event-o-filter-select" data-filter="venue">';
+        $out .= '<option value="">' . esc_html__('Alle Veranstaltungsorte', 'event-o') . '</option>';
+        foreach ($filterTerms['venues'] as $slug => $name) {
+            $out .= '<option value="' . esc_attr($slug) . '">' . esc_html($name) . '</option>';
+        }
+        $out .= '</select>';
+        $out .= '</div>';
+    }
+
+    if ($filterByOrganizer && !empty($filterTerms['organizers'])) {
+        $out .= '<div class="event-o-filter-group">';
+        $out .= '<select class="event-o-filter-select" data-filter="organizer">';
+        $out .= '<option value="">' . esc_html__('Alle Veranstalter', 'event-o') . '</option>';
+        foreach ($filterTerms['organizers'] as $slug => $name) {
+            $out .= '<option value="' . esc_attr($slug) . '">' . esc_html($name) . '</option>';
+        }
+        $out .= '</select>';
+        $out .= '</div>';
+    }
+
+    $out .= '</div>';
+    return $out;
+}
+
+/**
+ * Get data-filter attributes string for a post.
+ */
+function event_o_get_filter_data_attrs(int $postId): string
+{
+    $catSlugs = [];
+    $venueSlugs = [];
+    $orgSlugs = [];
+
+    $cats = get_the_terms($postId, 'event_o_category');
+    if (is_array($cats)) {
+        foreach ($cats as $t) {
+            $catSlugs[] = $t->slug;
+        }
+    }
+
+    $venues = get_the_terms($postId, 'event_o_venue');
+    if (is_array($venues)) {
+        foreach ($venues as $t) {
+            $venueSlugs[] = $t->slug;
+        }
+    }
+
+    $orgs = get_the_terms($postId, 'event_o_organizer');
+    if (is_array($orgs)) {
+        foreach ($orgs as $t) {
+            $orgSlugs[] = $t->slug;
+        }
+    }
+
+    return ' data-categories="' . esc_attr(implode(',', $catSlugs)) . '"'
+         . ' data-venues="' . esc_attr(implode(',', $venueSlugs)) . '"'
+         . ' data-organizers="' . esc_attr(implode(',', $orgSlugs)) . '"';
+}
+
 function event_o_event_query(array $attrs): WP_Query
 {
     $perPage = isset($attrs['perPage']) ? max(1, (int) $attrs['perPage']) : 10;
@@ -369,18 +506,27 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
 
     $groupByMonth = !empty($attrs['groupByMonth']);
     $openFirst = !empty($attrs['openFirst']);
+    $singleOpen = !empty($attrs['singleOpen']);
 
     $showImage = !empty($attrs['showImage']);
     $showVenue = !empty($attrs['showVenue']);
     $showOrganizer = !empty($attrs['showOrganizer']);
     $showPrice = !empty($attrs['showPrice']);
     $showMoreLink = isset($attrs['showMoreLink']) ? $attrs['showMoreLink'] : true;
+    $showFilters = !empty($attrs['showFilters']);
 
     // Accent color override from block.
     $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? $attrs['accentColor'] : '';
     $styleAttr = $accentColor !== '' ? ' style="--event-o-block-accent:' . esc_attr($accentColor) . ';"' : '';
+    $singleOpenAttr = ' data-single-open="' . ($singleOpen ? '1' : '0') . '"';
 
-    $out = '<div class="event-o event-o-event-list"' . $styleAttr . '>';
+    $out = '<div class="event-o event-o-event-list' . ($showFilters ? ' has-filters' : '') . '"' . $styleAttr . $singleOpenAttr . '>';
+
+    // Render filter bar if enabled.
+    if ($showFilters) {
+        $filterTerms = event_o_collect_filter_terms($q, $attrs);
+        $out .= event_o_render_filter_bar($filterTerms, $attrs);
+    }
 
     $tz = wp_timezone();
     $currentMonthKey = null;
@@ -434,13 +580,16 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
 
         $openAttr = ($openFirst && $index === 0) ? ' open' : '';
 
+        // Filter data attributes for client-side filtering.
+        $filterDataAttrs = $showFilters ? event_o_get_filter_data_attrs($postId) : '';
+
         // Featured image URL.
         $imageUrl = '';
         if ($showImage && has_post_thumbnail($postId)) {
             $imageUrl = get_the_post_thumbnail_url($postId, 'large');
         }
 
-        $out .= '<details class="event-o-accordion-item"' . $openAttr . '>';
+        $out .= '<details class="event-o-accordion-item"' . $openAttr . $filterDataAttrs . '>';
 
         // Summary: Date on top, time below, then title with category.
         $out .= '<summary class="event-o-accordion-summary">';
@@ -606,6 +755,7 @@ function event_o_render_event_carousel_block(array $attrs, string $content = '',
     $showImage = !empty($attrs['showImage']);
     $showVenue = !empty($attrs['showVenue']);
     $showPrice = !empty($attrs['showPrice']);
+    $showFilters = !empty($attrs['showFilters']);
 
     // Accent color override.
     $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? $attrs['accentColor'] : '';
@@ -616,7 +766,14 @@ function event_o_render_event_carousel_block(array $attrs, string $content = '',
 
     $uid = 'event-o-carousel-' . wp_generate_uuid4();
 
-    $out = '<div class="event-o event-o-carousel" id="' . esc_attr($uid) . '" data-slides="' . esc_attr((string) $slidesToShow) . '" style="' . $styleAttr . '">';
+    $out = '<div class="event-o event-o-carousel' . ($showFilters ? ' has-filters' : '') . '" id="' . esc_attr($uid) . '" data-slides="' . esc_attr((string) $slidesToShow) . '" style="' . $styleAttr . '">';
+
+    // Render filter bar if enabled.
+    if ($showFilters) {
+        $filterTerms = event_o_collect_filter_terms($q, $attrs);
+        $out .= event_o_render_filter_bar($filterTerms, $attrs);
+    }
+
     $out .= '<div class="event-o-carousel-header">';
     $out .= '<button type="button" class="event-o-carousel-nav" data-dir="prev" aria-label="' . esc_attr__('Previous', 'event-o') . '">←</button>';
     $out .= '<button type="button" class="event-o-carousel-nav" data-dir="next" aria-label="' . esc_attr__('Next', 'event-o') . '">→</button>';
@@ -648,7 +805,10 @@ function event_o_render_event_carousel_block(array $attrs, string $content = '',
         $dtParts = event_o_format_datetime_german($startTs, $endTs);
         $venueName = $showVenue ? event_o_get_first_term_name($postId, 'event_o_venue') : '';
 
-        $out .= '<article class="event-o-card">';
+        // Filter data attributes for client-side filtering.
+        $filterDataAttrs = $showFilters ? event_o_get_filter_data_attrs($postId) : '';
+
+        $out .= '<article class="event-o-card"' . $filterDataAttrs . '>';
 
         if ($showImage && has_post_thumbnail($postId)) {
             $out .= '<a class="event-o-card-media" href="' . esc_url($permalink) . '">' . get_the_post_thumbnail($postId, 'large', ['loading' => 'lazy']) . '</a>';
@@ -695,6 +855,7 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
     $showCategory = isset($attrs['showCategory']) ? $attrs['showCategory'] : true;
     $showVenue = !empty($attrs['showVenue']);
     $showPrice = !empty($attrs['showPrice']);
+    $showFilters = !empty($attrs['showFilters']);
 
     // Accent color override.
     $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? $attrs['accentColor'] : '';
@@ -703,7 +864,14 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
         $styleAttr .= '--event-o-block-accent:' . esc_attr($accentColor) . ';';
     }
 
-    $out = '<div class="event-o event-o-grid" style="' . $styleAttr . '">';
+    $out = '<div class="event-o event-o-grid' . ($showFilters ? ' has-filters' : '') . '" style="' . $styleAttr . '">';
+
+    // Render filter bar if enabled.
+    if ($showFilters) {
+        $filterTerms = event_o_collect_filter_terms($q, $attrs);
+        $out .= event_o_render_filter_bar($filterTerms, $attrs);
+    }
+
     $out .= '<div class="event-o-grid-track">';
 
     $tz = wp_timezone();
@@ -733,6 +901,9 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
         $categoryName = $showCategory ? event_o_get_first_term_name($postId, 'event_o_category') : '';
         $venueName = $showVenue ? event_o_get_first_term_name($postId, 'event_o_venue') : '';
 
+        // Filter data attributes for client-side filtering.
+        $filterDataAttrs = $showFilters ? event_o_get_filter_data_attrs($postId) : '';
+
         // Date badge parts
         $dayNum = '';
         $monthName = '';
@@ -744,7 +915,7 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
             $year = $start->format('Y');
         }
 
-        $out .= '<a href="' . esc_url($permalink) . '" class="event-o-grid-card">';
+        $out .= '<a href="' . esc_url($permalink) . '" class="event-o-grid-card"' . $filterDataAttrs . '>';
 
         // Image with date badge overlay
         $out .= '<div class="event-o-grid-media">';

@@ -14,6 +14,7 @@ function event_o_register_blocks(): void
             'showPast' => ['type' => 'boolean', 'default' => false],
             'groupByMonth' => ['type' => 'boolean', 'default' => true],
             'openFirst' => ['type' => 'boolean', 'default' => false],
+            'singleOpen' => ['type' => 'boolean', 'default' => false],
             'categories' => ['type' => 'string', 'default' => ''],
             'venues' => ['type' => 'string', 'default' => ''],
             'organizers' => ['type' => 'string', 'default' => ''],
@@ -23,6 +24,10 @@ function event_o_register_blocks(): void
             'showPrice' => ['type' => 'boolean', 'default' => true],
             'showMoreLink' => ['type' => 'boolean', 'default' => true],
             'accentColor' => ['type' => 'string', 'default' => ''],
+            'showFilters' => ['type' => 'boolean', 'default' => false],
+            'filterByCategory' => ['type' => 'boolean', 'default' => true],
+            'filterByVenue' => ['type' => 'boolean', 'default' => true],
+            'filterByOrganizer' => ['type' => 'boolean', 'default' => true],
         ],
     ]);
 
@@ -40,6 +45,10 @@ function event_o_register_blocks(): void
             'showVenue' => ['type' => 'boolean', 'default' => true],
             'showPrice' => ['type' => 'boolean', 'default' => true],
             'accentColor' => ['type' => 'string', 'default' => ''],
+            'showFilters' => ['type' => 'boolean', 'default' => false],
+            'filterByCategory' => ['type' => 'boolean', 'default' => true],
+            'filterByVenue' => ['type' => 'boolean', 'default' => true],
+            'filterByOrganizer' => ['type' => 'boolean', 'default' => true],
         ],
     ]);
 
@@ -59,6 +68,10 @@ function event_o_register_blocks(): void
             'showVenue' => ['type' => 'boolean', 'default' => false],
             'showPrice' => ['type' => 'boolean', 'default' => true],
             'accentColor' => ['type' => 'string', 'default' => ''],
+            'showFilters' => ['type' => 'boolean', 'default' => false],
+            'filterByCategory' => ['type' => 'boolean', 'default' => true],
+            'filterByVenue' => ['type' => 'boolean', 'default' => true],
+            'filterByOrganizer' => ['type' => 'boolean', 'default' => true],
         ],
     ]);
 }

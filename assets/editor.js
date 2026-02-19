@@ -45,6 +45,7 @@
             showPast: { type: 'boolean', default: false },
             groupByMonth: { type: 'boolean', default: true },
             openFirst: { type: 'boolean', default: false },
+            singleOpen: { type: 'boolean', default: false },
             categories: { type: 'string', default: '' },
             venues: { type: 'string', default: '' },
             organizers: { type: 'string', default: '' },
@@ -53,7 +54,11 @@
             showOrganizer: { type: 'boolean', default: true },
             showPrice: { type: 'boolean', default: true },
             showMoreLink: { type: 'boolean', default: true },
-            accentColor: { type: 'string', default: '' }
+            accentColor: { type: 'string', default: '' },
+            showFilters: { type: 'boolean', default: false },
+            filterByCategory: { type: 'boolean', default: true },
+            filterByVenue: { type: 'boolean', default: true },
+            filterByOrganizer: { type: 'boolean', default: true }
         },
         edit: function (props) {
             var a = props.attributes;
@@ -83,6 +88,11 @@
                             label: __('Open first item', 'event-o'),
                             checked: a.openFirst,
                             onChange: function (v) { setAttributes({ openFirst: v }); }
+                        }),
+                        el(ToggleControl, {
+                            label: __('Allow only one open item', 'event-o'),
+                            checked: a.singleOpen,
+                            onChange: function (v) { setAttributes({ singleOpen: v }); }
                         })
                     ),
                     el(PanelBody, { title: __('Filters', 'event-o'), initialOpen: false },
@@ -130,6 +140,29 @@
                             onChange: function (v) { setAttributes({ showMoreLink: v }); }
                         })
                     ),
+                    el(PanelBody, { title: __('Frontend Filters', 'event-o'), initialOpen: false },
+                        el(ToggleControl, {
+                            label: __('Show filter bar', 'event-o'),
+                            help: __('Displays a filter bar for visitors to filter events.', 'event-o'),
+                            checked: a.showFilters,
+                            onChange: function (v) { setAttributes({ showFilters: v }); }
+                        }),
+                        a.showFilters && el(ToggleControl, {
+                            label: __('Filter by category', 'event-o'),
+                            checked: a.filterByCategory,
+                            onChange: function (v) { setAttributes({ filterByCategory: v }); }
+                        }),
+                        a.showFilters && el(ToggleControl, {
+                            label: __('Filter by venue', 'event-o'),
+                            checked: a.filterByVenue,
+                            onChange: function (v) { setAttributes({ filterByVenue: v }); }
+                        }),
+                        a.showFilters && el(ToggleControl, {
+                            label: __('Filter by organizer', 'event-o'),
+                            checked: a.filterByOrganizer,
+                            onChange: function (v) { setAttributes({ filterByOrganizer: v }); }
+                        })
+                    ),
                     el(PanelBody, { title: __('Colors', 'event-o'), initialOpen: false },
                         el(ColorControl, {
                             label: __('Accent Color', 'event-o'),
@@ -165,7 +198,11 @@
             showImage: { type: 'boolean', default: true },
             showVenue: { type: 'boolean', default: true },
             showPrice: { type: 'boolean', default: true },
-            accentColor: { type: 'string', default: '' }
+            accentColor: { type: 'string', default: '' },
+            showFilters: { type: 'boolean', default: false },
+            filterByCategory: { type: 'boolean', default: true },
+            filterByVenue: { type: 'boolean', default: true },
+            filterByOrganizer: { type: 'boolean', default: true }
         },
         edit: function (props) {
             var a = props.attributes;
@@ -229,6 +266,29 @@
                             onChange: function (v) { setAttributes({ showPrice: v }); }
                         })
                     ),
+                    el(PanelBody, { title: __('Frontend Filters', 'event-o'), initialOpen: false },
+                        el(ToggleControl, {
+                            label: __('Show filter bar', 'event-o'),
+                            help: __('Displays a filter bar for visitors to filter events.', 'event-o'),
+                            checked: a.showFilters,
+                            onChange: function (v) { setAttributes({ showFilters: v }); }
+                        }),
+                        a.showFilters && el(ToggleControl, {
+                            label: __('Filter by category', 'event-o'),
+                            checked: a.filterByCategory,
+                            onChange: function (v) { setAttributes({ filterByCategory: v }); }
+                        }),
+                        a.showFilters && el(ToggleControl, {
+                            label: __('Filter by venue', 'event-o'),
+                            checked: a.filterByVenue,
+                            onChange: function (v) { setAttributes({ filterByVenue: v }); }
+                        }),
+                        a.showFilters && el(ToggleControl, {
+                            label: __('Filter by organizer', 'event-o'),
+                            checked: a.filterByOrganizer,
+                            onChange: function (v) { setAttributes({ filterByOrganizer: v }); }
+                        })
+                    ),
                     el(PanelBody, { title: __('Colors', 'event-o'), initialOpen: false },
                         el(ColorControl, {
                             label: __('Accent Color', 'event-o'),
@@ -266,7 +326,11 @@
             showCategory: { type: 'boolean', default: true },
             showVenue: { type: 'boolean', default: false },
             showPrice: { type: 'boolean', default: true },
-            accentColor: { type: 'string', default: '' }
+            accentColor: { type: 'string', default: '' },
+            showFilters: { type: 'boolean', default: false },
+            filterByCategory: { type: 'boolean', default: true },
+            filterByVenue: { type: 'boolean', default: true },
+            filterByOrganizer: { type: 'boolean', default: true }
         },
         edit: function (props) {
             var a = props.attributes;
@@ -338,6 +402,29 @@
                             label: __('Show price', 'event-o'),
                             checked: a.showPrice,
                             onChange: function (v) { setAttributes({ showPrice: v }); }
+                        })
+                    ),
+                    el(PanelBody, { title: __('Frontend Filters', 'event-o'), initialOpen: false },
+                        el(ToggleControl, {
+                            label: __('Show filter bar', 'event-o'),
+                            help: __('Displays a filter bar for visitors to filter events.', 'event-o'),
+                            checked: a.showFilters,
+                            onChange: function (v) { setAttributes({ showFilters: v }); }
+                        }),
+                        a.showFilters && el(ToggleControl, {
+                            label: __('Filter by category', 'event-o'),
+                            checked: a.filterByCategory,
+                            onChange: function (v) { setAttributes({ filterByCategory: v }); }
+                        }),
+                        a.showFilters && el(ToggleControl, {
+                            label: __('Filter by venue', 'event-o'),
+                            checked: a.filterByVenue,
+                            onChange: function (v) { setAttributes({ filterByVenue: v }); }
+                        }),
+                        a.showFilters && el(ToggleControl, {
+                            label: __('Filter by organizer', 'event-o'),
+                            checked: a.filterByOrganizer,
+                            onChange: function (v) { setAttributes({ filterByOrganizer: v }); }
                         })
                     ),
                     el(PanelBody, { title: __('Colors', 'event-o'), initialOpen: false },

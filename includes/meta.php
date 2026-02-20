@@ -67,7 +67,7 @@ function event_o_admin_meta_boxes(): void
         __('Event Details', 'event-o'),
         'event_o_render_event_details_metabox',
         'event_o_event',
-        'side',
+        'normal',
         'high'
     );
 }

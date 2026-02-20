@@ -1124,7 +1124,7 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
         // Date + Time
         $out .= '<div class="event-o-program-when">';
         if ($programDate !== '') {
-            $out .= '<span class="event-o-program-date">' . esc_html($programDate) . '</span>';
+            $out .= '<span class="event-o-program-date"><span class="event-o-program-weekday">' . esc_html(mb_strtoupper($weekday)) . '</span>, ' . esc_html($dtParts['date']) . '</span>';
         }
         if ($dtParts['time'] !== '') {
             $out .= '<span class="event-o-program-time">' . esc_html($dtParts['time']) . '</span>';

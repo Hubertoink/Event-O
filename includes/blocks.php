@@ -93,7 +93,6 @@ function event_o_register_blocks(): void
             'showButton' => ['type' => 'boolean', 'default' => true],
             'buttonStyle' => ['type' => 'string', 'default' => 'rounded'],
             'accentColor' => ['type' => 'string', 'default' => ''],
-            'contentIndent' => ['type' => 'number', 'default' => 60],
             'heroHeight' => ['type' => 'number', 'default' => 520],
             'overlayColor' => ['type' => 'string', 'default' => 'black'],
             'showFilters' => ['type' => 'boolean', 'default' => false],

@@ -1590,8 +1590,7 @@
     max-width: 680px;
     width: 100%;
     margin: 0;
-    padding: 0 2rem;
-    padding-left: var(--event-o-hero-indent, 60px);
+    padding: 0 2rem 0 60px;
     text-align: left;
 }
 

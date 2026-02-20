@@ -1339,7 +1339,6 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
     $showButton = !array_key_exists('showButton', $attrs) || !empty($attrs['showButton']);
     $buttonStyle = isset($attrs['buttonStyle']) ? $attrs['buttonStyle'] : 'rounded';
     $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? $attrs['accentColor'] : '';
-    $contentIndent = isset($attrs['contentIndent']) ? max(0, (int) $attrs['contentIndent']) : 60;
     $heroHeight = isset($attrs['heroHeight']) ? max(520, min(720, (int) $attrs['heroHeight'])) : 520;
     $overlayColor = isset($attrs['overlayColor']) && $attrs['overlayColor'] === 'white' ? 'white' : 'black';
     $align = isset($attrs['align']) ? $attrs['align'] : '';
@@ -1347,7 +1346,6 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
     if ($accentColor !== '') {
         $styleAttr .= '--event-o-block-accent:' . esc_attr($accentColor) . ';';
     }
-    $styleAttr .= '--event-o-hero-indent:' . esc_attr((string) $contentIndent) . 'px;';
     $styleAttr .= '--event-o-hero-height:' . esc_attr((string) $heroHeight) . 'px;';
 
     $uid = 'event-o-hero-' . wp_generate_uuid4();

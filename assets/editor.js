@@ -467,7 +467,6 @@
             showButton: { type: 'boolean', default: true },
             buttonStyle: { type: 'string', default: 'rounded' },
             accentColor: { type: 'string', default: '' },
-            contentIndent: { type: 'number', default: 60 },
             heroHeight: { type: 'number', default: 520 },
             overlayColor: { type: 'string', default: 'black' },
             showFilters: { type: 'boolean', default: false },
@@ -582,14 +581,6 @@
                                 }, __('Outline', 'event-o'))
                             )
                         ),
-                        el(RangeControl, {
-                            label: __('Content indent (px)', 'event-o'),
-                            help: __('Left padding for the text content.', 'event-o'),
-                            value: a.contentIndent,
-                            min: 0,
-                            max: 300,
-                            onChange: function (v) { setAttributes({ contentIndent: v }); }
-                        }),
                         el(RangeControl, {
                             label: __('Height (px)', 'event-o'),
                             help: __('Minimum height of the hero area.', 'event-o'),

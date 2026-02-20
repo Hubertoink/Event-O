@@ -28,6 +28,8 @@ function event_o_register_blocks(): void
             'filterByCategory' => ['type' => 'boolean', 'default' => true],
             'filterByVenue' => ['type' => 'boolean', 'default' => true],
             'filterByOrganizer' => ['type' => 'boolean', 'default' => true],
+            'filterStyle' => ['type' => 'string', 'default' => 'dropdown'],
+            'animation' => ['type' => 'string', 'default' => 'none'],
         ],
     ]);
 
@@ -49,6 +51,7 @@ function event_o_register_blocks(): void
             'filterByCategory' => ['type' => 'boolean', 'default' => true],
             'filterByVenue' => ['type' => 'boolean', 'default' => true],
             'filterByOrganizer' => ['type' => 'boolean', 'default' => true],
+            'filterStyle' => ['type' => 'string', 'default' => 'dropdown'],
         ],
     ]);
 
@@ -72,6 +75,7 @@ function event_o_register_blocks(): void
             'filterByCategory' => ['type' => 'boolean', 'default' => true],
             'filterByVenue' => ['type' => 'boolean', 'default' => true],
             'filterByOrganizer' => ['type' => 'boolean', 'default' => true],
+            'filterStyle' => ['type' => 'string', 'default' => 'dropdown'],
         ],
     ]);
 
@@ -95,10 +99,13 @@ function event_o_register_blocks(): void
             'accentColor' => ['type' => 'string', 'default' => ''],
             'heroHeight' => ['type' => 'number', 'default' => 520],
             'overlayColor' => ['type' => 'string', 'default' => 'black'],
+            'autoPlay' => ['type' => 'boolean', 'default' => true],
+            'autoPlayInterval' => ['type' => 'number', 'default' => 5],
             'showFilters' => ['type' => 'boolean', 'default' => false],
             'filterByCategory' => ['type' => 'boolean', 'default' => true],
             'filterByVenue' => ['type' => 'boolean', 'default' => true],
             'filterByOrganizer' => ['type' => 'boolean', 'default' => true],
+            'filterStyle' => ['type' => 'string', 'default' => 'dropdown'],
         ],
     ]);
 
@@ -120,6 +127,12 @@ function event_o_register_blocks(): void
             'showBands' => ['type' => 'boolean', 'default' => true],
             'showPrice' => ['type' => 'boolean', 'default' => true],
             'accentColor' => ['type' => 'string', 'default' => ''],
+            'animation' => ['type' => 'string', 'default' => 'none'],
+            'showFilters' => ['type' => 'boolean', 'default' => false],
+            'filterByCategory' => ['type' => 'boolean', 'default' => true],
+            'filterByVenue' => ['type' => 'boolean', 'default' => true],
+            'filterByOrganizer' => ['type' => 'boolean', 'default' => true],
+            'filterStyle' => ['type' => 'string', 'default' => 'dropdown'],
         ],
     ]);
 }

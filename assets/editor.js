@@ -9,6 +9,7 @@
     var TextControl = wp.components.TextControl;
     var ColorPicker = wp.components.ColorPicker;
     var Button = wp.components.Button;
+    var SelectControl = wp.components.SelectControl;
     var ServerSideRender = wp.serverSideRender;
 
     function TaxHelp(label) {
@@ -58,7 +59,9 @@
             showFilters: { type: 'boolean', default: false },
             filterByCategory: { type: 'boolean', default: true },
             filterByVenue: { type: 'boolean', default: true },
-            filterByOrganizer: { type: 'boolean', default: true }
+            filterByOrganizer: { type: 'boolean', default: true },
+            filterStyle: { type: 'string', default: 'dropdown' },
+            animation: { type: 'string', default: 'none' }
         },
         edit: function (props) {
             var a = props.attributes;
@@ -168,6 +171,23 @@
                             label: __('Accent Color', 'event-o'),
                             value: a.accentColor,
                             onChange: function (v) { setAttributes({ accentColor: v }); }
+                        })
+                    ),
+                    el(PanelBody, { title: __('Animation', 'event-o'), initialOpen: false },
+                        el(SelectControl, {
+                            label: __('Entrance animation', 'event-o'),
+                            help: __('Items animate in when scrolled into view.', 'event-o'),
+                            value: a.animation || 'none',
+                            options: [
+                                { label: __('None', 'event-o'), value: 'none' },
+                                { label: __('Fade Up', 'event-o'), value: 'fade-up' },
+                                { label: __('Fade In', 'event-o'), value: 'fade-in' },
+                                { label: __('Slide Left', 'event-o'), value: 'slide-left' },
+                                { label: __('Scale Up', 'event-o'), value: 'scale-up' },
+                                { label: __('Flip In', 'event-o'), value: 'flip-in' },
+                                { label: __('Blur In', 'event-o'), value: 'blur-in' }
+                            ],
+                            onChange: function (v) { setAttributes({ animation: v }); }
                         })
                     )
                 ),
@@ -469,6 +489,8 @@
             accentColor: { type: 'string', default: '' },
             heroHeight: { type: 'number', default: 520 },
             overlayColor: { type: 'string', default: 'black' },
+            autoPlay: { type: 'boolean', default: true },
+            autoPlayInterval: { type: 'number', default: 5 },
             showFilters: { type: 'boolean', default: false },
             filterByCategory: { type: 'boolean', default: true },
             filterByVenue: { type: 'boolean', default: true },
@@ -589,6 +611,20 @@
                             max: 720,
                             step: 10,
                             onChange: function (v) { setAttributes({ heroHeight: v }); }
+                        }),
+                        el(ToggleControl, {
+                            label: __('Auto-play', 'event-o'),
+                            help: __('Automatically cycle through slides.', 'event-o'),
+                            checked: a.autoPlay !== false,
+                            onChange: function (v) { setAttributes({ autoPlay: v }); }
+                        }),
+                        a.autoPlay !== false && el(RangeControl, {
+                            label: __('Interval (seconds)', 'event-o'),
+                            help: __('Time between slide changes.', 'event-o'),
+                            value: a.autoPlayInterval || 5,
+                            min: 2,
+                            max: 15,
+                            onChange: function (v) { setAttributes({ autoPlayInterval: v }); }
                         })
                     ),
                     el(PanelBody, { title: __('Colors', 'event-o'), initialOpen: false },
@@ -643,7 +679,13 @@
             showShare: { type: 'boolean', default: true },
             showBands: { type: 'boolean', default: true },
             showPrice: { type: 'boolean', default: true },
-            accentColor: { type: 'string', default: '' }
+            accentColor: { type: 'string', default: '' },
+            animation: { type: 'string', default: 'none' },
+            showFilters: { type: 'boolean', default: false },
+            filterByCategory: { type: 'boolean', default: true },
+            filterByVenue: { type: 'boolean', default: true },
+            filterByOrganizer: { type: 'boolean', default: true },
+            filterStyle: { type: 'string', default: 'dropdown' }
         },
         edit: function (props) {
             var a = props.attributes;
@@ -682,6 +724,38 @@
                             onChange: function (v) { setAttributes({ organizers: v }); }
                         }),
                         TaxHelp(__('Example: konzert, lesung', 'event-o'))
+                    ),
+                    el(PanelBody, { title: __('Frontend Filters', 'event-o'), initialOpen: false },
+                        el(ToggleControl, {
+                            label: __('Show filter bar', 'event-o'),
+                            help: __('Displays a filter bar for visitors to filter events.', 'event-o'),
+                            checked: a.showFilters,
+                            onChange: function (v) { setAttributes({ showFilters: v }); }
+                        }),
+                        a.showFilters && el(SelectControl, {
+                            label: __('Filter style', 'event-o'),
+                            value: a.filterStyle || 'dropdown',
+                            options: [
+                                { label: __('Dropdown', 'event-o'), value: 'dropdown' },
+                                { label: __('Tabs / Pills', 'event-o'), value: 'tabs' }
+                            ],
+                            onChange: function (v) { setAttributes({ filterStyle: v }); }
+                        }),
+                        a.showFilters && el(ToggleControl, {
+                            label: __('Filter by category', 'event-o'),
+                            checked: a.filterByCategory,
+                            onChange: function (v) { setAttributes({ filterByCategory: v }); }
+                        }),
+                        a.showFilters && el(ToggleControl, {
+                            label: __('Filter by venue', 'event-o'),
+                            checked: a.filterByVenue,
+                            onChange: function (v) { setAttributes({ filterByVenue: v }); }
+                        }),
+                        a.showFilters && el(ToggleControl, {
+                            label: __('Filter by organizer', 'event-o'),
+                            checked: a.filterByOrganizer,
+                            onChange: function (v) { setAttributes({ filterByOrganizer: v }); }
+                        })
                     ),
                     el(PanelBody, { title: __('Display', 'event-o'), initialOpen: false },
                         el(ToggleControl, {
@@ -730,6 +804,23 @@
                             label: __('Accent Color', 'event-o'),
                             value: a.accentColor,
                             onChange: function (v) { setAttributes({ accentColor: v }); }
+                        })
+                    ),
+                    el(PanelBody, { title: __('Animation', 'event-o'), initialOpen: false },
+                        el(SelectControl, {
+                            label: __('Entrance animation', 'event-o'),
+                            help: __('Items animate in when scrolled into view.', 'event-o'),
+                            value: a.animation || 'none',
+                            options: [
+                                { label: __('None', 'event-o'), value: 'none' },
+                                { label: __('Fade Up', 'event-o'), value: 'fade-up' },
+                                { label: __('Fade In', 'event-o'), value: 'fade-in' },
+                                { label: __('Slide Left', 'event-o'), value: 'slide-left' },
+                                { label: __('Scale Up', 'event-o'), value: 'scale-up' },
+                                { label: __('Flip In', 'event-o'), value: 'flip-in' },
+                                { label: __('Blur In', 'event-o'), value: 'blur-in' }
+                            ],
+                            onChange: function (v) { setAttributes({ animation: v }); }
                         })
                     )
                 ),

@@ -75,6 +75,15 @@ function event_o_register_settings(): void
         'default' => false,
     ]);
 
+    register_setting('event_o_settings', EVENT_O_OPTION_SINGLE_ANIMATION, [
+        'type' => 'string',
+        'sanitize_callback' => static function ($value) {
+            $allowed = ['none', 'fade-up', 'fade-in', 'slide-left', 'scale-up'];
+            return in_array($value, $allowed, true) ? $value : 'none';
+        },
+        'default' => 'none',
+    ]);
+
     register_setting('event_o_settings', EVENT_O_OPTION_LIGHT_SELECTOR, [
         'type' => 'string',
         'sanitize_callback' => 'sanitize_text_field',
@@ -121,6 +130,30 @@ function event_o_register_settings(): void
         static function () {
             $value = (bool) get_option(EVENT_O_OPTION_HIGH_CONTRAST, false);
             echo '<label><input type="checkbox" name="' . esc_attr(EVENT_O_OPTION_HIGH_CONTRAST) . '" value="1" ' . checked($value, true, false) . ' /> ' . esc_html__('Alle gedämpften Farben durch volle Textfarbe (Schwarz/Weiß je nach Modus) ersetzen für maximalen Kontrast.', 'event-o') . '</label>';
+        },
+        'event_o_settings',
+        'event_o_settings_behavior'
+    );
+
+    add_settings_field(
+        EVENT_O_OPTION_SINGLE_ANIMATION,
+        __('Seitenanimation (Single Event)', 'event-o'),
+        static function () {
+            $value = (string) get_option(EVENT_O_OPTION_SINGLE_ANIMATION, 'none');
+            $options = [
+                'none' => __('Keine', 'event-o'),
+                'fade-up' => __('Fade Up – Elemente gleiten von unten ein', 'event-o'),
+                'fade-in' => __('Fade In – Sanftes Einblenden', 'event-o'),
+                'slide-left' => __('Slide Left – Von rechts hereingleiten', 'event-o'),
+                'scale-up' => __('Scale Up – Heranzoomen', 'event-o'),
+            ];
+            echo '<select name="' . esc_attr(EVENT_O_OPTION_SINGLE_ANIMATION) . '">';
+            foreach ($options as $key => $label) {
+                $selected = selected($value, $key, false);
+                echo '<option value="' . esc_attr($key) . '"' . $selected . '>' . esc_html($label) . '</option>';
+            }
+            echo '</select>';
+            echo '<p class="description">' . esc_html__('Einblende-Animation für Inhalte auf der Event-Einzelseite.', 'event-o') . '</p>';
         },
         'event_o_settings',
         'event_o_settings_behavior'

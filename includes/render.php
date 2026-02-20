@@ -114,6 +114,48 @@ function event_o_render_filter_bar(array $filterTerms, array $attrs): string
 }
 
 /**
+ * Render the filter bar as tabs/pills.
+ */
+function event_o_render_filter_bar_tabs(array $filterTerms, array $attrs): string
+{
+    $filterByCategory = !empty($attrs['filterByCategory']);
+    $filterByVenue = !empty($attrs['filterByVenue']);
+    $filterByOrganizer = !empty($attrs['filterByOrganizer']);
+
+    $out = '<div class="event-o-filter-bar is-tabs">';
+
+    if ($filterByCategory && !empty($filterTerms['categories'])) {
+        $out .= '<div class="event-o-filter-tab-group" data-filter="category">';
+        $out .= '<button type="button" class="event-o-filter-tab is-active" data-value="">' . esc_html__('Alle', 'event-o') . '</button>';
+        foreach ($filterTerms['categories'] as $slug => $name) {
+            $out .= '<button type="button" class="event-o-filter-tab" data-value="' . esc_attr($slug) . '">' . esc_html($name) . '</button>';
+        }
+        $out .= '</div>';
+    }
+
+    if ($filterByVenue && !empty($filterTerms['venues'])) {
+        $out .= '<div class="event-o-filter-tab-group" data-filter="venue">';
+        $out .= '<button type="button" class="event-o-filter-tab is-active" data-value="">' . esc_html__('Alle', 'event-o') . '</button>';
+        foreach ($filterTerms['venues'] as $slug => $name) {
+            $out .= '<button type="button" class="event-o-filter-tab" data-value="' . esc_attr($slug) . '">' . esc_html($name) . '</button>';
+        }
+        $out .= '</div>';
+    }
+
+    if ($filterByOrganizer && !empty($filterTerms['organizers'])) {
+        $out .= '<div class="event-o-filter-tab-group" data-filter="organizer">';
+        $out .= '<button type="button" class="event-o-filter-tab is-active" data-value="">' . esc_html__('Alle', 'event-o') . '</button>';
+        foreach ($filterTerms['organizers'] as $slug => $name) {
+            $out .= '<button type="button" class="event-o-filter-tab" data-value="' . esc_attr($slug) . '">' . esc_html($name) . '</button>';
+        }
+        $out .= '</div>';
+    }
+
+    $out .= '</div>';
+    return $out;
+}
+
+/**
  * Get data-filter attributes string for a post.
  */
 function event_o_get_filter_data_attrs(int $postId): string
@@ -562,13 +604,16 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
     $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? $attrs['accentColor'] : '';
     $styleAttr = $accentColor !== '' ? ' style="--event-o-block-accent:' . esc_attr($accentColor) . ';"' : '';
     $singleOpenAttr = ' data-single-open="' . ($singleOpen ? '1' : '0') . '"';
+    $animationType = isset($attrs['animation']) ? $attrs['animation'] : 'none';
+    $animAttr = $animationType !== 'none' ? ' data-animation="' . esc_attr($animationType) . '"' : '';
 
-    $out = '<div class="event-o event-o-event-list' . ($showFilters ? ' has-filters' : '') . '"' . $styleAttr . $singleOpenAttr . '>';
+    $out = '<div class="event-o event-o-event-list' . ($showFilters ? ' has-filters' : '') . '"' . $styleAttr . $singleOpenAttr . $animAttr . '>';
 
     // Render filter bar if enabled.
     if ($showFilters) {
         $filterTerms = event_o_collect_filter_terms($q, $attrs);
-        $out .= event_o_render_filter_bar($filterTerms, $attrs);
+        $filterStyle = isset($attrs['filterStyle']) ? $attrs['filterStyle'] : 'dropdown';
+        $out .= ($filterStyle === 'tabs') ? event_o_render_filter_bar_tabs($filterTerms, $attrs) : event_o_render_filter_bar($filterTerms, $attrs);
     }
 
     $tz = wp_timezone();
@@ -632,7 +677,7 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
             $imageUrl = get_the_post_thumbnail_url($postId, 'large');
         }
 
-        $out .= '<details class="event-o-accordion-item"' . $openAttr . $filterDataAttrs . '>';
+        $out .= '<details class="event-o-accordion-item eo-block-anim"' . $openAttr . $filterDataAttrs . '>';
 
         // Summary: Date on top, time below, then title with category.
         $out .= '<summary class="event-o-accordion-summary">';
@@ -817,7 +862,8 @@ function event_o_render_event_carousel_block(array $attrs, string $content = '',
     // Render filter bar if enabled.
     if ($showFilters) {
         $filterTerms = event_o_collect_filter_terms($q, $attrs);
-        $out .= event_o_render_filter_bar($filterTerms, $attrs);
+        $filterStyle = isset($attrs['filterStyle']) ? $attrs['filterStyle'] : 'dropdown';
+        $out .= ($filterStyle === 'tabs') ? event_o_render_filter_bar_tabs($filterTerms, $attrs) : event_o_render_filter_bar($filterTerms, $attrs);
     }
 
     $out .= '<div class="event-o-carousel-header">';
@@ -915,7 +961,8 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
     // Render filter bar if enabled.
     if ($showFilters) {
         $filterTerms = event_o_collect_filter_terms($q, $attrs);
-        $out .= event_o_render_filter_bar($filterTerms, $attrs);
+        $filterStyle = isset($attrs['filterStyle']) ? $attrs['filterStyle'] : 'dropdown';
+        $out .= ($filterStyle === 'tabs') ? event_o_render_filter_bar_tabs($filterTerms, $attrs) : event_o_render_filter_bar($filterTerms, $attrs);
     }
 
     $out .= '<div class="event-o-grid-track">';
@@ -1048,12 +1095,22 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
     $styleAttr = $accentColor !== '' ? ' style="--event-o-block-accent:' . esc_attr($accentColor) . ';"' : '';
     $highContrast = (bool) get_option(EVENT_O_OPTION_HIGH_CONTRAST, false);
     $hcClass = $highContrast ? ' is-high-contrast' : '';
+    $animationType = isset($attrs['animation']) ? $attrs['animation'] : 'none';
+    $animAttr = $animationType !== 'none' ? ' data-animation="' . esc_attr($animationType) . '"' : '';
+    $showFilters = !empty($attrs['showFilters']);
 
     $tz = wp_timezone();
     $todayStart = (new DateTimeImmutable('now', $tz))->setTime(0, 0, 0)->getTimestamp();
     $todayEnd = (new DateTimeImmutable('now', $tz))->setTime(23, 59, 59)->getTimestamp();
 
-    $out = '<div class="event-o event-o-program' . $hcClass . '"' . $styleAttr . '>';
+    $out = '<div class="event-o event-o-program' . $hcClass . ($showFilters ? ' has-filters' : '') . '"' . $styleAttr . $animAttr . '>';
+
+    // Render filter bar if enabled.
+    if ($showFilters) {
+        $filterTerms = event_o_collect_filter_terms($q, $attrs);
+        $filterStyle = isset($attrs['filterStyle']) ? $attrs['filterStyle'] : 'dropdown';
+        $out .= ($filterStyle === 'tabs') ? event_o_render_filter_bar_tabs($filterTerms, $attrs) : event_o_render_filter_bar($filterTerms, $attrs);
+    }
 
     // Collect all posts and sort: today first, then chronological ASC
     $allPosts = [];
@@ -1156,8 +1213,9 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
 
         $hiddenClass = $eventIndex > $perPage ? ' is-hidden' : '';
         $todayClass = $isToday ? ' is-today' : '';
+        $filterDataAttrs = $showFilters ? event_o_get_filter_data_attrs($postId) : '';
 
-        $out .= '<article class="event-o-program-item' . $todayClass . $hiddenClass . '">';
+        $out .= '<article class="event-o-program-item eo-block-anim' . $todayClass . $hiddenClass . '"' . $filterDataAttrs . '>';
 
         // HEUTE banner for today's events
         if ($isToday) {
@@ -1341,6 +1399,8 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
     $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? $attrs['accentColor'] : '';
     $heroHeight = isset($attrs['heroHeight']) ? max(520, min(720, (int) $attrs['heroHeight'])) : 520;
     $overlayColor = isset($attrs['overlayColor']) && $attrs['overlayColor'] === 'white' ? 'white' : 'black';
+    $autoPlay = !isset($attrs['autoPlay']) || !empty($attrs['autoPlay']);
+    $autoPlayInterval = isset($attrs['autoPlayInterval']) ? max(2, min(15, (int) $attrs['autoPlayInterval'])) : 5;
     $align = isset($attrs['align']) ? $attrs['align'] : '';
     $styleAttr = '';
     if ($accentColor !== '') {
@@ -1352,12 +1412,18 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
     $alignClass = $align !== '' ? ' align' . esc_attr($align) : '';
     $overlayClass = $overlayColor === 'white' ? ' event-o-hero-overlay-white' : '';
 
-    $out = '<div class="event-o event-o-hero' . $alignClass . $overlayClass . ($showFilters ? ' has-filters' : '') . '" id="' . esc_attr($uid) . '" style="' . $styleAttr . '">';
+    $dataAttrs = '';
+    if ($autoPlay) {
+        $dataAttrs .= ' data-autoplay="1" data-autoplay-interval="' . esc_attr((string) $autoPlayInterval) . '"';
+    }
+
+    $out = '<div class="event-o event-o-hero' . $alignClass . $overlayClass . ($showFilters ? ' has-filters' : '') . '" id="' . esc_attr($uid) . '" style="' . $styleAttr . '"' . $dataAttrs . '>';
 
     // Render filter bar if enabled.
     if ($showFilters) {
         $filterTerms = event_o_collect_filter_terms($q, $attrs);
-        $out .= event_o_render_filter_bar($filterTerms, $attrs);
+        $filterStyle = isset($attrs['filterStyle']) ? $attrs['filterStyle'] : 'dropdown';
+        $out .= ($filterStyle === 'tabs') ? event_o_render_filter_bar_tabs($filterTerms, $attrs) : event_o_render_filter_bar($filterTerms, $attrs);
     }
 
     $out .= '<div class="event-o-hero-viewport">';

@@ -29,6 +29,7 @@ define('EVENT_O_OPTION_DARK_MODE', 'event_o_dark_mode');
 define('EVENT_O_OPTION_DARK_SELECTOR', 'event_o_dark_selector');
 define('EVENT_O_OPTION_LIGHT_SELECTOR', 'event_o_light_selector');
 define('EVENT_O_OPTION_HIGH_CONTRAST', 'event_o_high_contrast');
+define('EVENT_O_OPTION_SINGLE_ANIMATION', 'event_o_single_animation');
 
 require_once EVENT_O_PLUGIN_DIR . 'includes/cpt.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/taxonomies.php';

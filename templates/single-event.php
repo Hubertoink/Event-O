@@ -39,11 +39,11 @@ while (have_posts()) {
     // Get related events
     $relatedEvents = event_o_get_related_events($postId, 4);
 
-    echo '<main class="event-o event-o-single">';
+    echo '<main class="event-o event-o-single" data-animation="' . esc_attr((string) get_option(EVENT_O_OPTION_SINGLE_ANIMATION, 'none')) . '">';
 
     // Hero section with full-width image
     if ($imageUrl !== '') {
-        echo '<div class="event-o-single-hero">';
+        echo '<div class="event-o-single-hero eo-anim">';
         echo '<img src="' . esc_url($imageUrl) . '" alt="' . esc_attr($title) . '" class="event-o-single-hero-img">';
         echo '</div>';
     }
@@ -54,7 +54,7 @@ while (have_posts()) {
     echo '<div class="event-o-single-layout">';
 
     // Sidebar
-    echo '<aside class="event-o-single-sidebar">';
+    echo '<aside class="event-o-single-sidebar eo-anim">';
 
     // Date & Time card
     echo '<div class="event-o-single-card">';
@@ -139,7 +139,7 @@ while (have_posts()) {
     echo '<article class="event-o-single-main">';
 
     // Header
-    echo '<header class="event-o-single-header">';
+    echo '<header class="event-o-single-header eo-anim">';
     echo '<h1 class="event-o-single-title">' . esc_html($title);
     if ($categoryName !== '') {
         echo ' <span class="event-o-category-hint">(' . esc_html($categoryName) . ')</span>';
@@ -159,7 +159,7 @@ while (have_posts()) {
     echo '</header>';
 
     // Content
-    echo '<div class="event-o-content">';
+    echo '<div class="event-o-content eo-anim">';
     the_content();
     echo '</div>';
 
@@ -167,7 +167,7 @@ while (have_posts()) {
     echo event_o_render_bands($postId, 'event-o-bands event-o-single-bands');
 
     // Share section
-    echo '<div class="event-o-share-section">';
+    echo '<div class="event-o-share-section eo-anim">';
     echo '<span class="event-o-share-label">' . esc_html__('TEILE DIESE VERANSTALTUNG', 'event-o') . '</span>';
     $calendarData = [
         'postId' => $postId,
@@ -187,7 +187,7 @@ while (have_posts()) {
 
     // Related events section
     if (!empty($relatedEvents)) {
-        echo '<section class="event-o-related">';
+        echo '<section class="event-o-related eo-anim">';
         echo '<div class="event-o-related-container">';
         echo '<h2 class="event-o-related-title">' . esc_html__('WEITERE VERANSTALTUNGEN', 'event-o') . '</h2>';
         echo '<div class="event-o-related-grid">';

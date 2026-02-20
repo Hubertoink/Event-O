@@ -2036,7 +2036,8 @@
 .event-o-program-venue .event-o-icon,
 .event-o-program-price .event-o-icon {
     flex-shrink: 0;
-    opacity: 0.7;
+    color: var(--event-o-active-accent, var(--event-o-primary));
+    opacity: 1;
 }
 
 .event-o-program-desc {

@@ -1492,7 +1492,7 @@
     align-items: center;
     justify-content: flex-start;
     color: #fff;
-    padding: 4rem 2rem;
+    padding: 4rem 0;
     box-sizing: border-box;
     overflow: hidden;
     filter: none !important;
@@ -1762,14 +1762,13 @@
 @media (max-width: 768px) {
     .event-o-hero-slide {
         min-height: 420px;
-        padding: 3rem 1rem;
+        padding: 3rem 0;
         align-items: center;
         justify-content: center;
     }
     .event-o-hero-content {
         text-align: center;
-        padding: 0 1rem;
-        padding-left: 1rem;
+        padding: 0 1.5rem;
     }
     .event-o-hero-overlay {
         background: linear-gradient(

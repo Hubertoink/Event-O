@@ -45,6 +45,12 @@ while (have_posts()) {
     if ($imageUrl !== '') {
         echo '<div class="event-o-single-hero eo-anim">';
         echo '<img src="' . esc_url($imageUrl) . '" alt="' . esc_attr($title) . '" class="event-o-single-hero-img">';
+        echo '<div class="event-o-single-hero-overlay">';
+        echo '<h1 class="event-o-single-hero-title">' . esc_html($title) . '</h1>';
+        if ($categoryName !== '') {
+            echo '<span class="event-o-single-hero-cat">' . esc_html($categoryName) . '</span>';
+        }
+        echo '</div>';
         echo '</div>';
     }
 

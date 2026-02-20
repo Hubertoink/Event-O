@@ -655,10 +655,11 @@
 
             viewport.addEventListener('touchmove', function (e) {
                 if (!isDragging) return;
+                e.preventDefault();
                 var dx = e.touches[0].pageX - startX;
                 dragDelta = dx;
                 viewport.scrollLeft = scrollStart - dx;
-            }, { passive: true });
+            }, { passive: false });
 
             viewport.addEventListener('touchend', function () {
                 if (!isDragging) return;

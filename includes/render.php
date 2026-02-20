@@ -1058,11 +1058,17 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
 
         $excerpt = '';
         if ($showDescription) {
-            $excerpt = get_the_excerpt();
-            if (empty($excerpt)) {
-                $excerpt = wp_trim_words(get_the_content(), 35, '…');
+            $fullText = get_the_excerpt();
+            if (empty($fullText)) {
+                $fullText = wp_strip_all_tags(get_the_content());
+            }
+            // We'll use the full text and a short version
+            $words = preg_split('/\s+/', $fullText);
+            $wordCount = count($words);
+            if ($wordCount > 60) {
+                $shortText = implode(' ', array_slice($words, 0, 60)) . '…';
             } else {
-                $excerpt = wp_trim_words($excerpt, 35, '…');
+                $shortText = $fullText;
             }
         }
 
@@ -1115,7 +1121,7 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
                     'title' => $title,
                     'startTs' => $startTs,
                     'endTs' => $endTs,
-                    'description' => wp_strip_all_tags($excerpt),
+                    'description' => wp_strip_all_tags($fullText ?? ''),
                     'location' => $venueData ? $venueData['name'] . ($venueData['address'] ? ', ' . $venueData['address'] : '') : '',
                 ];
             }
@@ -1146,8 +1152,16 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
             $out .= '</div>';
         }
 
-        if ($showDescription && $excerpt !== '') {
-            $out .= '<div class="event-o-program-desc">' . wp_kses_post($excerpt) . '</div>';
+        if ($showDescription && !empty($fullText)) {
+            if ($wordCount > 60) {
+                $out .= '<div class="event-o-program-desc event-o-desc-expandable">';
+                $out .= '<span class="event-o-desc-short">' . esc_html($shortText) . '</span>';
+                $out .= '<span class="event-o-desc-full">' . esc_html($fullText) . '</span>';
+                $out .= '<button type="button" class="event-o-desc-toggle">' . esc_html__('mehr…', 'event-o') . '</button>';
+                $out .= '</div>';
+            } else {
+                $out .= '<div class="event-o-program-desc">' . esc_html($fullText) . '</div>';
+            }
         }
 
         // Band links
@@ -1180,12 +1194,12 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
                 'title' => $title,
                 'startTs' => $startTs,
                 'endTs' => $endTs,
-                'description' => wp_strip_all_tags($excerpt),
+                'description' => wp_strip_all_tags($fullText ?? ''),
                 'location' => $venueData ? $venueData['name'] . ($venueData['address'] ? ', ' . $venueData['address'] : '') : '',
             ];
 
-            $googleUrl = event_o_get_google_calendar_url($title, $startTs, $endTs, wp_strip_all_tags($excerpt), $venueData ? $venueData['name'] : '');
-            $outlookUrl = event_o_get_outlook_calendar_url($title, $startTs, $endTs, wp_strip_all_tags($excerpt), $venueData ? $venueData['name'] : '');
+            $googleUrl = event_o_get_google_calendar_url($title, $startTs, $endTs, wp_strip_all_tags($fullText ?? ''), $venueData ? $venueData['name'] : '');
+            $outlookUrl = event_o_get_outlook_calendar_url($title, $startTs, $endTs, wp_strip_all_tags($fullText ?? ''), $venueData ? $venueData['name'] : '');
             $icalUrl = event_o_get_ical_url($postId);
 
             $out .= '<div class="event-o-program-calendar">';

@@ -644,6 +644,17 @@
         });
     }
 
+    function initDescToggle() {
+        document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.event-o-desc-toggle');
+            if (!btn) return;
+            var desc = btn.closest('.event-o-desc-expandable');
+            if (!desc) return;
+            var isExpanded = desc.classList.toggle('is-expanded');
+            btn.textContent = isExpanded ? 'weniger' : 'mehr…';
+        });
+    }
+
     function boot() {
         var carousels = document.querySelectorAll('.event-o-carousel');
         carousels.forEach(initCarousel);
@@ -655,6 +666,7 @@
         initAccordionAnimations();
         initFilters();
         initProgramLoadMore();
+        initDescToggle();
     }
 
     if (document.readyState === 'loading') {

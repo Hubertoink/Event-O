@@ -1755,6 +1755,10 @@
 }
 
 @media (max-width: 768px) {
+    /* Otter Section column constrains width via --columns-width on mobile */
+    .wp-block-themeisle-blocks-advanced-column:has(.event-o-hero) {
+        max-width: 100% !important;
+    }
     .event-o-hero-slide {
         min-height: 420px;
         padding: 3rem 0;

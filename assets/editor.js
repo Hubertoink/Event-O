@@ -633,4 +633,125 @@
             return null;
         }
     });
+
+    registerBlockType('event-o/event-program', {
+        title: 'Event_O – Event Program',
+        icon: 'schedule',
+        category: 'widgets',
+        attributes: {
+            perPage: { type: 'number', default: 8 },
+            showPast: { type: 'boolean', default: false },
+            categories: { type: 'string', default: '' },
+            venues: { type: 'string', default: '' },
+            organizers: { type: 'string', default: '' },
+            showImage: { type: 'boolean', default: true },
+            showVenue: { type: 'boolean', default: true },
+            showCategory: { type: 'boolean', default: true },
+            showDescription: { type: 'boolean', default: true },
+            showCalendar: { type: 'boolean', default: true },
+            showShare: { type: 'boolean', default: true },
+            showBands: { type: 'boolean', default: true },
+            showPrice: { type: 'boolean', default: true },
+            accentColor: { type: 'string', default: '' }
+        },
+        edit: function (props) {
+            var a = props.attributes;
+            var setAttributes = props.setAttributes;
+
+            return [
+                el(InspectorControls, { key: 'inspector' },
+                    el(PanelBody, { title: __('Query', 'event-o'), initialOpen: true },
+                        el(RangeControl, {
+                            label: __('Events before "load more"', 'event-o'),
+                            value: a.perPage,
+                            min: 1,
+                            max: 50,
+                            onChange: function (v) { setAttributes({ perPage: v }); }
+                        }),
+                        el(ToggleControl, {
+                            label: __('Show past events', 'event-o'),
+                            checked: a.showPast,
+                            onChange: function (v) { setAttributes({ showPast: v }); }
+                        })
+                    ),
+                    el(PanelBody, { title: __('Filters', 'event-o'), initialOpen: false },
+                        el(TextControl, {
+                            label: __('Categories (slugs, comma-separated)', 'event-o'),
+                            value: a.categories,
+                            onChange: function (v) { setAttributes({ categories: v }); }
+                        }),
+                        el(TextControl, {
+                            label: __('Venues (slugs, comma-separated)', 'event-o'),
+                            value: a.venues,
+                            onChange: function (v) { setAttributes({ venues: v }); }
+                        }),
+                        el(TextControl, {
+                            label: __('Organizers (slugs, comma-separated)', 'event-o'),
+                            value: a.organizers,
+                            onChange: function (v) { setAttributes({ organizers: v }); }
+                        }),
+                        TaxHelp(__('Example: konzert, lesung', 'event-o'))
+                    ),
+                    el(PanelBody, { title: __('Display', 'event-o'), initialOpen: false },
+                        el(ToggleControl, {
+                            label: __('Show featured image', 'event-o'),
+                            checked: a.showImage,
+                            onChange: function (v) { setAttributes({ showImage: v }); }
+                        }),
+                        el(ToggleControl, {
+                            label: __('Show category', 'event-o'),
+                            checked: a.showCategory,
+                            onChange: function (v) { setAttributes({ showCategory: v }); }
+                        }),
+                        el(ToggleControl, {
+                            label: __('Show venue', 'event-o'),
+                            checked: a.showVenue,
+                            onChange: function (v) { setAttributes({ showVenue: v }); }
+                        }),
+                        el(ToggleControl, {
+                            label: __('Show description', 'event-o'),
+                            checked: a.showDescription,
+                            onChange: function (v) { setAttributes({ showDescription: v }); }
+                        }),
+                        el(ToggleControl, {
+                            label: __('Show price', 'event-o'),
+                            checked: a.showPrice,
+                            onChange: function (v) { setAttributes({ showPrice: v }); }
+                        }),
+                        el(ToggleControl, {
+                            label: __('Show bands / artists', 'event-o'),
+                            checked: a.showBands,
+                            onChange: function (v) { setAttributes({ showBands: v }); }
+                        }),
+                        el(ToggleControl, {
+                            label: __('Show share buttons', 'event-o'),
+                            checked: a.showShare,
+                            onChange: function (v) { setAttributes({ showShare: v }); }
+                        }),
+                        el(ToggleControl, {
+                            label: __('Show calendar save', 'event-o'),
+                            checked: a.showCalendar,
+                            onChange: function (v) { setAttributes({ showCalendar: v }); }
+                        })
+                    ),
+                    el(PanelBody, { title: __('Colors', 'event-o'), initialOpen: false },
+                        el(ColorControl, {
+                            label: __('Accent Color', 'event-o'),
+                            value: a.accentColor,
+                            onChange: function (v) { setAttributes({ accentColor: v }); }
+                        })
+                    )
+                ),
+                el('div', { key: 'preview', className: props.className },
+                    el(ServerSideRender, {
+                        block: 'event-o/event-program',
+                        attributes: a
+                    })
+                )
+            ];
+        },
+        save: function () {
+            return null;
+        }
+    });
 })(window.wp);

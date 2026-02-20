@@ -8,6 +8,7 @@ const EVENT_O_META_START_TS = '_event_o_start_ts';
 const EVENT_O_META_END_TS = '_event_o_end_ts';
 const EVENT_O_META_PRICE = '_event_o_price';
 const EVENT_O_META_STATUS = '_event_o_status';
+const EVENT_O_META_BANDS = '_event_o_bands';
 
 const EVENT_O_LEGACY_META_START_TS = '_evento_start_ts';
 const EVENT_O_LEGACY_META_END_TS = '_evento_end_ts';
@@ -46,6 +47,16 @@ function event_o_register_meta(): void
             return current_user_can('edit_posts');
         },
         'sanitize_callback' => 'sanitize_text_field',
+    ]);
+
+    register_post_meta('event_o_event', EVENT_O_META_BANDS, [
+        'type' => 'string',
+        'single' => true,
+        'show_in_rest' => true,
+        'auth_callback' => static function () {
+            return current_user_can('edit_posts');
+        },
+        'sanitize_callback' => 'sanitize_textarea_field',
     ]);
 }
 
@@ -120,6 +131,13 @@ function event_o_render_event_details_metabox(WP_Post $post): void
     }
     echo '</select></p>';
 
+    // --- Bands / Artists ---
+    $bands = (string) get_post_meta($post->ID, EVENT_O_META_BANDS, true);
+    echo '<hr style="margin:14px 0">';
+    echo '<p><label for="event_o_bands"><strong>' . esc_html__('Bands / Artists', 'event-o') . '</strong></label></p>';
+    echo '<p><textarea id="event_o_bands" name="event_o_bands" rows="4" style="width:100%" placeholder="Band Name | spotify-url | bandcamp-url">' . esc_textarea($bands) . '</textarea></p>';
+    echo '<p style="color:#666;font-size:11px;margin-top:2px">' . esc_html__('One band per line. Format: Name | Spotify URL | Bandcamp URL (each part optional).', 'event-o') . '</p>';
+
     echo '<p style="color:#666;font-size:12px;margin-top:10px">' . esc_html__('Tip: Use taxonomies for Organizer/Venue to keep data consistent.', 'event-o') . '</p>';
 }
 
@@ -182,6 +200,13 @@ function event_o_save_event_meta(int $postId): void
         update_post_meta($postId, EVENT_O_META_STATUS, $status);
     } else {
         delete_post_meta($postId, EVENT_O_META_STATUS);
+    }
+
+    $bands = isset($_POST['event_o_bands']) ? sanitize_textarea_field((string) $_POST['event_o_bands']) : '';
+    if ($bands !== '') {
+        update_post_meta($postId, EVENT_O_META_BANDS, $bands);
+    } else {
+        delete_post_meta($postId, EVENT_O_META_BANDS);
     }
 }
 add_action('save_post_event_o_event', 'event_o_save_event_meta');

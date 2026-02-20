@@ -102,4 +102,25 @@ function event_o_register_blocks(): void
             'filterByOrganizer' => ['type' => 'boolean', 'default' => true],
         ],
     ]);
+
+    register_block_type('event-o/event-program', [
+        'api_version' => 2,
+        'render_callback' => 'event_o_render_event_program_block',
+        'attributes' => [
+            'perPage' => ['type' => 'number', 'default' => 8],
+            'showPast' => ['type' => 'boolean', 'default' => false],
+            'categories' => ['type' => 'string', 'default' => ''],
+            'venues' => ['type' => 'string', 'default' => ''],
+            'organizers' => ['type' => 'string', 'default' => ''],
+            'showImage' => ['type' => 'boolean', 'default' => true],
+            'showVenue' => ['type' => 'boolean', 'default' => true],
+            'showCategory' => ['type' => 'boolean', 'default' => true],
+            'showDescription' => ['type' => 'boolean', 'default' => true],
+            'showCalendar' => ['type' => 'boolean', 'default' => true],
+            'showShare' => ['type' => 'boolean', 'default' => true],
+            'showBands' => ['type' => 'boolean', 'default' => true],
+            'showPrice' => ['type' => 'boolean', 'default' => true],
+            'accentColor' => ['type' => 'string', 'default' => ''],
+        ],
+    ]);
 }

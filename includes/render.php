@@ -977,6 +977,251 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
     return $out;
 }
 
+function event_o_render_event_program_block(array $attrs, string $content = '', WP_Block $block = null): string
+{
+    // Load all events (not just perPage), we hide the rest client-side
+    $programAttrs = $attrs;
+    $perPage = isset($attrs['perPage']) ? max(1, (int) $attrs['perPage']) : 8;
+    $programAttrs['perPage'] = 200; // Load all
+    $q = event_o_event_query($programAttrs);
+    if (!$q->have_posts()) {
+        return '<div class="event-o event-o-program"><p class="event-o-empty">' . esc_html__('No events found.', 'event-o') . '</p></div>';
+    }
+
+    $perPage = isset($attrs['perPage']) ? max(1, (int) $attrs['perPage']) : 8;
+    $showImage = !array_key_exists('showImage', $attrs) || !empty($attrs['showImage']);
+    $showVenue = !array_key_exists('showVenue', $attrs) || !empty($attrs['showVenue']);
+    $showCategory = !array_key_exists('showCategory', $attrs) || !empty($attrs['showCategory']);
+    $showDescription = !array_key_exists('showDescription', $attrs) || !empty($attrs['showDescription']);
+    $showCalendar = !array_key_exists('showCalendar', $attrs) || !empty($attrs['showCalendar']);
+    $showShare = !array_key_exists('showShare', $attrs) || !empty($attrs['showShare']);
+    $showBands = !array_key_exists('showBands', $attrs) || !empty($attrs['showBands']);
+    $showPrice = !array_key_exists('showPrice', $attrs) || !empty($attrs['showPrice']);
+
+    $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? $attrs['accentColor'] : '';
+    $styleAttr = $accentColor !== '' ? ' style="--event-o-block-accent:' . esc_attr($accentColor) . ';"' : '';
+
+    $tz = wp_timezone();
+    $todayStart = (new DateTimeImmutable('now', $tz))->setTime(0, 0, 0)->getTimestamp();
+    $todayEnd = (new DateTimeImmutable('now', $tz))->setTime(23, 59, 59)->getTimestamp();
+
+    $out = '<div class="event-o event-o-program"' . $styleAttr . '>';
+
+    $eventIndex = 0;
+
+    while ($q->have_posts()) {
+        $q->the_post();
+        $postId = get_the_ID();
+        $eventIndex++;
+
+        $title = get_the_title();
+        $permalink = get_permalink();
+
+        $startTs = (int) get_post_meta($postId, EVENT_O_META_START_TS, true);
+        $endTs = (int) get_post_meta($postId, EVENT_O_META_END_TS, true);
+        $price = (string) get_post_meta($postId, EVENT_O_META_PRICE, true);
+        $status = (string) get_post_meta($postId, EVENT_O_META_STATUS, true);
+        $bandsRaw = (string) get_post_meta($postId, EVENT_O_META_BANDS, true);
+
+        if ($startTs <= 0) {
+            $startTs = (int) get_post_meta($postId, EVENT_O_LEGACY_META_START_TS, true);
+        }
+        if ($endTs <= 0) {
+            $endTs = (int) get_post_meta($postId, EVENT_O_LEGACY_META_END_TS, true);
+        }
+        if ($price === '') {
+            $price = (string) get_post_meta($postId, EVENT_O_LEGACY_META_PRICE, true);
+        }
+        if ($status === '') {
+            $status = (string) get_post_meta($postId, EVENT_O_LEGACY_META_STATUS, true);
+        }
+
+        $isToday = ($startTs >= $todayStart && $startTs <= $todayEnd);
+        $dtParts = event_o_format_datetime_german($startTs, $endTs);
+
+        $categoryName = $showCategory ? event_o_get_first_term_name($postId, 'event_o_category') : '';
+        $venueData = $showVenue ? event_o_get_venue_data($postId) : null;
+
+        // Parse bands: "Name | spotify | bandcamp" per line
+        $bands = [];
+        if ($showBands && $bandsRaw !== '') {
+            $lines = array_filter(array_map('trim', explode("\n", $bandsRaw)));
+            foreach ($lines as $line) {
+                $parts = array_map('trim', explode('|', $line));
+                $bands[] = [
+                    'name' => $parts[0] ?? '',
+                    'spotify' => isset($parts[1]) && $parts[1] !== '' ? $parts[1] : '',
+                    'bandcamp' => isset($parts[2]) && $parts[2] !== '' ? $parts[2] : '',
+                ];
+            }
+        }
+
+        $excerpt = '';
+        if ($showDescription) {
+            $excerpt = get_the_excerpt();
+            if (empty($excerpt)) {
+                $excerpt = wp_trim_words(get_the_content(), 35, '…');
+            } else {
+                $excerpt = wp_trim_words($excerpt, 35, '…');
+            }
+        }
+
+        $hiddenClass = $eventIndex > $perPage ? ' is-hidden' : '';
+        $todayClass = $isToday ? ' is-today' : '';
+
+        $out .= '<article class="event-o-program-item' . $todayClass . $hiddenClass . '">';
+
+        // === LEFT COLUMN ===
+        $out .= '<div class="event-o-program-left">';
+
+        // Date + Time
+        $out .= '<div class="event-o-program-when">';
+        if ($dtParts['date'] !== '') {
+            $out .= '<span class="event-o-program-date">' . esc_html($dtParts['date']) . '</span>';
+        }
+        if ($dtParts['time'] !== '') {
+            $out .= '<span class="event-o-program-time">' . esc_html($dtParts['time']) . '</span>';
+        }
+        $out .= '</div>';
+
+        // Title
+        $out .= '<h3 class="event-o-program-title"><a href="' . esc_url($permalink) . '">' . esc_html($title) . '</a></h3>';
+
+        // Status badge
+        if ($status !== '' && $status !== 'normal') {
+            $statusLabels = [
+                'cancelled' => __('ABGESAGT', 'event-o'),
+                'postponed' => __('VERSCHOBEN', 'event-o'),
+                'soldout' => __('AUSVERKAUFT', 'event-o'),
+            ];
+            $statusLabel = $statusLabels[$status] ?? mb_strtoupper($status);
+            $out .= '<span class="event-o-program-status event-o-status-' . esc_attr($status) . '">' . esc_html($statusLabel) . '</span>';
+        }
+
+        // Image
+        if ($showImage && has_post_thumbnail($postId)) {
+            $out .= '<div class="event-o-program-image">';
+            $out .= '<a href="' . esc_url($permalink) . '">' . get_the_post_thumbnail($postId, 'medium_large', ['loading' => 'lazy']) . '</a>';
+            $out .= '</div>';
+        }
+
+        // Band links
+        if (!empty($bands)) {
+            $out .= '<div class="event-o-program-bands">';
+            foreach ($bands as $band) {
+                $out .= '<div class="event-o-program-band">';
+                if ($band['name'] !== '') {
+                    $out .= '<span class="event-o-band-name">' . esc_html($band['name']) . '</span>';
+                }
+                if ($band['spotify'] !== '') {
+                    $out .= '<a href="' . esc_url($band['spotify']) . '" target="_blank" rel="noopener noreferrer" class="event-o-band-link event-o-band-spotify" title="Spotify">';
+                    $out .= '<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>';
+                    $out .= '</a>';
+                }
+                if ($band['bandcamp'] !== '') {
+                    $out .= '<a href="' . esc_url($band['bandcamp']) . '" target="_blank" rel="noopener noreferrer" class="event-o-band-link event-o-band-bandcamp" title="Bandcamp">';
+                    $out .= '<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M0 18.75l7.437-13.5H24l-7.438 13.5H0z"/></svg>';
+                    $out .= '</a>';
+                }
+                $out .= '</div>';
+            }
+            $out .= '</div>';
+        }
+
+        // Share buttons
+        if ($showShare) {
+            $out .= '<div class="event-o-program-share">';
+            $calendarDataForShare = [];
+            if ($showCalendar) {
+                $calendarDataForShare = [
+                    'postId' => $postId,
+                    'title' => $title,
+                    'startTs' => $startTs,
+                    'endTs' => $endTs,
+                    'description' => wp_strip_all_tags($excerpt),
+                    'location' => $venueData ? $venueData['name'] . ($venueData['address'] ? ', ' . $venueData['address'] : '') : '',
+                ];
+            }
+            $out .= event_o_render_share_buttons($permalink, $title, $calendarDataForShare);
+            $out .= '</div>';
+        }
+
+        $out .= '</div>'; // .event-o-program-left
+
+        // === RIGHT COLUMN ===
+        $out .= '<div class="event-o-program-right">';
+
+        if ($categoryName !== '') {
+            $out .= '<div class="event-o-program-category">' . esc_html(mb_strtoupper($categoryName)) . '</div>';
+        }
+
+        if ($venueData) {
+            $out .= '<div class="event-o-program-venue">';
+            $out .= '<svg class="event-o-icon" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>';
+            $out .= '<span>' . esc_html($venueData['name']) . '</span>';
+            $out .= '</div>';
+        }
+
+        if ($showPrice && $price !== '') {
+            $out .= '<div class="event-o-program-price">';
+            $out .= '<svg class="event-o-icon" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M22 10V6c0-1.1-.9-2-2-2H4c-1.1 0-1.99.9-1.99 2v4c1.1 0 1.99.9 1.99 2s-.89 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2zm-2-1.46c-1.19.69-2 1.99-2 3.46s.81 2.77 2 3.46V18H4v-2.54c1.19-.69 2-1.99 2-3.46 0-1.48-.8-2.77-1.99-3.46L4 6h16v2.54zM11 15h2v2h-2zm0-4h2v2h-2zm0-4h2v2h-2z"/></svg>';
+            $out .= '<span>' . esc_html($price) . '</span>';
+            $out .= '</div>';
+        }
+
+        if ($showDescription && $excerpt !== '') {
+            $out .= '<div class="event-o-program-desc">' . wp_kses_post($excerpt) . '</div>';
+        }
+
+        // Calendar save (standalone, without share buttons)
+        if ($showCalendar && !$showShare) {
+            $calendarData = [
+                'postId' => $postId,
+                'title' => $title,
+                'startTs' => $startTs,
+                'endTs' => $endTs,
+                'description' => wp_strip_all_tags($excerpt),
+                'location' => $venueData ? $venueData['name'] . ($venueData['address'] ? ', ' . $venueData['address'] : '') : '',
+            ];
+
+            $googleUrl = event_o_get_google_calendar_url($title, $startTs, $endTs, wp_strip_all_tags($excerpt), $venueData ? $venueData['name'] : '');
+            $outlookUrl = event_o_get_outlook_calendar_url($title, $startTs, $endTs, wp_strip_all_tags($excerpt), $venueData ? $venueData['name'] : '');
+            $icalUrl = event_o_get_ical_url($postId);
+
+            $out .= '<div class="event-o-program-calendar">';
+            $out .= '<div class="event-o-calendar-dropdown">';
+            $out .= '<button type="button" class="event-o-share-btn event-o-share-calendar" aria-label="Zum Kalender hinzufügen" title="Zum Kalender hinzufügen">';
+            $out .= '<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm-8 4H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/></svg>';
+            $out .= '<span>In Kalender speichern</span>';
+            $out .= '</button>';
+            $out .= '<div class="event-o-calendar-menu">';
+            $out .= '<a href="' . esc_url($googleUrl) . '" target="_blank" rel="noopener noreferrer" class="event-o-calendar-option">Google Kalender</a>';
+            $out .= '<a href="' . esc_url($outlookUrl) . '" target="_blank" rel="noopener noreferrer" class="event-o-calendar-option">Outlook Kalender</a>';
+            $out .= '<a href="' . esc_url($icalUrl) . '" class="event-o-calendar-option">iCal / Apple</a>';
+            $out .= '</div>';
+            $out .= '</div>';
+            $out .= '</div>';
+        }
+
+        $out .= '</div>'; // .event-o-program-right
+
+        $out .= '</article>';
+    }
+
+    wp_reset_postdata();
+
+    // Load more button
+    if ($q->found_posts > $perPage) {
+        $out .= '<div class="event-o-program-loadmore-wrap">';
+        $out .= '<button type="button" class="event-o-program-loadmore">' . esc_html__('Mehr laden', 'event-o') . '</button>';
+        $out .= '</div>';
+    }
+
+    $out .= '</div>'; // .event-o-program
+
+    return $out;
+}
+
 function event_o_render_event_hero_block(array $attrs, string $content = '', WP_Block $block = null): string
 {
     $q = event_o_event_query($attrs);

@@ -626,6 +626,24 @@
         });
     }
 
+    function initProgramLoadMore() {
+        var programs = document.querySelectorAll('.event-o-program');
+        programs.forEach(function (program) {
+            var btn = program.querySelector('.event-o-program-loadmore');
+            if (!btn) return;
+
+            btn.addEventListener('click', function () {
+                var hiddenItems = program.querySelectorAll('.event-o-program-item.is-hidden');
+                hiddenItems.forEach(function (item) {
+                    item.classList.remove('is-hidden');
+                });
+                // Hide the button after revealing all
+                var wrap = btn.closest('.event-o-program-loadmore-wrap');
+                if (wrap) wrap.style.display = 'none';
+            });
+        });
+    }
+
     function boot() {
         var carousels = document.querySelectorAll('.event-o-carousel');
         carousels.forEach(initCarousel);
@@ -636,6 +654,7 @@
         initHeroSliders();
         initAccordionAnimations();
         initFilters();
+        initProgramLoadMore();
     }
 
     if (document.readyState === 'loading') {

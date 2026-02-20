@@ -1805,6 +1805,22 @@
     border-top: 1px solid var(--eo-prog-border);
 }
 
+/* HEUTE label */
+.event-o-program-heute {
+    display: none;
+}
+
+.event-o-program-item.is-today .event-o-program-heute {
+    display: block;
+    grid-column: 1 / -1;
+    font-size: 1.75rem;
+    font-weight: 900;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--event-o-active-accent, var(--event-o-primary));
+    margin-bottom: 0.25rem;
+}
+
 /* Today highlight */
 .event-o-program-item.is-today {
     background: var(--eo-prog-today-bg);
@@ -1836,11 +1852,13 @@
 .event-o-program-item.is-today .event-o-share-btn {
     color: var(--eo-prog-today-muted);
     border-color: var(--eo-prog-today-border);
+    background: var(--eo-prog-today-bg);
 }
 
 .event-o-program-item.is-today .event-o-share-btn:hover {
     color: var(--eo-prog-today-text);
     border-color: var(--eo-prog-today-muted);
+    background: var(--eo-prog-today-bg);
 }
 
 .event-o-program-item.is-today .event-o-band-link {

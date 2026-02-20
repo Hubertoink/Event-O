@@ -1077,6 +1077,11 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
 
         $out .= '<article class="event-o-program-item' . $todayClass . $hiddenClass . '">';
 
+        // HEUTE banner for today's events
+        if ($isToday) {
+            $out .= '<div class="event-o-program-heute">' . esc_html__('HEUTE', 'event-o') . '</div>';
+        }
+
         // === LEFT COLUMN ===
         $out .= '<div class="event-o-program-left">';
 

@@ -1790,6 +1790,12 @@
     margin: 0 auto;
 }
 
+/* High contrast overrides */
+.event-o-program.is-high-contrast {
+    --eo-prog-muted: var(--eo-prog-text);
+    --eo-prog-today-muted: var(--eo-prog-today-text);
+}
+
 .event-o-program-item {
     display: grid;
     grid-template-columns: 1fr 1fr;

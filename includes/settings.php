@@ -67,6 +67,14 @@ function event_o_register_settings(): void
         'default' => 'html[data-neve-theme="dark"]',
     ]);
 
+    register_setting('event_o_settings', EVENT_O_OPTION_HIGH_CONTRAST, [
+        'type' => 'boolean',
+        'sanitize_callback' => static function ($value) {
+            return (bool) $value;
+        },
+        'default' => false,
+    ]);
+
     register_setting('event_o_settings', EVENT_O_OPTION_LIGHT_SELECTOR, [
         'type' => 'string',
         'sanitize_callback' => 'sanitize_text_field',
@@ -102,6 +110,17 @@ function event_o_register_settings(): void
         static function () {
             $value = (bool) get_option(EVENT_O_OPTION_ENABLE_SINGLE, true);
             echo '<label><input type="checkbox" name="' . esc_attr(EVENT_O_OPTION_ENABLE_SINGLE) . '" value="1" ' . checked($value, true, false) . ' /> ' . esc_html__('Use Event-O single template for Event-O events.', 'event-o') . '</label>';
+        },
+        'event_o_settings',
+        'event_o_settings_behavior'
+    );
+
+    add_settings_field(
+        EVENT_O_OPTION_HIGH_CONTRAST,
+        __('High Contrast Modus', 'event-o'),
+        static function () {
+            $value = (bool) get_option(EVENT_O_OPTION_HIGH_CONTRAST, false);
+            echo '<label><input type="checkbox" name="' . esc_attr(EVENT_O_OPTION_HIGH_CONTRAST) . '" value="1" ' . checked($value, true, false) . ' /> ' . esc_html__('Alle gedämpften Farben durch volle Textfarbe (Schwarz/Weiß je nach Modus) ersetzen für maximalen Kontrast.', 'event-o') . '</label>';
         },
         'event_o_settings',
         'event_o_settings_behavior'
@@ -298,8 +317,17 @@ function event_o_get_css_vars_inline(): string
     // Light mode base variables
     $lightVars = "--event-o-primary:{$t['primary']};--event-o-accent:{$t['accent']};--event-o-text:{$t['text']};--event-o-muted:{$t['muted']};--event-o-border:rgba(0,0,0,.14);--event-o-bg:#fff;--event-o-sidebar-bg:#f8f8f8;--event-o-font:inherit;";
     
+    // High contrast: override muted with text color
+    $highContrast = (bool) get_option(EVENT_O_OPTION_HIGH_CONTRAST, false);
+    if ($highContrast) {
+        $lightVars = "--event-o-primary:{$t['primary']};--event-o-accent:{$t['accent']};--event-o-text:{$t['text']};--event-o-muted:{$t['text']};--event-o-border:rgba(0,0,0,.3);--event-o-bg:#fff;--event-o-sidebar-bg:#f8f8f8;--event-o-font:inherit;";
+    }
+    
     // Dark mode variables
     $darkVars = "--event-o-text:#f3f4f6;--event-o-muted:rgba(243,244,246,.72);--event-o-border:rgba(243,244,246,.16);--event-o-bg:#14161a;--event-o-sidebar-bg:#101216;--event-o-status-bg:rgba(243,244,246,.18);--event-o-status-text:#fff;";
+    if ($highContrast) {
+        $darkVars = "--event-o-text:#f3f4f6;--event-o-muted:#f3f4f6;--event-o-border:rgba(243,244,246,.3);--event-o-bg:#14161a;--event-o-sidebar-bg:#101216;--event-o-status-bg:rgba(243,244,246,.18);--event-o-status-text:#fff;";
+    }
 
     $css = ":root{{$lightVars}}";
 
@@ -315,7 +343,9 @@ function event_o_get_css_vars_inline(): string
         $darkModeRules .= ".event-o-accordion-summary:hover{background:rgba(255,255,255,0.05)}";
         $darkModeRules .= ".event-o-hero-bg::before{background:linear-gradient(to top,var(--event-o-bg) 0,rgba(20,22,26,0.6) 60%,transparent 100%)}";
         // Program block: invert today/normal in dark mode
-        $darkModeRules .= ".event-o-program{--eo-prog-bg:#14161a;--eo-prog-text:#f3f4f6;--eo-prog-muted:rgba(243,244,246,.6);--eo-prog-border:rgba(243,244,246,.16);--eo-prog-today-bg:#fff;--eo-prog-today-text:#1a1a1a;--eo-prog-today-muted:rgba(0,0,0,0.55);--eo-prog-today-border:rgba(0,0,0,.14)}";
+        $progDarkMuted = $highContrast ? '--eo-prog-muted:#f3f4f6' : '--eo-prog-muted:rgba(243,244,246,.6)';
+        $progTodayMuted = $highContrast ? '--eo-prog-today-muted:#1a1a1a' : '--eo-prog-today-muted:rgba(0,0,0,0.55)';
+        $darkModeRules .= ".event-o-program{--eo-prog-bg:#14161a;--eo-prog-text:#f3f4f6;{$progDarkMuted};--eo-prog-border:rgba(243,244,246,.16);--eo-prog-today-bg:#fff;--eo-prog-today-text:#1a1a1a;{$progTodayMuted};--eo-prog-today-border:rgba(0,0,0,.14)}";
     } elseif ($darkMode === 'auto' && !empty($darkSelector)) {
         // Auto mode: use theme selector for dark
         $css .= "{$darkSelector}{{$darkVars}}";
@@ -325,7 +355,9 @@ function event_o_get_css_vars_inline(): string
         $darkModeRules .= "{$darkSelector} .event-o-accordion-summary:hover{background:rgba(255,255,255,0.05)}";
         $darkModeRules .= "{$darkSelector} .event-o-hero-bg::before{background:linear-gradient(to top,var(--event-o-bg) 0,rgba(20,22,26,0.6) 60%,transparent 100%)}";
         // Program block: invert today/normal in dark mode
-        $darkModeRules .= "{$darkSelector} .event-o-program{--eo-prog-bg:#14161a;--eo-prog-text:#f3f4f6;--eo-prog-muted:rgba(243,244,246,.6);--eo-prog-border:rgba(243,244,246,.16);--eo-prog-today-bg:#fff;--eo-prog-today-text:#1a1a1a;--eo-prog-today-muted:rgba(0,0,0,0.55);--eo-prog-today-border:rgba(0,0,0,.14)}";
+        $progDarkMuted = $highContrast ? '--eo-prog-muted:#f3f4f6' : '--eo-prog-muted:rgba(243,244,246,.6)';
+        $progTodayMuted = $highContrast ? '--eo-prog-today-muted:#1a1a1a' : '--eo-prog-today-muted:rgba(0,0,0,0.55)';
+        $darkModeRules .= "{$darkSelector} .event-o-program{--eo-prog-bg:#14161a;--eo-prog-text:#f3f4f6;{$progDarkMuted};--eo-prog-border:rgba(243,244,246,.16);--eo-prog-today-bg:#fff;--eo-prog-today-text:#1a1a1a;{$progTodayMuted};--eo-prog-today-border:rgba(0,0,0,.14)}";
     }
     // 'light' mode: just use the base :root vars (already set), no dark rules needed
 

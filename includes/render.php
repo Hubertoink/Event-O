@@ -1000,12 +1000,14 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
 
     $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? $attrs['accentColor'] : '';
     $styleAttr = $accentColor !== '' ? ' style="--event-o-block-accent:' . esc_attr($accentColor) . ';"' : '';
+    $highContrast = (bool) get_option(EVENT_O_OPTION_HIGH_CONTRAST, false);
+    $hcClass = $highContrast ? ' is-high-contrast' : '';
 
     $tz = wp_timezone();
     $todayStart = (new DateTimeImmutable('now', $tz))->setTime(0, 0, 0)->getTimestamp();
     $todayEnd = (new DateTimeImmutable('now', $tz))->setTime(23, 59, 59)->getTimestamp();
 
-    $out = '<div class="event-o event-o-program"' . $styleAttr . '>';
+    $out = '<div class="event-o event-o-program' . $hcClass . '"' . $styleAttr . '>';
 
     // Collect all posts and sort: today first, then chronological ASC
     $allPosts = [];

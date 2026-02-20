@@ -985,8 +985,14 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
     }
 
     $showFilters = !empty($attrs['showFilters']);
+    $showDate = !array_key_exists('showDate', $attrs) || !empty($attrs['showDate']);
+    $dateVariant = isset($attrs['dateVariant']) && $attrs['dateVariant'] === 'date-time' ? 'date-time' : 'date';
+    $showDesc = !array_key_exists('showDesc', $attrs) || !empty($attrs['showDesc']);
+    $showButton = !array_key_exists('showButton', $attrs) || !empty($attrs['showButton']);
+    $buttonStyle = isset($attrs['buttonStyle']) ? $attrs['buttonStyle'] : 'rounded';
     $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? $attrs['accentColor'] : '';
     $contentIndent = isset($attrs['contentIndent']) ? max(0, (int) $attrs['contentIndent']) : 60;
+    $heroHeight = isset($attrs['heroHeight']) ? max(520, min(720, (int) $attrs['heroHeight'])) : 520;
     $overlayColor = isset($attrs['overlayColor']) && $attrs['overlayColor'] === 'white' ? 'white' : 'black';
     $align = isset($attrs['align']) ? $attrs['align'] : '';
     $styleAttr = '';
@@ -994,6 +1000,7 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
         $styleAttr .= '--event-o-block-accent:' . esc_attr($accentColor) . ';';
     }
     $styleAttr .= '--event-o-hero-indent:' . esc_attr((string) $contentIndent) . 'px;';
+    $styleAttr .= '--event-o-hero-height:' . esc_attr((string) $heroHeight) . 'px;';
 
     $uid = 'event-o-hero-' . wp_generate_uuid4();
     $alignClass = $align !== '' ? ' align' . esc_attr($align) : '';
@@ -1030,6 +1037,22 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
             $excerpt = wp_trim_words($excerpt, 20, '...');
         }
 
+        $startTs = (int) get_post_meta($postId, EVENT_O_META_START_TS, true);
+        if ($startTs <= 0) {
+            $startTs = (int) get_post_meta($postId, EVENT_O_LEGACY_META_START_TS, true);
+        }
+        $heroDate = '';
+        $heroTime = '';
+        if ($showDate && $startTs > 0) {
+            $endTs = (int) get_post_meta($postId, EVENT_O_META_END_TS, true);
+            if ($endTs <= 0) {
+                $endTs = (int) get_post_meta($postId, EVENT_O_LEGACY_META_END_TS, true);
+            }
+            $heroDateParts = event_o_format_datetime_german($startTs, $dateVariant === 'date-time' ? $endTs : 0);
+            $heroDate = $heroDateParts['date'] ?? '';
+            $heroTime = $dateVariant === 'date-time' ? ($heroDateParts['time'] ?? '') : '';
+        }
+
         $imageUrl = '';
         if (has_post_thumbnail($postId)) {
             $imageUrl = get_the_post_thumbnail_url($postId, 'full');
@@ -1047,9 +1070,27 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
         
         $out .= '<div class="event-o-hero-content">';
         $out .= '<div class="event-o-hero-category">' . esc_html(mb_strtoupper($categoryName)) . '</div>';
+        if ($heroDate !== '') {
+            $out .= '<div class="event-o-hero-date' . ($heroTime !== '' ? ' has-time' : '') . '">';
+            $out .= '<span class="event-o-hero-date-main">' . esc_html($heroDate) . '</span>';
+            if ($heroTime !== '') {
+                $out .= '<span class="event-o-hero-date-time">' . esc_html($heroTime) . '</span>';
+            }
+            $out .= '</div>';
+        }
         $out .= '<h2 class="event-o-hero-title">' . esc_html($title) . '</h2>';
-        $out .= '<div class="event-o-hero-desc">' . wp_kses_post($excerpt) . '</div>';
-        $out .= '<a href="' . esc_url($permalink) . '" class="event-o-hero-btn">' . esc_html__('Zu den Events', 'event-o') . '</a>';
+        if ($showDesc) {
+            $out .= '<div class="event-o-hero-desc">' . wp_kses_post($excerpt) . '</div>';
+        }
+        if ($showButton) {
+            $btnClass = 'event-o-hero-btn';
+            if ($buttonStyle === 'square') {
+                $btnClass .= ' is-square';
+            } elseif ($buttonStyle === 'outline') {
+                $btnClass .= ' is-outline';
+            }
+            $out .= '<a href="' . esc_url($permalink) . '" class="' . esc_attr($btnClass) . '">' . esc_html__('Zu den Events', 'event-o') . '</a>';
+        }
         $out .= '</div>'; // .event-o-hero-content
         $out .= '</div>'; // .event-o-hero-slide
     }

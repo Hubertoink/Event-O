@@ -399,13 +399,17 @@
         var heroes = document.querySelectorAll('.event-o-hero');
         heroes.forEach(function (hero) {
             var viewport = hero.querySelector('.event-o-hero-viewport');
+            var track = hero.querySelector('.event-o-hero-track');
             var dots = hero.querySelectorAll('.event-o-hero-dot');
-            if (!viewport || !dots.length) return;
+            if (!viewport || !track || !dots.length) return;
 
-            var slides = hero.querySelectorAll('.event-o-hero-slide');
-            var slideCount = slides.length;
+            var realSlides = Array.prototype.slice.call(track.querySelectorAll('.event-o-hero-slide'));
+            var slideCount = realSlides.length;
+            if (slideCount < 2) return;
+
             var currentIndex = 0;
             var autoPlayInterval;
+            var isAnimating = false;
 
             // Drag state
             var isDragging = false;
@@ -413,64 +417,117 @@
             var scrollStart = 0;
             var dragDelta = 0;
 
+            // --- Infinite scroll: clone first and last slides ---
+            var cloneLast = realSlides[slideCount - 1].cloneNode(true);
+            var cloneFirst = realSlides[0].cloneNode(true);
+            cloneLast.classList.add('is-clone');
+            cloneFirst.classList.add('is-clone');
+            cloneLast.setAttribute('aria-hidden', 'true');
+            cloneFirst.setAttribute('aria-hidden', 'true');
+            // Remove IDs from clones to avoid duplicates
+            cloneLast.removeAttribute('id');
+            cloneFirst.removeAttribute('id');
+
+            track.insertBefore(cloneLast, realSlides[0]);
+            track.appendChild(cloneFirst);
+
+            // All slides in DOM: [clone-last] [real-0] ... [real-N-1] [clone-first]
+            var allSlides = Array.prototype.slice.call(track.querySelectorAll('.event-o-hero-slide'));
+
+            // Real slide at realIndex → DOM index realIndex + 1
+            function domIndex(realIdx) {
+                return realIdx + 1;
+            }
+
+            // Instant jump (no animation, no transition)
+            function jumpTo(dIdx) {
+                viewport.classList.add('is-dragging');
+                viewport.scrollLeft = allSlides[dIdx].offsetLeft;
+                void viewport.offsetHeight;
+                viewport.classList.remove('is-dragging');
+            }
+
+            // Start at the first real slide
+            jumpTo(domIndex(0));
+
             function updateDots(index) {
                 dots.forEach(function (dot, i) {
                     dot.classList.toggle('is-active', i === index);
                 });
             }
 
-            function scrollToSlide(index, skipSnap) {
-                if (index < 0) index = slideCount - 1;
-                if (index >= slideCount) index = 0;
-                
-                currentIndex = index;
-                var slide = slides[currentIndex];
-                if (!slide) return;
+            function easeOutCubic(t) {
+                return 1 - Math.pow(1 - t, 3);
+            }
 
-                var targetLeft = slide.offsetLeft;
-                var startLeft = viewport.scrollLeft;
-                var distance = targetLeft - startLeft;
-
-                updateDots(currentIndex);
-
-                // If already at target, just re-enable snap
+            function animateScroll(from, to, callback) {
+                var distance = to - from;
                 if (Math.abs(distance) < 2) {
                     viewport.classList.remove('is-dragging');
+                    if (callback) callback();
                     return;
                 }
-
-                // Keep snap disabled during animation to prevent snap-back
                 viewport.classList.add('is-dragging');
-
-                var duration = 350;
+                var duration = 400;
                 var startTime = null;
 
-                function easeOutCubic(t) {
-                    return 1 - Math.pow(1 - t, 3);
-                }
-
-                function animate(timestamp) {
+                function step(timestamp) {
                     if (!startTime) startTime = timestamp;
                     var elapsed = timestamp - startTime;
                     var progress = Math.min(elapsed / duration, 1);
-                    var easedProgress = easeOutCubic(progress);
-
-                    viewport.scrollLeft = startLeft + (distance * easedProgress);
-
+                    viewport.scrollLeft = from + distance * easeOutCubic(progress);
                     if (progress < 1) {
-                        requestAnimationFrame(animate);
+                        requestAnimationFrame(step);
                     } else {
-                        // Re-enable snap after animation completes
                         viewport.classList.remove('is-dragging');
+                        if (callback) callback();
                     }
                 }
+                requestAnimationFrame(step);
+            }
 
-                requestAnimationFrame(animate);
+            function scrollToSlide(index) {
+                if (isAnimating) return;
+                isAnimating = true;
+
+                var targetDomIdx;
+                var needsReset = false;
+                var resetToReal = 0;
+
+                if (index >= slideCount) {
+                    // Forward past last → animate to clone-first, then jump to real-first
+                    targetDomIdx = slideCount + 1;
+                    needsReset = true;
+                    resetToReal = 0;
+                    currentIndex = 0;
+                } else if (index < 0) {
+                    // Backward past first → animate to clone-last, then jump to real-last
+                    targetDomIdx = 0;
+                    needsReset = true;
+                    resetToReal = slideCount - 1;
+                    currentIndex = slideCount - 1;
+                } else {
+                    targetDomIdx = domIndex(index);
+                    currentIndex = index;
+                }
+
+                updateDots(currentIndex);
+
+                var from = viewport.scrollLeft;
+                var to = allSlides[targetDomIdx].offsetLeft;
+
+                animateScroll(from, to, function () {
+                    if (needsReset) {
+                        // Silently reposition to the real slide
+                        jumpTo(domIndex(resetToReal));
+                    }
+                    isAnimating = false;
+                });
             }
 
             function startAutoPlay() {
                 stopAutoPlay();
-                autoPlayInterval = setInterval(function() {
+                autoPlayInterval = setInterval(function () {
                     scrollToSlide(currentIndex + 1);
                 }, 5000);
             }
@@ -483,8 +540,8 @@
 
             // Mouse drag handlers
             viewport.addEventListener('mousedown', function (e) {
-                // Don't interfere with button/link clicks
                 if (e.target.closest('a, button')) return;
+                if (isAnimating) return;
                 isDragging = true;
                 startX = e.pageX;
                 scrollStart = viewport.scrollLeft;
@@ -504,14 +561,11 @@
             document.addEventListener('mouseup', function () {
                 if (!isDragging) return;
                 isDragging = false;
-                // Don't remove is-dragging here — scrollToSlide handles it
-                // after the animation finishes to prevent snap-back
 
-                // Small drag threshold: even a little drag triggers next/prev
                 var minDrag = 30;
-                if (dragDelta < -minDrag && currentIndex < slideCount - 1) {
+                if (dragDelta < -minDrag) {
                     scrollToSlide(currentIndex + 1);
-                } else if (dragDelta > minDrag && currentIndex > 0) {
+                } else if (dragDelta > minDrag) {
                     scrollToSlide(currentIndex - 1);
                 } else {
                     scrollToSlide(currentIndex);
@@ -521,22 +575,30 @@
 
             // Touch drag handlers
             viewport.addEventListener('touchstart', function (e) {
+                if (isAnimating) return;
                 startX = e.touches[0].pageX;
                 scrollStart = viewport.scrollLeft;
                 dragDelta = 0;
+                isDragging = true;
+                viewport.classList.add('is-dragging');
                 stopAutoPlay();
             }, { passive: true });
 
             viewport.addEventListener('touchmove', function (e) {
-                dragDelta = e.touches[0].pageX - startX;
+                if (!isDragging) return;
+                var dx = e.touches[0].pageX - startX;
+                dragDelta = dx;
+                viewport.scrollLeft = scrollStart - dx;
             }, { passive: true });
 
             viewport.addEventListener('touchend', function () {
-                // Small drag threshold for touch too
+                if (!isDragging) return;
+                isDragging = false;
+
                 var minDrag = 30;
-                if (dragDelta < -minDrag && currentIndex < slideCount - 1) {
+                if (dragDelta < -minDrag) {
                     scrollToSlide(currentIndex + 1);
-                } else if (dragDelta > minDrag && currentIndex > 0) {
+                } else if (dragDelta > minDrag) {
                     scrollToSlide(currentIndex - 1);
                 } else {
                     scrollToSlide(currentIndex);
@@ -552,21 +614,7 @@
                 });
             });
 
-            viewport.addEventListener('scroll', function () {
-                if (isDragging || viewport.classList.contains('is-dragging')) return;
-                clearTimeout(viewport.scrollTimeout);
-                viewport.scrollTimeout = setTimeout(function () {
-                    var scrollLeft = viewport.scrollLeft;
-                    var slideWidth = viewport.clientWidth;
-                    var newIndex = Math.round(scrollLeft / slideWidth);
-                    if (newIndex !== currentIndex && newIndex >= 0 && newIndex < slideCount) {
-                        currentIndex = newIndex;
-                        updateDots(currentIndex);
-                    }
-                }, 100);
-            }, { passive: true });
-
-            // Pause on hover (only if not dragging)
+            // Pause on hover
             hero.addEventListener('mouseenter', function () {
                 if (!isDragging) stopAutoPlay();
             });

@@ -461,8 +461,14 @@
             categories: { type: 'string', default: '' },
             venues: { type: 'string', default: '' },
             organizers: { type: 'string', default: '' },
+            showDate: { type: 'boolean', default: true },
+            dateVariant: { type: 'string', default: 'date' },
+            showDesc: { type: 'boolean', default: true },
+            showButton: { type: 'boolean', default: true },
+            buttonStyle: { type: 'string', default: 'rounded' },
             accentColor: { type: 'string', default: '' },
             contentIndent: { type: 'number', default: 60 },
+            heroHeight: { type: 'number', default: 520 },
             overlayColor: { type: 'string', default: 'black' },
             showFilters: { type: 'boolean', default: false },
             filterByCategory: { type: 'boolean', default: true },
@@ -531,6 +537,51 @@
                         })
                     ),
                     el(PanelBody, { title: __('Layout', 'event-o'), initialOpen: false },
+                        el(ToggleControl, {
+                            label: __('Show date', 'event-o'),
+                            checked: a.showDate,
+                            onChange: function (v) { setAttributes({ showDate: v }); }
+                        }),
+                        a.showDate && el('div', { style: { marginBottom: '16px' } },
+                            el('label', { style: { display: 'block', marginBottom: '8px', fontWeight: '500' } }, __('Date style', 'event-o')),
+                            el('div', { style: { display: 'flex', gap: '8px' } },
+                                el(Button, {
+                                    variant: (a.dateVariant || 'date') === 'date' ? 'primary' : 'secondary',
+                                    onClick: function () { setAttributes({ dateVariant: 'date' }); }
+                                }, __('Date only', 'event-o')),
+                                el(Button, {
+                                    variant: (a.dateVariant || 'date') === 'date-time' ? 'primary' : 'secondary',
+                                    onClick: function () { setAttributes({ dateVariant: 'date-time' }); }
+                                }, __('Date + time', 'event-o'))
+                            )
+                        ),
+                        el(ToggleControl, {
+                            label: __('Show description', 'event-o'),
+                            checked: a.showDesc,
+                            onChange: function (v) { setAttributes({ showDesc: v }); }
+                        }),
+                        el(ToggleControl, {
+                            label: __('Show button', 'event-o'),
+                            checked: a.showButton,
+                            onChange: function (v) { setAttributes({ showButton: v }); }
+                        }),
+                        a.showButton && el('div', { style: { marginBottom: '16px' } },
+                            el('label', { style: { display: 'block', marginBottom: '8px', fontWeight: '500' } }, __('Button style', 'event-o')),
+                            el('div', { style: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
+                                el(Button, {
+                                    variant: (a.buttonStyle || 'rounded') === 'rounded' ? 'primary' : 'secondary',
+                                    onClick: function () { setAttributes({ buttonStyle: 'rounded' }); }
+                                }, __('Rounded', 'event-o')),
+                                el(Button, {
+                                    variant: (a.buttonStyle || 'rounded') === 'square' ? 'primary' : 'secondary',
+                                    onClick: function () { setAttributes({ buttonStyle: 'square' }); }
+                                }, __('Square', 'event-o')),
+                                el(Button, {
+                                    variant: (a.buttonStyle || 'rounded') === 'outline' ? 'primary' : 'secondary',
+                                    onClick: function () { setAttributes({ buttonStyle: 'outline' }); }
+                                }, __('Outline', 'event-o'))
+                            )
+                        ),
                         el(RangeControl, {
                             label: __('Content indent (px)', 'event-o'),
                             help: __('Left padding for the text content.', 'event-o'),
@@ -538,6 +589,15 @@
                             min: 0,
                             max: 300,
                             onChange: function (v) { setAttributes({ contentIndent: v }); }
+                        }),
+                        el(RangeControl, {
+                            label: __('Height (px)', 'event-o'),
+                            help: __('Minimum height of the hero area.', 'event-o'),
+                            value: a.heroHeight || 520,
+                            min: 520,
+                            max: 720,
+                            step: 10,
+                            onChange: function (v) { setAttributes({ heroHeight: v }); }
                         })
                     ),
                     el(PanelBody, { title: __('Colors', 'event-o'), initialOpen: false },

@@ -1755,9 +1755,14 @@
 }
 
 @media (max-width: 768px) {
-    /* Otter Section column constrains width via --columns-width on mobile */
+    /* Otter Section constrains width via --columns-width variable on mobile */
+    .wp-block-themeisle-blocks-advanced-columns:has(.event-o-hero) {
+        --columns-width: 100% !important;
+        --section-columns-width: 100% !important;
+    }
     .wp-block-themeisle-blocks-advanced-column:has(.event-o-hero) {
         max-width: 100% !important;
+        width: 100% !important;
     }
     .event-o-hero-slide {
         min-height: 420px;

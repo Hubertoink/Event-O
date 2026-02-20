@@ -1778,6 +1778,14 @@
    =================================================================== */
 
 .event-o-program {
+    --eo-prog-bg: var(--event-o-bg, #fff);
+    --eo-prog-text: var(--event-o-text, #222);
+    --eo-prog-muted: var(--event-o-muted, #666);
+    --eo-prog-border: var(--event-o-border, rgba(0,0,0,.14));
+    --eo-prog-today-bg: #1a1a1a;
+    --eo-prog-today-text: #fff;
+    --eo-prog-today-muted: rgba(255,255,255,0.6);
+    --eo-prog-today-border: #333;
     max-width: 1100px;
     margin: 0 auto;
 }
@@ -1787,60 +1795,60 @@
     grid-template-columns: 1fr 1fr;
     gap: 2rem;
     padding: 2rem;
-    border-bottom: 1px solid #e0e0e0;
-    background: #fff;
-    color: #222;
+    border-bottom: 1px solid var(--eo-prog-border);
+    background: var(--eo-prog-bg);
+    color: var(--eo-prog-text);
     transition: background 0.3s ease, color 0.3s ease;
 }
 
 .event-o-program-item:first-child {
-    border-top: 1px solid #e0e0e0;
+    border-top: 1px solid var(--eo-prog-border);
 }
 
 /* Today highlight */
 .event-o-program-item.is-today {
-    background: #1a1a1a;
-    color: #fff;
-    border-bottom-color: #333;
+    background: var(--eo-prog-today-bg);
+    color: var(--eo-prog-today-text);
+    border-bottom-color: var(--eo-prog-today-border);
 }
 
 .event-o-program-item.is-today + .event-o-program-item {
-    border-top-color: #333;
+    border-top-color: var(--eo-prog-today-border);
 }
 
 .event-o-program-item.is-today .event-o-program-title a {
-    color: #fff;
+    color: var(--eo-prog-today-text);
 }
 
 .event-o-program-item.is-today .event-o-program-category {
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--eo-prog-today-muted);
 }
 
 .event-o-program-item.is-today .event-o-program-venue,
 .event-o-program-item.is-today .event-o-program-price {
-    color: rgba(255, 255, 255, 0.8);
+    color: var(--eo-prog-today-muted);
 }
 
 .event-o-program-item.is-today .event-o-program-desc {
-    color: rgba(255, 255, 255, 0.85);
+    color: var(--eo-prog-today-muted);
 }
 
 .event-o-program-item.is-today .event-o-share-btn {
-    color: rgba(255, 255, 255, 0.7);
-    border-color: rgba(255, 255, 255, 0.3);
+    color: var(--eo-prog-today-muted);
+    border-color: var(--eo-prog-today-border);
 }
 
 .event-o-program-item.is-today .event-o-share-btn:hover {
-    color: #fff;
-    border-color: rgba(255, 255, 255, 0.6);
+    color: var(--eo-prog-today-text);
+    border-color: var(--eo-prog-today-muted);
 }
 
 .event-o-program-item.is-today .event-o-band-link {
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--eo-prog-today-muted);
 }
 
 .event-o-program-item.is-today .event-o-band-link:hover {
-    color: #fff;
+    color: var(--eo-prog-today-text);
 }
 
 /* Hidden items (load more) */
@@ -1870,12 +1878,12 @@
 
 .event-o-program-time {
     font-size: 0.875rem;
-    color: #666;
+    color: var(--eo-prog-muted);
     line-height: 1.3;
 }
 
 .event-o-program-item.is-today .event-o-program-time {
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--eo-prog-today-muted);
 }
 
 .event-o-program-title {
@@ -1886,7 +1894,7 @@
 }
 
 .event-o-program-title a {
-    color: #222;
+    color: var(--eo-prog-text);
     text-decoration: none;
     transition: color 0.2s ease;
 }
@@ -1956,12 +1964,12 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #666;
+    color: var(--eo-prog-muted);
     transition: color 0.2s ease, transform 0.15s ease;
 }
 
 .event-o-band-link:hover {
-    color: #222;
+    color: var(--eo-prog-text);
     transform: scale(1.1);
 }
 
@@ -1995,7 +2003,7 @@
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: #888;
+    color: var(--eo-prog-muted);
 }
 
 .event-o-program-venue,
@@ -2004,7 +2012,7 @@
     align-items: center;
     gap: 0.375rem;
     font-size: 0.9rem;
-    color: #555;
+    color: var(--eo-prog-muted);
 }
 
 .event-o-program-venue .event-o-icon,
@@ -2016,7 +2024,7 @@
 .event-o-program-desc {
     font-size: 0.9375rem;
     line-height: 1.6;
-    color: #444;
+    color: var(--eo-prog-muted);
 }
 
 .event-o-program-calendar .event-o-share-btn {
@@ -2041,16 +2049,16 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
     background: transparent;
-    color: #222;
-    border: 2px solid #222;
+    color: var(--eo-prog-text);
+    border: 2px solid var(--eo-prog-text);
     border-radius: 4px;
     cursor: pointer;
     transition: background 0.2s ease, color 0.2s ease;
 }
 
 .event-o-program-loadmore:hover {
-    background: #222;
-    color: #fff;
+    background: var(--eo-prog-text);
+    color: var(--eo-prog-bg);
 }
 
 /* Responsive */
@@ -2066,11 +2074,11 @@
     }
 
     .event-o-program-right {
-        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        border-top: 1px solid var(--eo-prog-border);
         padding-top: 1rem;
     }
 
     .event-o-program-item.is-today .event-o-program-right {
-        border-top-color: rgba(255, 255, 255, 0.15);
+        border-top-color: var(--eo-prog-today-border);
     }
 }

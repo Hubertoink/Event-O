@@ -314,6 +314,8 @@ function event_o_get_css_vars_inline(): string
         $darkModeRules .= ".event-o-grid-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.4)}";
         $darkModeRules .= ".event-o-accordion-summary:hover{background:rgba(255,255,255,0.05)}";
         $darkModeRules .= ".event-o-hero-bg::before{background:linear-gradient(to top,var(--event-o-bg) 0,rgba(20,22,26,0.6) 60%,transparent 100%)}";
+        // Program block: invert today/normal in dark mode
+        $darkModeRules .= ".event-o-program{--eo-prog-bg:#14161a;--eo-prog-text:#f3f4f6;--eo-prog-muted:rgba(243,244,246,.6);--eo-prog-border:rgba(243,244,246,.16);--eo-prog-today-bg:#fff;--eo-prog-today-text:#1a1a1a;--eo-prog-today-muted:rgba(0,0,0,0.55);--eo-prog-today-border:rgba(0,0,0,.14)}";
     } elseif ($darkMode === 'auto' && !empty($darkSelector)) {
         // Auto mode: use theme selector for dark
         $css .= "{$darkSelector}{{$darkVars}}";
@@ -322,6 +324,8 @@ function event_o_get_css_vars_inline(): string
         $darkModeRules .= "{$darkSelector} .event-o-grid-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.4)}";
         $darkModeRules .= "{$darkSelector} .event-o-accordion-summary:hover{background:rgba(255,255,255,0.05)}";
         $darkModeRules .= "{$darkSelector} .event-o-hero-bg::before{background:linear-gradient(to top,var(--event-o-bg) 0,rgba(20,22,26,0.6) 60%,transparent 100%)}";
+        // Program block: invert today/normal in dark mode
+        $darkModeRules .= "{$darkSelector} .event-o-program{--eo-prog-bg:#14161a;--eo-prog-text:#f3f4f6;--eo-prog-muted:rgba(243,244,246,.6);--eo-prog-border:rgba(243,244,246,.16);--eo-prog-today-bg:#fff;--eo-prog-today-text:#1a1a1a;--eo-prog-today-muted:rgba(0,0,0,0.55);--eo-prog-today-border:rgba(0,0,0,.14)}";
     }
     // 'light' mode: just use the base :root vars (already set), no dark rules needed
 

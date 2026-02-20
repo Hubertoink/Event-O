@@ -163,6 +163,9 @@ while (have_posts()) {
     the_content();
     echo '</div>';
 
+    // Band links
+    echo event_o_render_bands($postId, 'event-o-bands event-o-single-bands');
+
     // Share section
     echo '<div class="event-o-share-section">';
     echo '<span class="event-o-share-label">' . esc_html__('TEILE DIESE VERANSTALTUNG', 'event-o') . '</span>';

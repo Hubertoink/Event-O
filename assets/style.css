@@ -475,6 +475,28 @@
 }
 
 /* ==========================================================================
+   Band Links (shared)
+   ========================================================================== */
+.event-o-bands {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+}
+
+.event-o-band-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.event-o-single-bands {
+    margin-top: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+/* ==========================================================================
    Share Section
    ========================================================================== */
 .event-o-share-section{
@@ -1995,12 +2017,12 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: var(--eo-prog-muted);
+    color: var(--eo-prog-muted, var(--event-o-muted, #666));
     transition: color 0.2s ease, transform 0.15s ease;
 }
 
 .event-o-band-link:hover {
-    color: var(--eo-prog-text);
+    color: var(--eo-prog-text, var(--event-o-text, #222));
     transform: scale(1.1);
 }
 

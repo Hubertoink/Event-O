@@ -1060,6 +1060,16 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
         $isToday = ($startTs >= $todayStart && $startTs <= $todayEnd);
         $dtParts = event_o_format_datetime_german($startTs, $endTs);
 
+        // Build program-specific date with weekday
+        $programDate = '';
+        if ($startTs > 0) {
+            $tz = wp_timezone();
+            $startDt = (new DateTimeImmutable('@' . $startTs))->setTimezone($tz);
+            $weekdays = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+            $weekday = $weekdays[(int) $startDt->format('w')];
+            $programDate = mb_strtoupper($weekday) . ', ' . $dtParts['date'];
+        }
+
         $categoryName = $showCategory ? event_o_get_first_term_name($postId, 'event_o_category') : '';
         $venueData = $showVenue ? event_o_get_venue_data($postId) : null;
 
@@ -1111,8 +1121,8 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
 
         // Date + Time
         $out .= '<div class="event-o-program-when">';
-        if ($dtParts['date'] !== '') {
-            $out .= '<span class="event-o-program-date">' . esc_html($dtParts['date']) . '</span>';
+        if ($programDate !== '') {
+            $out .= '<span class="event-o-program-date">' . esc_html($programDate) . '</span>';
         }
         if ($dtParts['time'] !== '') {
             $out .= '<span class="event-o-program-time">' . esc_html($dtParts['time']) . '</span>';

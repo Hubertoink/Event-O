@@ -74,4 +74,26 @@ function event_o_register_blocks(): void
             'filterByOrganizer' => ['type' => 'boolean', 'default' => true],
         ],
     ]);
+
+    register_block_type('event-o/event-hero', [
+        'api_version' => 2,
+        'render_callback' => 'event_o_render_event_hero_block',
+        'supports' => [
+            'align' => ['wide', 'full'],
+        ],
+        'attributes' => [
+            'perPage' => ['type' => 'number', 'default' => 5],
+            'showPast' => ['type' => 'boolean', 'default' => false],
+            'categories' => ['type' => 'string', 'default' => ''],
+            'venues' => ['type' => 'string', 'default' => ''],
+            'organizers' => ['type' => 'string', 'default' => ''],
+            'accentColor' => ['type' => 'string', 'default' => ''],
+            'contentIndent' => ['type' => 'number', 'default' => 60],
+            'overlayColor' => ['type' => 'string', 'default' => 'black'],
+            'showFilters' => ['type' => 'boolean', 'default' => false],
+            'filterByCategory' => ['type' => 'boolean', 'default' => true],
+            'filterByVenue' => ['type' => 'boolean', 'default' => true],
+            'filterByOrganizer' => ['type' => 'boolean', 'default' => true],
+        ],
+    ]);
 }

@@ -447,4 +447,130 @@
             return null;
         }
     });
+
+    registerBlockType('event-o/event-hero', {
+        title: 'Event_O – Event Hero',
+        icon: 'cover-image',
+        category: 'widgets',
+        supports: {
+            align: ['wide', 'full']
+        },
+        attributes: {
+            perPage: { type: 'number', default: 5 },
+            showPast: { type: 'boolean', default: false },
+            categories: { type: 'string', default: '' },
+            venues: { type: 'string', default: '' },
+            organizers: { type: 'string', default: '' },
+            accentColor: { type: 'string', default: '' },
+            contentIndent: { type: 'number', default: 60 },
+            overlayColor: { type: 'string', default: 'black' },
+            showFilters: { type: 'boolean', default: false },
+            filterByCategory: { type: 'boolean', default: true },
+            filterByVenue: { type: 'boolean', default: true },
+            filterByOrganizer: { type: 'boolean', default: true }
+        },
+        edit: function (props) {
+            var a = props.attributes;
+            var setAttributes = props.setAttributes;
+
+            return [
+                el(InspectorControls, { key: 'inspector' },
+                    el(PanelBody, { title: __('Query', 'event-o'), initialOpen: true },
+                        el(RangeControl, {
+                            label: __('Number of events', 'event-o'),
+                            value: a.perPage,
+                            min: 1,
+                            max: 20,
+                            onChange: function (v) { setAttributes({ perPage: v }); }
+                        }),
+                        el(ToggleControl, {
+                            label: __('Show past events', 'event-o'),
+                            checked: a.showPast,
+                            onChange: function (v) { setAttributes({ showPast: v }); }
+                        })
+                    ),
+                    el(PanelBody, { title: __('Filters', 'event-o'), initialOpen: false },
+                        el(TextControl, {
+                            label: __('Categories (slugs, comma-separated)', 'event-o'),
+                            value: a.categories,
+                            onChange: function (v) { setAttributes({ categories: v }); }
+                        }),
+                        el(TextControl, {
+                            label: __('Venues (slugs, comma-separated)', 'event-o'),
+                            value: a.venues,
+                            onChange: function (v) { setAttributes({ venues: v }); }
+                        }),
+                        el(TextControl, {
+                            label: __('Organizers (slugs, comma-separated)', 'event-o'),
+                            value: a.organizers,
+                            onChange: function (v) { setAttributes({ organizers: v }); }
+                        }),
+                        TaxHelp(__('Example: fuehrung, ausstellung', 'event-o'))
+                    ),
+                    el(PanelBody, { title: __('Frontend Filters', 'event-o'), initialOpen: false },
+                        el(ToggleControl, {
+                            label: __('Show filter bar', 'event-o'),
+                            help: __('Displays a filter bar for visitors to filter events.', 'event-o'),
+                            checked: a.showFilters,
+                            onChange: function (v) { setAttributes({ showFilters: v }); }
+                        }),
+                        a.showFilters && el(ToggleControl, {
+                            label: __('Filter by category', 'event-o'),
+                            checked: a.filterByCategory,
+                            onChange: function (v) { setAttributes({ filterByCategory: v }); }
+                        }),
+                        a.showFilters && el(ToggleControl, {
+                            label: __('Filter by venue', 'event-o'),
+                            checked: a.filterByVenue,
+                            onChange: function (v) { setAttributes({ filterByVenue: v }); }
+                        }),
+                        a.showFilters && el(ToggleControl, {
+                            label: __('Filter by organizer', 'event-o'),
+                            checked: a.filterByOrganizer,
+                            onChange: function (v) { setAttributes({ filterByOrganizer: v }); }
+                        })
+                    ),
+                    el(PanelBody, { title: __('Layout', 'event-o'), initialOpen: false },
+                        el(RangeControl, {
+                            label: __('Content indent (px)', 'event-o'),
+                            help: __('Left padding for the text content.', 'event-o'),
+                            value: a.contentIndent,
+                            min: 0,
+                            max: 300,
+                            onChange: function (v) { setAttributes({ contentIndent: v }); }
+                        })
+                    ),
+                    el(PanelBody, { title: __('Colors', 'event-o'), initialOpen: false },
+                        el(ColorControl, {
+                            label: __('Accent Color', 'event-o'),
+                            value: a.accentColor,
+                            onChange: function (v) { setAttributes({ accentColor: v }); }
+                        }),
+                        el('div', { style: { marginBottom: '16px' } },
+                            el('label', { style: { display: 'block', marginBottom: '8px', fontWeight: '500' } }, __('Overlay Gradient', 'event-o')),
+                            el('div', { style: { display: 'flex', gap: '8px' } },
+                                el(Button, {
+                                    variant: a.overlayColor === 'black' ? 'primary' : 'secondary',
+                                    onClick: function () { setAttributes({ overlayColor: 'black' }); }
+                                }, __('Black', 'event-o')),
+                                el(Button, {
+                                    variant: a.overlayColor === 'white' ? 'primary' : 'secondary',
+                                    onClick: function () { setAttributes({ overlayColor: 'white' }); }
+                                }, __('White', 'event-o'))
+                            )
+                        )
+                    )
+                ),
+                el('div', { key: 'preview', className: props.className },
+                    el(ServerSideRender, {
+                        block: 'event-o/event-hero',
+                        attributes: a
+                    })
+                )
+            ];
+        },
+        save: function () {
+            return null;
+        }
+    });
 })(window.wp);

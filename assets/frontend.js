@@ -301,6 +301,7 @@
         var isListBlock = block.classList.contains('event-o-event-list');
         var isCarousel = block.classList.contains('event-o-carousel');
         var isGrid = block.classList.contains('event-o-grid');
+        var isHero = block.classList.contains('event-o-hero');
 
         if (isListBlock) {
             items = block.querySelectorAll('.event-o-accordion-item');
@@ -308,6 +309,8 @@
             items = block.querySelectorAll('.event-o-card');
         } else if (isGrid) {
             items = block.querySelectorAll('.event-o-grid-card');
+        } else if (isHero) {
+            items = block.querySelectorAll('.event-o-hero-slide');
         }
 
         if (!items) return;
@@ -361,6 +364,16 @@
             });
         }
 
+        // For hero blocks: update dots
+        if (isHero) {
+            var heroDots = block.querySelectorAll('.event-o-hero-dot');
+            var visibleSlides = block.querySelectorAll('.event-o-hero-slide:not([style*="display: none"])');
+            heroDots.forEach(function (dot, i) {
+                dot.style.display = i < visibleSlides.length ? '' : 'none';
+                dot.classList.toggle('is-active', i === 0);
+            });
+        }
+
         // Show/hide empty message
         var emptyMsg = block.querySelector('.event-o-filter-empty');
         if (visibleCount === 0) {
@@ -382,6 +395,189 @@
         }
     }
 
+    function initHeroSliders() {
+        var heroes = document.querySelectorAll('.event-o-hero');
+        heroes.forEach(function (hero) {
+            var viewport = hero.querySelector('.event-o-hero-viewport');
+            var dots = hero.querySelectorAll('.event-o-hero-dot');
+            if (!viewport || !dots.length) return;
+
+            var slides = hero.querySelectorAll('.event-o-hero-slide');
+            var slideCount = slides.length;
+            var currentIndex = 0;
+            var autoPlayInterval;
+
+            // Drag state
+            var isDragging = false;
+            var startX = 0;
+            var scrollStart = 0;
+            var dragDelta = 0;
+
+            function updateDots(index) {
+                dots.forEach(function (dot, i) {
+                    dot.classList.toggle('is-active', i === index);
+                });
+            }
+
+            function scrollToSlide(index, skipSnap) {
+                if (index < 0) index = slideCount - 1;
+                if (index >= slideCount) index = 0;
+                
+                currentIndex = index;
+                var slide = slides[currentIndex];
+                if (!slide) return;
+
+                var targetLeft = slide.offsetLeft;
+                var startLeft = viewport.scrollLeft;
+                var distance = targetLeft - startLeft;
+
+                updateDots(currentIndex);
+
+                // If already at target, just re-enable snap
+                if (Math.abs(distance) < 2) {
+                    viewport.classList.remove('is-dragging');
+                    return;
+                }
+
+                // Keep snap disabled during animation to prevent snap-back
+                viewport.classList.add('is-dragging');
+
+                var duration = 350;
+                var startTime = null;
+
+                function easeOutCubic(t) {
+                    return 1 - Math.pow(1 - t, 3);
+                }
+
+                function animate(timestamp) {
+                    if (!startTime) startTime = timestamp;
+                    var elapsed = timestamp - startTime;
+                    var progress = Math.min(elapsed / duration, 1);
+                    var easedProgress = easeOutCubic(progress);
+
+                    viewport.scrollLeft = startLeft + (distance * easedProgress);
+
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        // Re-enable snap after animation completes
+                        viewport.classList.remove('is-dragging');
+                    }
+                }
+
+                requestAnimationFrame(animate);
+            }
+
+            function startAutoPlay() {
+                stopAutoPlay();
+                autoPlayInterval = setInterval(function() {
+                    scrollToSlide(currentIndex + 1);
+                }, 5000);
+            }
+
+            function stopAutoPlay() {
+                if (autoPlayInterval) {
+                    clearInterval(autoPlayInterval);
+                }
+            }
+
+            // Mouse drag handlers
+            viewport.addEventListener('mousedown', function (e) {
+                // Don't interfere with button/link clicks
+                if (e.target.closest('a, button')) return;
+                isDragging = true;
+                startX = e.pageX;
+                scrollStart = viewport.scrollLeft;
+                dragDelta = 0;
+                viewport.classList.add('is-dragging');
+                stopAutoPlay();
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', function (e) {
+                if (!isDragging) return;
+                var dx = e.pageX - startX;
+                dragDelta = dx;
+                viewport.scrollLeft = scrollStart - dx;
+            });
+
+            document.addEventListener('mouseup', function () {
+                if (!isDragging) return;
+                isDragging = false;
+                // Don't remove is-dragging here — scrollToSlide handles it
+                // after the animation finishes to prevent snap-back
+
+                // Small drag threshold: even a little drag triggers next/prev
+                var minDrag = 30;
+                if (dragDelta < -minDrag && currentIndex < slideCount - 1) {
+                    scrollToSlide(currentIndex + 1);
+                } else if (dragDelta > minDrag && currentIndex > 0) {
+                    scrollToSlide(currentIndex - 1);
+                } else {
+                    scrollToSlide(currentIndex);
+                }
+                startAutoPlay();
+            });
+
+            // Touch drag handlers
+            viewport.addEventListener('touchstart', function (e) {
+                startX = e.touches[0].pageX;
+                scrollStart = viewport.scrollLeft;
+                dragDelta = 0;
+                stopAutoPlay();
+            }, { passive: true });
+
+            viewport.addEventListener('touchmove', function (e) {
+                dragDelta = e.touches[0].pageX - startX;
+            }, { passive: true });
+
+            viewport.addEventListener('touchend', function () {
+                // Small drag threshold for touch too
+                var minDrag = 30;
+                if (dragDelta < -minDrag && currentIndex < slideCount - 1) {
+                    scrollToSlide(currentIndex + 1);
+                } else if (dragDelta > minDrag && currentIndex > 0) {
+                    scrollToSlide(currentIndex - 1);
+                } else {
+                    scrollToSlide(currentIndex);
+                }
+                startAutoPlay();
+            }, { passive: true });
+
+            dots.forEach(function (dot) {
+                dot.addEventListener('click', function () {
+                    var index = parseInt(this.getAttribute('data-index'), 10);
+                    scrollToSlide(index);
+                    startAutoPlay();
+                });
+            });
+
+            viewport.addEventListener('scroll', function () {
+                if (isDragging || viewport.classList.contains('is-dragging')) return;
+                clearTimeout(viewport.scrollTimeout);
+                viewport.scrollTimeout = setTimeout(function () {
+                    var scrollLeft = viewport.scrollLeft;
+                    var slideWidth = viewport.clientWidth;
+                    var newIndex = Math.round(scrollLeft / slideWidth);
+                    if (newIndex !== currentIndex && newIndex >= 0 && newIndex < slideCount) {
+                        currentIndex = newIndex;
+                        updateDots(currentIndex);
+                    }
+                }, 100);
+            }, { passive: true });
+
+            // Pause on hover (only if not dragging)
+            hero.addEventListener('mouseenter', function () {
+                if (!isDragging) stopAutoPlay();
+            });
+            hero.addEventListener('mouseleave', function () {
+                if (!isDragging) startAutoPlay();
+            });
+
+            startAutoPlay();
+        });
+    }
+
     function boot() {
         var carousels = document.querySelectorAll('.event-o-carousel');
         carousels.forEach(initCarousel);
@@ -389,6 +585,7 @@
         initCopyButtons();
         initCalendarDropdowns();
         initGridSliders();
+        initHeroSliders();
         initAccordionAnimations();
         initFilters();
     }

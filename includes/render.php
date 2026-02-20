@@ -977,6 +977,103 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
     return $out;
 }
 
+function event_o_render_event_hero_block(array $attrs, string $content = '', WP_Block $block = null): string
+{
+    $q = event_o_event_query($attrs);
+    if (!$q->have_posts()) {
+        return '<div class="event-o event-o-hero"><p class="event-o-empty">' . esc_html__('No events found.', 'event-o') . '</p></div>';
+    }
+
+    $showFilters = !empty($attrs['showFilters']);
+    $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? $attrs['accentColor'] : '';
+    $contentIndent = isset($attrs['contentIndent']) ? max(0, (int) $attrs['contentIndent']) : 60;
+    $overlayColor = isset($attrs['overlayColor']) && $attrs['overlayColor'] === 'white' ? 'white' : 'black';
+    $align = isset($attrs['align']) ? $attrs['align'] : '';
+    $styleAttr = '';
+    if ($accentColor !== '') {
+        $styleAttr .= '--event-o-block-accent:' . esc_attr($accentColor) . ';';
+    }
+    $styleAttr .= '--event-o-hero-indent:' . esc_attr((string) $contentIndent) . 'px;';
+
+    $uid = 'event-o-hero-' . wp_generate_uuid4();
+    $alignClass = $align !== '' ? ' align' . esc_attr($align) : '';
+    $overlayClass = $overlayColor === 'white' ? ' event-o-hero-overlay-white' : '';
+
+    $out = '<div class="event-o event-o-hero' . $alignClass . $overlayClass . ($showFilters ? ' has-filters' : '') . '" id="' . esc_attr($uid) . '" style="' . $styleAttr . '">';
+
+    // Render filter bar if enabled.
+    if ($showFilters) {
+        $filterTerms = event_o_collect_filter_terms($q, $attrs);
+        $out .= event_o_render_filter_bar($filterTerms, $attrs);
+    }
+
+    $out .= '<div class="event-o-hero-viewport">';
+    $out .= '<div class="event-o-hero-track">';
+
+    $eventCount = 0;
+    while ($q->have_posts()) {
+        $q->the_post();
+        $postId = get_the_ID();
+        $eventCount++;
+
+        $title = get_the_title();
+        $permalink = get_permalink();
+        $categoryName = event_o_get_first_term_name($postId, 'event_o_category');
+        if (empty($categoryName)) {
+            $categoryName = __('VERANSTALTUNGEN', 'event-o');
+        }
+
+        $excerpt = get_the_excerpt();
+        if (empty($excerpt)) {
+            $excerpt = wp_trim_words(get_the_content(), 20, '...');
+        } else {
+            $excerpt = wp_trim_words($excerpt, 20, '...');
+        }
+
+        $imageUrl = '';
+        if (has_post_thumbnail($postId)) {
+            $imageUrl = get_the_post_thumbnail_url($postId, 'full');
+        }
+
+        $filterDataAttrs = $showFilters ? event_o_get_filter_data_attrs($postId) : '';
+
+        $out .= '<div class="event-o-hero-slide"' . $filterDataAttrs . '>';
+        if ($imageUrl !== '') {
+            $out .= '<div class="event-o-hero-bg" style="background-image: url(\'' . esc_url($imageUrl) . '\');"></div>';
+        } else {
+            $out .= '<div class="event-o-hero-bg event-o-hero-bg-placeholder"></div>';
+        }
+        $out .= '<div class="event-o-hero-overlay"></div>';
+        
+        $out .= '<div class="event-o-hero-content">';
+        $out .= '<div class="event-o-hero-category">' . esc_html(mb_strtoupper($categoryName)) . '</div>';
+        $out .= '<h2 class="event-o-hero-title">' . esc_html($title) . '</h2>';
+        $out .= '<div class="event-o-hero-desc">' . wp_kses_post($excerpt) . '</div>';
+        $out .= '<a href="' . esc_url($permalink) . '" class="event-o-hero-btn">' . esc_html__('Zu den Events', 'event-o') . '</a>';
+        $out .= '</div>'; // .event-o-hero-content
+        $out .= '</div>'; // .event-o-hero-slide
+    }
+
+    wp_reset_postdata();
+
+    $out .= '</div>'; // .event-o-hero-track
+    $out .= '</div>'; // .event-o-hero-viewport
+
+    // Dots navigation
+    if ($eventCount > 1) {
+        $out .= '<div class="event-o-hero-dots">';
+        for ($i = 0; $i < $eventCount; $i++) {
+            $activeClass = $i === 0 ? ' is-active' : '';
+            $out .= '<button type="button" class="event-o-hero-dot' . $activeClass . '" data-index="' . $i . '" aria-label="' . esc_attr(sprintf(__('Go to slide %d', 'event-o'), $i + 1)) . '"></button>';
+        }
+        $out .= '</div>';
+    }
+
+    $out .= '</div>'; // .event-o-hero
+
+    return $out;
+}
+
 /**
  * Get related events for single page (excluding current event).
  */

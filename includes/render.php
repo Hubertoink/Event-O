@@ -1007,11 +1007,32 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
 
     $out = '<div class="event-o event-o-program"' . $styleAttr . '>';
 
-    $eventIndex = 0;
-
+    // Collect all posts and sort: today first, then chronological ASC
+    $allPosts = [];
     while ($q->have_posts()) {
         $q->the_post();
-        $postId = get_the_ID();
+        $pid = get_the_ID();
+        $sts = (int) get_post_meta($pid, EVENT_O_META_START_TS, true);
+        if ($sts <= 0) {
+            $sts = (int) get_post_meta($pid, EVENT_O_LEGACY_META_START_TS, true);
+        }
+        $allPosts[] = ['id' => $pid, 'start' => $sts];
+    }
+    usort($allPosts, function ($a, $b) use ($todayStart, $todayEnd) {
+        $aToday = ($a['start'] >= $todayStart && $a['start'] <= $todayEnd) ? 1 : 0;
+        $bToday = ($b['start'] >= $todayStart && $b['start'] <= $todayEnd) ? 1 : 0;
+        if ($aToday !== $bToday) {
+            return $bToday - $aToday; // today first
+        }
+        return $a['start'] - $b['start']; // then ASC
+    });
+
+    $eventIndex = 0;
+
+    foreach ($allPosts as $postItem) {
+        $postId = $postItem['id'];
+        $postObj = get_post($postId);
+        setup_postdata($GLOBALS['post'] = $postObj);
         $eventIndex++;
 
         $title = get_the_title();
@@ -1058,9 +1079,13 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
 
         $excerpt = '';
         if ($showDescription) {
-            $fullText = get_the_excerpt();
+            $fullText = wp_strip_all_tags(get_the_excerpt());
             if (empty($fullText)) {
-                $fullText = wp_strip_all_tags(get_the_content());
+                $rawContent = get_the_content();
+                $rawContent = strip_shortcodes($rawContent);
+                $rawContent = apply_filters('the_content', $rawContent);
+                $fullText = wp_strip_all_tags($rawContent);
+                $fullText = trim(preg_replace('/\s+/', ' ', $fullText));
             }
             // We'll use the full text and a short version
             $words = preg_split('/\s+/', $fullText);

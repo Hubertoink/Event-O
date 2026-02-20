@@ -1184,8 +1184,10 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
         if ($showDescription && !empty($fullText)) {
             if ($wordCount > 60) {
                 $out .= '<div class="event-o-program-desc event-o-desc-expandable">';
+                $out .= '<div class="event-o-desc-inner">';
                 $out .= '<span class="event-o-desc-short">' . esc_html($shortText) . '</span>';
                 $out .= '<span class="event-o-desc-full">' . esc_html($fullText) . '</span>';
+                $out .= '</div>';
                 $out .= '<button type="button" class="event-o-desc-toggle">' . esc_html__('mehr…', 'event-o') . '</button>';
                 $out .= '</div>';
             } else {

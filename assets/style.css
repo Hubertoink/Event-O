@@ -2046,6 +2046,11 @@
 }
 
 /* Expandable description */
+.event-o-desc-inner {
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+}
+
 .event-o-desc-expandable .event-o-desc-full {
     display: none;
 }

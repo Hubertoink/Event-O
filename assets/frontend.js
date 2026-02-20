@@ -650,8 +650,42 @@
             if (!btn) return;
             var desc = btn.closest('.event-o-desc-expandable');
             if (!desc) return;
-            var isExpanded = desc.classList.toggle('is-expanded');
-            btn.textContent = isExpanded ? 'weniger' : 'mehr…';
+            var inner = desc.querySelector('.event-o-desc-inner');
+            if (!inner) return;
+
+            var isExpanded = desc.classList.contains('is-expanded');
+
+            if (!isExpanded) {
+                // Expanding: measure short height, switch content, measure full height, animate
+                var shortHeight = inner.scrollHeight;
+                desc.classList.add('is-expanded');
+                var fullHeight = inner.scrollHeight;
+                // Set to short height first, then animate to full
+                inner.style.maxHeight = shortHeight + 'px';
+                // Force reflow
+                inner.offsetHeight;
+                inner.style.maxHeight = fullHeight + 'px';
+                btn.textContent = 'weniger';
+                // Clean up after transition
+                inner.addEventListener('transitionend', function handler() {
+                    inner.style.maxHeight = 'none';
+                    inner.removeEventListener('transitionend', handler);
+                });
+            } else {
+                // Collapsing: measure current height, switch content, animate to short height
+                var currentHeight = inner.scrollHeight;
+                inner.style.maxHeight = currentHeight + 'px';
+                // Force reflow
+                inner.offsetHeight;
+                desc.classList.remove('is-expanded');
+                var collapsedHeight = inner.scrollHeight;
+                inner.style.maxHeight = collapsedHeight + 'px';
+                btn.textContent = 'mehr\u2026';
+                inner.addEventListener('transitionend', function handler() {
+                    inner.style.maxHeight = '';
+                    inner.removeEventListener('transitionend', handler);
+                });
+            }
         });
     }
 

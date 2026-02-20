@@ -1079,15 +1079,14 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
 
         $excerpt = '';
         if ($showDescription) {
-            $fullText = wp_strip_all_tags(get_the_excerpt());
-            if (empty($fullText)) {
-                $rawContent = get_the_content();
-                $rawContent = strip_shortcodes($rawContent);
-                $rawContent = apply_filters('the_content', $rawContent);
-                $fullText = wp_strip_all_tags($rawContent);
-                $fullText = trim(preg_replace('/\s+/', ' ', $fullText));
-            }
-            // We'll use the full text and a short version
+            // Always get the full content for the expandable view
+            $rawContent = get_the_content(null, false, $postObj);
+            $rawContent = strip_shortcodes($rawContent);
+            $rawContent = apply_filters('the_content', $rawContent);
+            $fullText = wp_strip_all_tags($rawContent);
+            $fullText = trim(preg_replace('/\s+/', ' ', $fullText));
+
+            // Use the full text and a short version
             $words = preg_split('/\s+/', $fullText);
             $wordCount = count($words);
             if ($wordCount > 60) {

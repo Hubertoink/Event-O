@@ -30,7 +30,7 @@ function event_o_register_post_type(): void
         'rewrite' => ['slug' => 'events'],
         'menu_icon' => 'dashicons-calendar-alt',
         'supports' => ['title', 'editor', 'excerpt', 'thumbnail', 'revisions'],
-        'capability_type' => 'post',
+        'capability_type' => ['event_o_event', 'event_o_events'],
         'map_meta_cap' => true,
     ];
 

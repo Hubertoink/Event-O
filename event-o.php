@@ -37,6 +37,7 @@ require_once EVENT_O_PLUGIN_DIR . 'includes/meta.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/organizer-meta.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/venue-meta.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/settings.php';
+require_once EVENT_O_PLUGIN_DIR . 'includes/capabilities.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/render.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/blocks.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/assets.php';
@@ -68,9 +69,11 @@ register_activation_hook(__FILE__, function (): void {
     event_o_register_post_type();
     event_o_register_taxonomies();
     event_o_register_ical_endpoint();
+    event_o_assign_capabilities();
     flush_rewrite_rules();
 });
 
 register_deactivation_hook(__FILE__, function (): void {
+    event_o_remove_capabilities();
     flush_rewrite_rules();
 });

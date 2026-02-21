@@ -37,7 +37,15 @@ while (have_posts()) {
     $heroImageUrls = event_o_get_event_image_urls($postId, 'full');
 
     // Get related events
-    $relatedEvents = event_o_get_related_events($postId, 4);
+    $relatedCategoryOnly = (bool) get_option(EVENT_O_OPTION_RELATED_CATEGORY_ONLY, false);
+    $relatedCatTermId = 0;
+    if ($relatedCategoryOnly) {
+        $catTerms = get_the_terms($postId, 'event_o_category');
+        if (is_array($catTerms) && !empty($catTerms)) {
+            $relatedCatTermId = (int) $catTerms[0]->term_id;
+        }
+    }
+    $relatedEvents = event_o_get_related_events($postId, 4, $relatedCatTermId);
 
     echo '<main class="event-o event-o-single" data-animation="' . esc_attr((string) get_option(EVENT_O_OPTION_SINGLE_ANIMATION, 'none')) . '">';
 

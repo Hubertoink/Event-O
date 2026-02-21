@@ -160,26 +160,32 @@ function event_o_render_event_details_metabox(WP_Post $post): void
 
     echo '<fieldset style="border:1px solid #ddd;padding:10px 12px;margin-bottom:12px;border-radius:4px">';
     echo '<legend style="font-weight:600;padding:0 6px">' . esc_html__('Termin 1', 'event-o') . '</legend>';
-    echo '<p><label for="event_o_start_datetime"><strong>' . esc_html__('Von', 'event-o') . '</strong></label></p>';
-    echo '<p><input type="datetime-local" id="event_o_start_datetime" name="event_o_start_datetime" value="' . esc_attr($startValue) . '" style="width:100%" /></p>';
-    echo '<p><label for="event_o_end_datetime"><strong>' . esc_html__('Bis', 'event-o') . '</strong></label></p>';
-    echo '<p><input type="datetime-local" id="event_o_end_datetime" name="event_o_end_datetime" value="' . esc_attr($endValue) . '" style="width:100%" /></p>';
+    echo '<div style="display:flex;gap:12px">';
+    echo '<div style="flex:1"><p><label for="event_o_start_datetime"><strong>' . esc_html__('Von', 'event-o') . '</strong></label></p>';
+    echo '<p><input type="datetime-local" id="event_o_start_datetime" name="event_o_start_datetime" value="' . esc_attr($startValue) . '" style="width:100%" /></p></div>';
+    echo '<div style="flex:1"><p><label for="event_o_end_datetime"><strong>' . esc_html__('Bis', 'event-o') . '</strong></label></p>';
+    echo '<p><input type="datetime-local" id="event_o_end_datetime" name="event_o_end_datetime" value="' . esc_attr($endValue) . '" style="width:100%" /></p></div>';
+    echo '</div>';
     echo '</fieldset>';
 
     echo '<fieldset style="border:1px solid #ddd;padding:10px 12px;margin-bottom:12px;border-radius:4px">';
     echo '<legend style="font-weight:600;padding:0 6px">' . esc_html__('Termin 2 (optional)', 'event-o') . '</legend>';
-    echo '<p><label for="event_o_start_datetime_2"><strong>' . esc_html__('Von', 'event-o') . '</strong></label></p>';
-    echo '<p><input type="datetime-local" id="event_o_start_datetime_2" name="event_o_start_datetime_2" value="' . esc_attr($startValue2) . '" style="width:100%" /></p>';
-    echo '<p><label for="event_o_end_datetime_2"><strong>' . esc_html__('Bis', 'event-o') . '</strong></label></p>';
-    echo '<p><input type="datetime-local" id="event_o_end_datetime_2" name="event_o_end_datetime_2" value="' . esc_attr($endValue2) . '" style="width:100%" /></p>';
+    echo '<div style="display:flex;gap:12px">';
+    echo '<div style="flex:1"><p><label for="event_o_start_datetime_2"><strong>' . esc_html__('Von', 'event-o') . '</strong></label></p>';
+    echo '<p><input type="datetime-local" id="event_o_start_datetime_2" name="event_o_start_datetime_2" value="' . esc_attr($startValue2) . '" style="width:100%" /></p></div>';
+    echo '<div style="flex:1"><p><label for="event_o_end_datetime_2"><strong>' . esc_html__('Bis', 'event-o') . '</strong></label></p>';
+    echo '<p><input type="datetime-local" id="event_o_end_datetime_2" name="event_o_end_datetime_2" value="' . esc_attr($endValue2) . '" style="width:100%" /></p></div>';
+    echo '</div>';
     echo '</fieldset>';
 
     echo '<fieldset style="border:1px solid #ddd;padding:10px 12px;margin-bottom:12px;border-radius:4px">';
     echo '<legend style="font-weight:600;padding:0 6px">' . esc_html__('Termin 3 (optional)', 'event-o') . '</legend>';
-    echo '<p><label for="event_o_start_datetime_3"><strong>' . esc_html__('Von', 'event-o') . '</strong></label></p>';
-    echo '<p><input type="datetime-local" id="event_o_start_datetime_3" name="event_o_start_datetime_3" value="' . esc_attr($startValue3) . '" style="width:100%" /></p>';
-    echo '<p><label for="event_o_end_datetime_3"><strong>' . esc_html__('Bis', 'event-o') . '</strong></label></p>';
-    echo '<p><input type="datetime-local" id="event_o_end_datetime_3" name="event_o_end_datetime_3" value="' . esc_attr($endValue3) . '" style="width:100%" /></p>';
+    echo '<div style="display:flex;gap:12px">';
+    echo '<div style="flex:1"><p><label for="event_o_start_datetime_3"><strong>' . esc_html__('Von', 'event-o') . '</strong></label></p>';
+    echo '<p><input type="datetime-local" id="event_o_start_datetime_3" name="event_o_start_datetime_3" value="' . esc_attr($startValue3) . '" style="width:100%" /></p></div>';
+    echo '<div style="flex:1"><p><label for="event_o_end_datetime_3"><strong>' . esc_html__('Bis', 'event-o') . '</strong></label></p>';
+    echo '<p><input type="datetime-local" id="event_o_end_datetime_3" name="event_o_end_datetime_3" value="' . esc_attr($endValue3) . '" style="width:100%" /></p></div>';
+    echo '</div>';
     echo '</fieldset>';
 
     echo '<p><label for="event_o_price"><strong>' . esc_html__('Price', 'event-o') . '</strong></label></p>';
@@ -214,8 +220,8 @@ function event_o_render_event_details_metabox(WP_Post $post): void
     $bands = (string) get_post_meta($post->ID, EVENT_O_META_BANDS, true);
     echo '<hr style="margin:14px 0">';
     echo '<p><label for="event_o_bands"><strong>' . esc_html__('Bands / Artists', 'event-o') . '</strong></label></p>';
-    echo '<p><textarea id="event_o_bands" name="event_o_bands" rows="4" style="width:100%" placeholder="Band Name | spotify-url | bandcamp-url">' . esc_textarea($bands) . '</textarea></p>';
-    echo '<p style="color:#666;font-size:11px;margin-top:2px">' . esc_html__('One band per line. Format: Name | Spotify URL | Bandcamp URL (each part optional).', 'event-o') . '</p>';
+    echo '<p><textarea id="event_o_bands" name="event_o_bands" rows="4" style="width:100%" placeholder="Band Name | spotify-url | bandcamp-url | website-url">' . esc_textarea($bands) . '</textarea></p>';
+    echo '<p style="color:#666;font-size:11px;margin-top:2px">' . esc_html__('One band per line. Format: Name | Spotify URL | Bandcamp URL | Website URL (each part optional).', 'event-o') . '</p>';
 
     echo '<p style="color:#666;font-size:12px;margin-top:10px">' . esc_html__('Tip: Use taxonomies for Organizer/Venue to keep data consistent.', 'event-o') . '</p>';
 }

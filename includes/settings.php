@@ -84,6 +84,12 @@ function event_o_register_settings(): void
         'default' => 'none',
     ]);
 
+    register_setting('event_o_settings', EVENT_O_OPTION_RELATED_CATEGORY_ONLY, [
+        'type' => 'boolean',
+        'sanitize_callback' => static fn($v) => (bool) $v,
+        'default' => false,
+    ]);
+
     register_setting('event_o_settings', EVENT_O_OPTION_LIGHT_SELECTOR, [
         'type' => 'string',
         'sanitize_callback' => 'sanitize_text_field',
@@ -130,6 +136,17 @@ function event_o_register_settings(): void
         static function () {
             $value = (bool) get_option(EVENT_O_OPTION_HIGH_CONTRAST, false);
             echo '<label><input type="checkbox" name="' . esc_attr(EVENT_O_OPTION_HIGH_CONTRAST) . '" value="1" ' . checked($value, true, false) . ' /> ' . esc_html__('Alle gedämpften Farben durch volle Textfarbe (Schwarz/Weiß je nach Modus) ersetzen für maximalen Kontrast.', 'event-o') . '</label>';
+        },
+        'event_o_settings',
+        'event_o_settings_behavior'
+    );
+
+    add_settings_field(
+        EVENT_O_OPTION_RELATED_CATEGORY_ONLY,
+        __('Weitere Events nach Kategorie', 'event-o'),
+        static function () {
+            $value = (bool) get_option(EVENT_O_OPTION_RELATED_CATEGORY_ONLY, false);
+            echo '<label><input type="checkbox" name="' . esc_attr(EVENT_O_OPTION_RELATED_CATEGORY_ONLY) . '" value="1" ' . checked($value, true, false) . ' /> ' . esc_html__('"Weitere Veranstaltungen" auf der Einzelseite nur aus der gleichen Kategorie anzeigen.', 'event-o') . '</label>';
         },
         'event_o_settings',
         'event_o_settings_behavior'
@@ -269,11 +286,12 @@ function event_o_add_color_field(string $optionName, string $label): void
 
 function event_o_register_settings_page(): void
 {
-    add_options_page(
-        __('Event_O', 'event-o'),
-        __('Event_O', 'event-o'),
+    add_submenu_page(
+        'edit.php?post_type=event_o_event',
+        __('Einstellungen', 'event-o'),
+        __('Einstellungen', 'event-o'),
         'manage_options',
-        'event-o',
+        'event-o-settings',
         'event_o_render_settings_page'
     );
 }

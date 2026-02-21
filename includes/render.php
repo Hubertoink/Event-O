@@ -295,6 +295,7 @@ function event_o_render_bands(int $postId, string $wrapperClass = 'event-o-bands
         $name = $parts[0] ?? '';
         $spotify = isset($parts[1]) && $parts[1] !== '' ? $parts[1] : '';
         $bandcamp = isset($parts[2]) && $parts[2] !== '' ? $parts[2] : '';
+        $website = isset($parts[3]) && $parts[3] !== '' ? $parts[3] : '';
 
         $out .= '<div class="event-o-band-item">';
         if ($name !== '') {
@@ -308,6 +309,11 @@ function event_o_render_bands(int $postId, string $wrapperClass = 'event-o-bands
         if ($bandcamp !== '') {
             $out .= '<a href="' . esc_url($bandcamp) . '" target="_blank" rel="noopener noreferrer" class="event-o-band-link event-o-band-bandcamp" title="Bandcamp">';
             $out .= '<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M0 18.75l7.437-13.5H24l-7.438 13.5H0z"/></svg>';
+            $out .= '</a>';
+        }
+        if ($website !== '') {
+            $out .= '<a href="' . esc_url($website) . '" target="_blank" rel="noopener noreferrer" class="event-o-band-link event-o-band-website" title="Website">';
+            $out .= '<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>';
             $out .= '</a>';
         }
         $out .= '</div>';
@@ -1379,6 +1385,7 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
                     'name' => $parts[0] ?? '',
                     'spotify' => isset($parts[1]) && $parts[1] !== '' ? $parts[1] : '',
                     'bandcamp' => isset($parts[2]) && $parts[2] !== '' ? $parts[2] : '',
+                    'website' => isset($parts[3]) && $parts[3] !== '' ? $parts[3] : '',
                 ];
             }
         }
@@ -1527,6 +1534,11 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
                 if ($band['bandcamp'] !== '') {
                     $out .= '<a href="' . esc_url($band['bandcamp']) . '" target="_blank" rel="noopener noreferrer" class="event-o-band-link event-o-band-bandcamp" title="Bandcamp">';
                     $out .= '<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M0 18.75l7.437-13.5H24l-7.438 13.5H0z"/></svg>';
+                    $out .= '</a>';
+                }
+                if ($band['website'] !== '') {
+                    $out .= '<a href="' . esc_url($band['website']) . '" target="_blank" rel="noopener noreferrer" class="event-o-band-link event-o-band-website" title="Website">';
+                    $out .= '<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>';
                     $out .= '</a>';
                 }
                 $out .= '</div>';
@@ -1715,7 +1727,7 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
 /**
  * Get related events for single page (excluding current event).
  */
-function event_o_get_related_events(int $excludeId, int $limit = 4): array
+function event_o_get_related_events(int $excludeId, int $limit = 4, int $categoryTermId = 0): array
 {
     $args = [
         'post_type' => 'event_o_event',
@@ -1734,6 +1746,16 @@ function event_o_get_related_events(int $excludeId, int $limit = 4): array
             ],
         ],
     ];
+
+    if ($categoryTermId > 0) {
+        $args['tax_query'] = [
+            [
+                'taxonomy' => 'event_o_category',
+                'field' => 'term_id',
+                'terms' => $categoryTermId,
+            ],
+        ];
+    }
 
     $q = new WP_Query($args);
     $events = [];

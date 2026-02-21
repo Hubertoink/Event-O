@@ -51,24 +51,12 @@ function event_o_handle_ical_download(): void
     
     // Get event data
     $title = get_the_title($postId);
-    $startTs = (int) get_post_meta($postId, EVENT_O_META_START_TS, true);
-    $endTs = (int) get_post_meta($postId, EVENT_O_META_END_TS, true);
     
-    // Fallback to legacy meta
-    if ($startTs <= 0) {
-        $startTs = (int) get_post_meta($postId, EVENT_O_LEGACY_META_START_TS, true);
-    }
-    if ($endTs <= 0) {
-        $endTs = (int) get_post_meta($postId, EVENT_O_LEGACY_META_END_TS, true);
-    }
+    // Get all date slots
+    $dateSlots = event_o_get_all_date_slots($postId);
     
-    if ($startTs <= 0) {
+    if (empty($dateSlots)) {
         wp_die(__('Event hat kein gültiges Datum.', 'event-o'), 400);
-    }
-    
-    // If no end time, default to 2 hours after start
-    if ($endTs <= 0) {
-        $endTs = $startTs + 7200;
     }
     
     $description = wp_strip_all_tags(get_the_excerpt($postId));
@@ -86,8 +74,44 @@ function event_o_handle_ical_download(): void
         }
     }
     
-    // Generate iCal content
-    $ical = event_o_generate_ical($title, $startTs, $endTs, $description, $location, $url, $postId);
+    // Generate iCal content with multiple VEVENTs for multi-date events
+    $ical = "BEGIN:VCALENDAR\r\n";
+    $ical .= "VERSION:2.0\r\n";
+    $ical .= "PRODID:-//Event_O//Event_O Plugin//DE\r\n";
+    $ical .= "CALSCALE:GREGORIAN\r\n";
+    $ical .= "METHOD:PUBLISH\r\n";
+    
+    foreach ($dateSlots as $i => $slot) {
+        $startTs = $slot['start_ts'];
+        $endTs = $slot['end_ts'] > 0 ? $slot['end_ts'] : $startTs + 7200;
+        
+        $start = gmdate('Ymd\THis\Z', $startTs);
+        $end = gmdate('Ymd\THis\Z', $endTs);
+        $now = gmdate('Ymd\THis\Z');
+        $uid = 'event-o-' . $postId . '-' . ($i + 1) . '@' . wp_parse_url(home_url(), PHP_URL_HOST);
+        
+        $ical .= "BEGIN:VEVENT\r\n";
+        $ical .= "UID:" . $uid . "\r\n";
+        $ical .= "DTSTAMP:" . $now . "\r\n";
+        $ical .= "DTSTART:" . $start . "\r\n";
+        $ical .= "DTEND:" . $end . "\r\n";
+        $eventTitle = count($dateSlots) > 1 ? $title . ' (Termin ' . ($i + 1) . ')' : $title;
+        $ical .= "SUMMARY:" . event_o_ical_fold(event_o_ical_escape_text($eventTitle)) . "\r\n";
+        
+        if ($description) {
+            $ical .= "DESCRIPTION:" . event_o_ical_fold(event_o_ical_escape_text($description)) . "\r\n";
+        }
+        if ($location) {
+            $ical .= "LOCATION:" . event_o_ical_fold(event_o_ical_escape_text($location)) . "\r\n";
+        }
+        if ($url) {
+            $ical .= "URL:" . $url . "\r\n";
+        }
+        
+        $ical .= "END:VEVENT\r\n";
+    }
+    
+    $ical .= "END:VCALENDAR\r\n";
     
     // Generate safe filename
     $filename = sanitize_file_name($title) . '.ics';

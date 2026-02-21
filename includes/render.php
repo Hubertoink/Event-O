@@ -332,7 +332,7 @@ function event_o_get_german_month(int $monthNum): string
 function event_o_format_datetime_german(int $startTs, int $endTs = 0): array
 {
     if ($startTs <= 0) {
-        return ['date' => '', 'time' => ''];
+        return ['date' => '', 'time' => '', 'end_date' => ''];
     }
 
     $tz = wp_timezone();
@@ -344,14 +344,194 @@ function event_o_format_datetime_german(int $startTs, int $endTs = 0): array
     $date = $day . '. ' . $month . ' ' . $year;
 
     $time = $start->format('H:i');
+    $endDate = '';
+
     if ($endTs > 0) {
         $end = (new DateTimeImmutable('@' . $endTs))->setTimezone($tz);
-        $time .= ' – ' . $end->format('H:i') . ' Uhr';
+        $sameDay = $start->format('Y-m-d') === $end->format('Y-m-d');
+
+        if ($sameDay) {
+            // Same day: just show end time
+            $time .= ' – ' . $end->format('H:i') . ' Uhr';
+        } else {
+            // Different day: show start time + end date with time
+            $time .= ' Uhr';
+            $endDay = $end->format('j');
+            $endMonth = event_o_get_german_month((int) $end->format('n'));
+            $endYear = $end->format('Y');
+            $endDate = $endDay . '. ' . $endMonth . ' ' . $endYear . ', ' . $end->format('H:i') . ' Uhr';
+        }
     } else {
         $time .= ' Uhr';
     }
 
-    return ['date' => $date, 'time' => $time];
+    return ['date' => $date, 'time' => $time, 'end_date' => $endDate];
+}
+
+/**
+ * Format a single date slot as "02. April 2026 16:00 – 19:00 Uhr".
+ */
+function event_o_format_date_slot(int $startTs, int $endTs = 0): string
+{
+    if ($startTs <= 0) {
+        return '';
+    }
+
+    $tz = wp_timezone();
+    $start = (new DateTimeImmutable('@' . $startTs))->setTimezone($tz);
+
+    $day = $start->format('j');
+    $month = event_o_get_german_month((int) $start->format('n'));
+    $year = $start->format('Y');
+    $line = $day . '. ' . $month . ' ' . $year . ' ' . $start->format('H:i');
+
+    if ($endTs > 0) {
+        $end = (new DateTimeImmutable('@' . $endTs))->setTimezone($tz);
+        $line .= ' – ' . $end->format('H:i');
+    }
+
+    $line .= ' Uhr';
+    return $line;
+}
+
+/**
+ * Get all date slots for an event (up to 3).
+ * Returns an array of ['start_ts' => int, 'end_ts' => int, 'formatted' => string].
+ */
+function event_o_get_all_date_slots(int $postId): array
+{
+    $slots = [];
+
+    $pairs = [
+        [EVENT_O_META_START_TS, EVENT_O_META_END_TS],
+        [EVENT_O_META_START_TS_2, EVENT_O_META_END_TS_2],
+        [EVENT_O_META_START_TS_3, EVENT_O_META_END_TS_3],
+    ];
+
+    // Backward compat for slot 1
+    $legacyPairs = [
+        [EVENT_O_LEGACY_META_START_TS, EVENT_O_LEGACY_META_END_TS],
+    ];
+
+    foreach ($pairs as $i => $pair) {
+        $startTs = (int) get_post_meta($postId, $pair[0], true);
+        $endTs = (int) get_post_meta($postId, $pair[1], true);
+
+        // Backward compat for first slot only
+        if ($i === 0) {
+            if ($startTs <= 0) {
+                $startTs = (int) get_post_meta($postId, EVENT_O_LEGACY_META_START_TS, true);
+            }
+            if ($endTs <= 0) {
+                $endTs = (int) get_post_meta($postId, EVENT_O_LEGACY_META_END_TS, true);
+            }
+        }
+
+        if ($startTs > 0) {
+            $slots[] = [
+                'start_ts' => $startTs,
+                'end_ts' => $endTs > 0 ? $endTs : 0,
+                'formatted' => event_o_format_date_slot($startTs, $endTs),
+            ];
+        }
+    }
+
+    return $slots;
+}
+
+/**
+ * Render date slots HTML (stacked lines).
+ */
+function event_o_render_date_slots_html(array $slots, string $itemClass = 'event-o-date-slot'): string
+{
+    if (empty($slots)) {
+        return '';
+    }
+    $out = '';
+    foreach ($slots as $slot) {
+        $out .= '<div class="' . esc_attr($itemClass) . '">' . esc_html($slot['formatted']) . '</div>';
+    }
+    return $out;
+}
+
+/**
+ * Get ordered event images: featured image first + up to 2 gallery images.
+ */
+function event_o_get_event_image_urls(int $postId, string $size = 'large'): array
+{
+    $urls = [];
+    $usedIds = [];
+
+    $featuredId = (int) get_post_thumbnail_id($postId);
+    if ($featuredId > 0) {
+        $featuredUrl = wp_get_attachment_image_url($featuredId, $size);
+        if ($featuredUrl) {
+            $urls[] = $featuredUrl;
+            $usedIds[$featuredId] = true;
+        }
+    }
+
+    $galleryRaw = (string) get_post_meta($postId, EVENT_O_META_GALLERY_IDS, true);
+    if ($galleryRaw !== '') {
+        $galleryIds = array_values(array_filter(array_map('absint', array_map('trim', explode(',', $galleryRaw))), static fn($id) => $id > 0));
+        $galleryIds = array_slice(array_unique($galleryIds), 0, 2);
+
+        foreach ($galleryIds as $imageId) {
+            if (isset($usedIds[$imageId])) {
+                continue;
+            }
+            $url = wp_get_attachment_image_url($imageId, $size);
+            if ($url) {
+                $urls[] = $url;
+                $usedIds[$imageId] = true;
+            }
+        }
+    }
+
+    return $urls;
+}
+
+function event_o_render_event_image_crossfade(array $urls, string $wrapperClass, string $imgClass = '', string $alt = ''): string
+{
+    if (empty($urls)) {
+        return '';
+    }
+
+    $wrapperClass = trim($wrapperClass . ' event-o-crossfade');
+    $out = '<div class="' . esc_attr($wrapperClass) . '"';
+    if (count($urls) > 1) {
+        $out .= ' data-event-o-crossfade="1" data-crossfade-interval="4500"';
+    }
+    $out .= '>';
+
+    foreach ($urls as $index => $url) {
+        $slideClass = trim('event-o-crossfade-slide ' . $imgClass . ($index === 0 ? ' is-active' : ''));
+        $loading = $index === 0 ? 'eager' : 'lazy';
+        $out .= '<img src="' . esc_url($url) . '" alt="' . esc_attr($alt) . '" class="' . esc_attr($slideClass) . '" loading="' . esc_attr($loading) . '">';
+    }
+
+    $out .= '</div>';
+    return $out;
+}
+
+function event_o_render_event_bg_crossfade(array $urls, string $wrapperClass = 'event-o-hero-bg'): string
+{
+    if (empty($urls)) {
+        return '<div class="' . esc_attr($wrapperClass) . ' event-o-hero-bg-placeholder"></div>';
+    }
+
+    if (count($urls) === 1) {
+        return '<div class="' . esc_attr($wrapperClass) . '" style="background-image: url(\'' . esc_url($urls[0]) . '\');"></div>';
+    }
+
+    $out = '<div class="' . esc_attr($wrapperClass) . ' event-o-bg-crossfade" data-event-o-crossfade="1" data-crossfade-interval="5000">';
+    foreach ($urls as $index => $url) {
+        $slideClass = 'event-o-crossfade-slide event-o-bg-crossfade-slide' . ($index === 0 ? ' is-active' : '');
+        $out .= '<div class="' . esc_attr($slideClass) . '" style="background-image: url(\'' . esc_url($url) . '\');"></div>';
+    }
+    $out .= '</div>';
+
+    return $out;
 }
 
 function event_o_get_first_term_name(int $postId, string $taxonomy): string
@@ -658,7 +838,7 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
 
         $title = get_the_title();
         $permalink = get_permalink();
-        $dtParts = event_o_format_datetime_german($startTs, $endTs);
+        $dateSlots = event_o_get_all_date_slots($postId);
 
         // Get category for display after title.
         $categoryName = event_o_get_first_term_name($postId, 'event_o_category');
@@ -672,18 +852,18 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
         $filterDataAttrs = $showFilters ? event_o_get_filter_data_attrs($postId) : '';
 
         // Featured image URL.
-        $imageUrl = '';
-        if ($showImage && has_post_thumbnail($postId)) {
-            $imageUrl = get_the_post_thumbnail_url($postId, 'large');
-        }
+        $imageUrls = $showImage ? event_o_get_event_image_urls($postId, 'large') : [];
 
         $out .= '<details class="event-o-accordion-item eo-block-anim"' . $openAttr . $filterDataAttrs . '>';
 
-        // Summary: Date on top, time below, then title with category.
+        // Summary: Date slots, then title with category.
         $out .= '<summary class="event-o-accordion-summary">';
         $out .= '<div class="event-o-when">';
-        $out .= '<span class="event-o-date">' . esc_html($dtParts['date']) . '</span>';
-        $out .= '<span class="event-o-time">' . esc_html($dtParts['time']) . '</span>';
+        if (!empty($dateSlots)) {
+            foreach ($dateSlots as $slot) {
+                $out .= '<span class="event-o-date-slot">' . esc_html($slot['formatted']) . '</span>';
+            }
+        }
         $out .= '</div>';
         $out .= '<div class="event-o-title-wrap">';
         $out .= '<span class="event-o-title">' . esc_html($title) . '</span>';
@@ -781,10 +961,8 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
         $out .= '<div class="event-o-main">';
 
         // Prominent event image at top of content area.
-        if ($imageUrl !== '') {
-            $out .= '<div class="event-o-featured-image">';
-            $out .= '<img src="' . esc_url($imageUrl) . '" alt="' . esc_attr($title) . '" loading="lazy">';
-            $out .= '</div>';
+        if (!empty($imageUrls)) {
+            $out .= event_o_render_event_image_crossfade($imageUrls, 'event-o-featured-image', '', $title);
         }
 
         // Content/excerpt.
@@ -894,7 +1072,7 @@ function event_o_render_event_carousel_block(array $attrs, string $content = '',
 
         $title = get_the_title();
         $permalink = get_permalink();
-        $dtParts = event_o_format_datetime_german($startTs, $endTs);
+        $dateSlots = event_o_get_all_date_slots($postId);
         $venueName = $showVenue ? event_o_get_first_term_name($postId, 'event_o_venue') : '';
 
         // Filter data attributes for client-side filtering.
@@ -902,12 +1080,21 @@ function event_o_render_event_carousel_block(array $attrs, string $content = '',
 
         $out .= '<article class="event-o-card"' . $filterDataAttrs . '>';
 
-        if ($showImage && has_post_thumbnail($postId)) {
-            $out .= '<a class="event-o-card-media" href="' . esc_url($permalink) . '">' . get_the_post_thumbnail($postId, 'large', ['loading' => 'lazy']) . '</a>';
+        if ($showImage) {
+            $imageUrls = event_o_get_event_image_urls($postId, 'large');
+            if (!empty($imageUrls)) {
+                $out .= '<a class="event-o-card-media" href="' . esc_url($permalink) . '">';
+                $out .= event_o_render_event_image_crossfade($imageUrls, 'event-o-card-media-inner', '', $title);
+                $out .= '</a>';
+            }
         }
 
         $out .= '<div class="event-o-card-body">';
-        $out .= '<div class="event-o-card-when">' . esc_html($dtParts['date']) . ' · ' . esc_html($dtParts['time']) . '</div>';
+        $out .= '<div class="event-o-card-when">';
+        foreach ($dateSlots as $slot) {
+            $out .= '<div class="event-o-date-slot">' . esc_html($slot['formatted']) . '</div>';
+        }
+        $out .= '</div>';
         $out .= '<h3 class="event-o-card-title"><a href="' . esc_url($permalink) . '">' . esc_html($title) . '</a></h3>';
 
         $metaBits = [];
@@ -979,6 +1166,10 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
         if ($startTs <= 0) {
             $startTs = (int) get_post_meta($postId, EVENT_O_LEGACY_META_START_TS, true);
         }
+        $endTs = (int) get_post_meta($postId, EVENT_O_META_END_TS, true);
+        if ($endTs <= 0) {
+            $endTs = (int) get_post_meta($postId, EVENT_O_LEGACY_META_END_TS, true);
+        }
 
         $price = '';
         if ($showPrice) {
@@ -997,10 +1188,12 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
         // Filter data attributes for client-side filtering.
         $filterDataAttrs = $showFilters ? event_o_get_filter_data_attrs($postId) : '';
 
-        // Date badge parts
+        // Date badge parts (from first slot)
+        $dateSlots = event_o_get_all_date_slots($postId);
         $dayNum = '';
         $monthName = '';
         $year = '';
+        $extraSlotCount = max(0, count($dateSlots) - 1);
         if ($startTs > 0) {
             $start = (new DateTimeImmutable('@' . $startTs))->setTimezone($tz);
             $dayNum = $start->format('j');
@@ -1012,8 +1205,13 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
 
         // Image with date badge overlay
         $out .= '<div class="event-o-grid-media">';
-        if ($showImage && has_post_thumbnail($postId)) {
-            $out .= get_the_post_thumbnail($postId, 'large', ['loading' => 'lazy', 'class' => 'event-o-grid-img']);
+        if ($showImage) {
+            $imageUrls = event_o_get_event_image_urls($postId, 'large');
+            if (!empty($imageUrls)) {
+                $out .= event_o_render_event_image_crossfade($imageUrls, 'event-o-grid-fade', 'event-o-grid-img', $title);
+            } else {
+                $out .= '<div class="event-o-grid-placeholder"></div>';
+            }
         } else {
             $out .= '<div class="event-o-grid-placeholder"></div>';
         }
@@ -1022,6 +1220,9 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
             $out .= '<div class="event-o-grid-badge">';
             $out .= '<span class="event-o-grid-badge-day">' . esc_html($dayNum) . '.</span>';
             $out .= '<span class="event-o-grid-badge-month">' . esc_html($monthName) . '</span>';
+            if ($extraSlotCount > 0) {
+                $out .= '<span class="event-o-grid-badge-end">+' . $extraSlotCount . ' ' . esc_html__('Termine', 'event-o') . '</span>';
+            }
             $out .= '<span class="event-o-grid-badge-year">' . esc_html($year) . '</span>';
             $out .= '</div>';
         }
@@ -1163,17 +1364,7 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
         }
 
         $isToday = ($startTs >= $todayStart && $startTs <= $todayEnd);
-        $dtParts = event_o_format_datetime_german($startTs, $endTs);
-
-        // Build program-specific date with weekday
-        $programDate = '';
-        if ($startTs > 0) {
-            $tz = wp_timezone();
-            $startDt = (new DateTimeImmutable('@' . $startTs))->setTimezone($tz);
-            $weekdays = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
-            $weekday = $weekdays[(int) $startDt->format('w')];
-            $programDate = mb_strtoupper($weekday) . ', ' . $dtParts['date'];
-        }
+        $dateSlots = event_o_get_all_date_slots($postId);
 
         $categoryName = $showCategory ? event_o_get_first_term_name($postId, 'event_o_category') : '';
         $venueData = $showVenue ? event_o_get_venue_data($postId) : null;
@@ -1225,13 +1416,17 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
         // === LEFT COLUMN ===
         $out .= '<div class="event-o-program-left">';
 
-        // Date + Time
-        $out .= '<div class="event-o-program-when">';
-        if ($programDate !== '') {
-            $out .= '<span class="event-o-program-date"><span class="event-o-program-weekday">' . esc_html(mb_strtoupper($weekday)) . '</span>, ' . esc_html($dtParts['date']) . '</span>';
+        // Weekday (from first date slot)
+        if (!empty($dateSlots)) {
+            $weekdayNames = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+            $wdIndex = (int) (new DateTimeImmutable('@' . (int) $dateSlots[0]['start_ts']))->setTimezone($tz)->format('w');
+            $out .= '<div class="event-o-program-weekday">' . esc_html($weekdayNames[$wdIndex]) . '</div>';
         }
-        if ($dtParts['time'] !== '') {
-            $out .= '<span class="event-o-program-time">' . esc_html($dtParts['time']) . '</span>';
+
+        // Date + Time (all slots)
+        $out .= '<div class="event-o-program-when">';
+        foreach ($dateSlots as $slot) {
+            $out .= '<span class="event-o-date-slot">' . esc_html($slot['formatted']) . '</span>';
         }
         $out .= '</div>';
 
@@ -1250,9 +1445,14 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
         }
 
         // Image
-        if ($showImage && has_post_thumbnail($postId)) {
+        if ($showImage) {
+            $imageUrls = event_o_get_event_image_urls($postId, 'medium_large');
+        }
+        if ($showImage && !empty($imageUrls)) {
             $out .= '<div class="event-o-program-image">';
-            $out .= '<a href="' . esc_url($permalink) . '">' . get_the_post_thumbnail($postId, 'medium_large', ['loading' => 'lazy']) . '</a>';
+            $out .= '<a href="' . esc_url($permalink) . '">';
+            $out .= event_o_render_event_image_crossfade($imageUrls, 'event-o-program-image-fade', '', $title);
+            $out .= '</a>';
             $out .= '</div>';
         }
 
@@ -1453,40 +1653,25 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
         if ($startTs <= 0) {
             $startTs = (int) get_post_meta($postId, EVENT_O_LEGACY_META_START_TS, true);
         }
-        $heroDate = '';
-        $heroTime = '';
+        $dateSlots = [];
         if ($showDate && $startTs > 0) {
-            $endTs = (int) get_post_meta($postId, EVENT_O_META_END_TS, true);
-            if ($endTs <= 0) {
-                $endTs = (int) get_post_meta($postId, EVENT_O_LEGACY_META_END_TS, true);
-            }
-            $heroDateParts = event_o_format_datetime_german($startTs, $dateVariant === 'date-time' ? $endTs : 0);
-            $heroDate = $heroDateParts['date'] ?? '';
-            $heroTime = $dateVariant === 'date-time' ? ($heroDateParts['time'] ?? '') : '';
+            $dateSlots = event_o_get_all_date_slots($postId);
         }
 
-        $imageUrl = '';
-        if (has_post_thumbnail($postId)) {
-            $imageUrl = get_the_post_thumbnail_url($postId, 'full');
-        }
+        $imageUrls = event_o_get_event_image_urls($postId, 'full');
 
         $filterDataAttrs = $showFilters ? event_o_get_filter_data_attrs($postId) : '';
 
         $out .= '<div class="event-o-hero-slide"' . $filterDataAttrs . '>';
-        if ($imageUrl !== '') {
-            $out .= '<div class="event-o-hero-bg" style="background-image: url(\'' . esc_url($imageUrl) . '\');"></div>';
-        } else {
-            $out .= '<div class="event-o-hero-bg event-o-hero-bg-placeholder"></div>';
-        }
+        $out .= event_o_render_event_bg_crossfade($imageUrls, 'event-o-hero-bg');
         $out .= '<div class="event-o-hero-overlay"></div>';
         
         $out .= '<div class="event-o-hero-content">';
         $out .= '<div class="event-o-hero-category">' . esc_html(mb_strtoupper($categoryName)) . '</div>';
-        if ($heroDate !== '') {
-            $out .= '<div class="event-o-hero-date' . ($heroTime !== '' ? ' has-time' : '') . '">';
-            $out .= '<span class="event-o-hero-date-main">' . esc_html($heroDate) . '</span>';
-            if ($heroTime !== '') {
-                $out .= '<span class="event-o-hero-date-time">' . esc_html($heroTime) . '</span>';
+        if (!empty($dateSlots)) {
+            $out .= '<div class="event-o-hero-date has-time">';
+            foreach ($dateSlots as $slot) {
+                $out .= '<span class="event-o-hero-date-main">' . esc_html($slot['formatted']) . '</span>';
             }
             $out .= '</div>';
         }
@@ -1556,11 +1741,7 @@ function event_o_get_related_events(int $excludeId, int $limit = 4): array
     while ($q->have_posts()) {
         $q->the_post();
         $postId = get_the_ID();
-        $startTs = (int) get_post_meta($postId, EVENT_O_META_START_TS, true);
-        if ($startTs <= 0) {
-            $startTs = (int) get_post_meta($postId, EVENT_O_LEGACY_META_START_TS, true);
-        }
-        $dtParts = event_o_format_datetime_german($startTs, 0);
+        $dateSlots = event_o_get_all_date_slots($postId);
 
         $excerpt = get_the_excerpt();
         if (empty($excerpt)) {
@@ -1573,9 +1754,12 @@ function event_o_get_related_events(int $excludeId, int $limit = 4): array
             'id' => $postId,
             'title' => get_the_title(),
             'permalink' => get_permalink(),
-            'date' => $dtParts['date'],
+            'date' => !empty($dateSlots) ? $dateSlots[0]['formatted'] : '',
+            'dateSlots' => $dateSlots,
             'thumbnail' => has_post_thumbnail($postId) ? get_the_post_thumbnail_url($postId, 'medium') : '',
+            'imageUrls' => event_o_get_event_image_urls($postId, 'medium'),
             'excerpt' => $excerpt,
+            'category' => event_o_get_first_term_name($postId, 'event_o_category'),
         ];
     }
 

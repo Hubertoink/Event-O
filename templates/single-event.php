@@ -28,13 +28,13 @@ while (have_posts()) {
         $status = (string) get_post_meta($postId, EVENT_O_LEGACY_META_STATUS, true);
     }
 
-    $dtParts = event_o_format_datetime_german($startTs, $endTs);
+    $dateSlots = event_o_get_all_date_slots($postId);
     $venueData = event_o_get_venue_data($postId);
     $categoryName = event_o_get_first_term_name($postId, 'event_o_category');
     $organizerData = event_o_get_organizer_data($postId);
     $permalink = get_permalink();
     $title = get_the_title();
-    $imageUrl = has_post_thumbnail($postId) ? get_the_post_thumbnail_url($postId, 'full') : '';
+    $heroImageUrls = event_o_get_event_image_urls($postId, 'full');
 
     // Get related events
     $relatedEvents = event_o_get_related_events($postId, 4);
@@ -42,9 +42,9 @@ while (have_posts()) {
     echo '<main class="event-o event-o-single" data-animation="' . esc_attr((string) get_option(EVENT_O_OPTION_SINGLE_ANIMATION, 'none')) . '">';
 
     // Hero section with full-width image
-    if ($imageUrl !== '') {
+    if (!empty($heroImageUrls)) {
         echo '<div class="event-o-single-hero eo-anim">';
-        echo '<img src="' . esc_url($imageUrl) . '" alt="' . esc_attr($title) . '" class="event-o-single-hero-img">';
+        echo event_o_render_event_image_crossfade($heroImageUrls, 'event-o-single-hero-fade', 'event-o-single-hero-img', $title);
         echo '<div class="event-o-single-hero-overlay">';
         echo '<h1 class="event-o-single-hero-title">' . esc_html($title) . '</h1>';
         if ($categoryName !== '') {
@@ -65,8 +65,11 @@ while (have_posts()) {
     // Date & Time card
     echo '<div class="event-o-single-card">';
     echo '<h3 class="event-o-single-card-title">' . esc_html__('WANN', 'event-o') . '</h3>';
-    echo '<div class="event-o-single-date">' . esc_html($dtParts['date']) . '</div>';
-    echo '<div class="event-o-single-time">' . esc_html($dtParts['time']) . '</div>';
+    if (!empty($dateSlots)) {
+        foreach ($dateSlots as $slot) {
+            echo '<div class="event-o-single-date-slot">' . esc_html($slot['formatted']) . '</div>';
+        }
+    }
     echo '</div>';
 
     // Venue card
@@ -200,9 +203,13 @@ while (have_posts()) {
         
         foreach ($relatedEvents as $event) {
             echo '<a href="' . esc_url($event['permalink']) . '" class="event-o-related-card">';
-            if ($event['thumbnail']) {
+            if (!empty($event['imageUrls']) || !empty($event['thumbnail'])) {
                 echo '<div class="event-o-related-image">';
-                echo '<img src="' . esc_url($event['thumbnail']) . '" alt="' . esc_attr($event['title']) . '" loading="lazy">';
+                if (!empty($event['imageUrls'])) {
+                    echo event_o_render_event_image_crossfade($event['imageUrls'], 'event-o-related-image-fade', '', $event['title']);
+                } else {
+                    echo '<img src="' . esc_url($event['thumbnail']) . '" alt="' . esc_attr($event['title']) . '" loading="lazy">';
+                }
                 if (!empty($event['excerpt'])) {
                     echo '<div class="event-o-related-overlay">';
                     echo '<p class="event-o-related-excerpt">' . esc_html($event['excerpt']) . '</p>';
@@ -213,8 +220,20 @@ while (have_posts()) {
                 echo '<div class="event-o-related-image event-o-related-placeholder"></div>';
             }
             echo '<div class="event-o-related-body">';
-            echo '<div class="event-o-related-date">' . esc_html($event['date']) . '</div>';
-            echo '<h3 class="event-o-related-card-title">' . esc_html($event['title']) . '</h3>';
+            echo '<div class="event-o-related-date">';
+            if (!empty($event['dateSlots'])) {
+                foreach ($event['dateSlots'] as $slot) {
+                    echo '<div class="event-o-date-slot">' . esc_html($slot['formatted']) . '</div>';
+                }
+            } else {
+                echo esc_html($event['date']);
+            }
+            echo '</div>';
+            echo '<h3 class="event-o-related-card-title">' . esc_html($event['title']);
+            if (!empty($event['category'])) {
+                echo ' <span class="event-o-related-card-cat">(' . esc_html($event['category']) . ')</span>';
+            }
+            echo '</h3>';
             echo '</div>';
             echo '</a>';
         }

@@ -714,6 +714,29 @@
         });
     }
 
+    function initEventImageCrossfades() {
+        var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reducedMotion) return;
+
+        var crossfades = document.querySelectorAll('[data-event-o-crossfade="1"]');
+        crossfades.forEach(function (root) {
+            var slides = root.querySelectorAll('.event-o-crossfade-slide');
+            if (!slides || slides.length < 2) return;
+
+            var current = 0;
+            var intervalMs = parseInt(root.getAttribute('data-crossfade-interval') || '4500', 10);
+            if (isNaN(intervalMs) || intervalMs < 1500) {
+                intervalMs = 4500;
+            }
+
+            setInterval(function () {
+                slides[current].classList.remove('is-active');
+                current = (current + 1) % slides.length;
+                slides[current].classList.add('is-active');
+            }, intervalMs);
+        });
+    }
+
     function initDescToggle() {
         document.addEventListener('click', function (e) {
             var btn = e.target.closest('.event-o-desc-toggle');
@@ -836,6 +859,7 @@
         initCalendarDropdowns();
         initGridSliders();
         initHeroSliders();
+        initEventImageCrossfades();
         initAccordionAnimations();
         initFilters();
         initProgramLoadMore();

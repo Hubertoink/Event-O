@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Event_O
  * Description:       Clean event management (CPT + Gutenberg blocks: list/accordion + carousel).
- * Version:           0.9.0
+ * Version:           1.0.0
  * Author:            Hubertoink
  * Text Domain:       event-o
  * Domain Path:       /languages
@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('EVENT_O_VERSION', '0.9.0');
+define('EVENT_O_VERSION', '1.0.0');
 define('EVENT_O_PLUGIN_FILE', __FILE__);
 define('EVENT_O_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('EVENT_O_PLUGIN_URL', plugin_dir_url(__FILE__));

@@ -4,7 +4,7 @@ Tags: events, gutenberg, blocks
 Requires at least: 6.2
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 0.8.0
+Stable tag: 1.0.0
 License: GPLv2 or later
 
 A clean event management plugin with Gutenberg blocks (list/accordion + carousel).

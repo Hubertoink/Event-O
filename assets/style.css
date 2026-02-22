@@ -1203,7 +1203,7 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform .3s ease, filter .3s ease;
+    transition: opacity .9s ease, transform .3s ease, filter .3s ease;
 }
 
 .event-o-related-image-fade{
@@ -1391,6 +1391,7 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
 .event-o-grid-fade .event-o-grid-img{
     position: absolute;
     inset: 0;
+    transition: opacity .9s ease, transform .3s ease;
 }
 
 .event-o-grid-card:hover .event-o-grid-img{

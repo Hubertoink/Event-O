@@ -729,9 +729,28 @@
                 intervalMs = 4500;
             }
 
+            function isSlideReady(slide) {
+                if (!slide || !slide.tagName || slide.tagName.toLowerCase() !== 'img') {
+                    return true;
+                }
+                return !!(slide.complete && slide.naturalWidth > 0);
+            }
+
             setInterval(function () {
+                var next = (current + 1) % slides.length;
+                var attempts = 0;
+
+                while (attempts < slides.length && !isSlideReady(slides[next])) {
+                    next = (next + 1) % slides.length;
+                    attempts++;
+                }
+
+                if (next === current || !isSlideReady(slides[next])) {
+                    return;
+                }
+
                 slides[current].classList.remove('is-active');
-                current = (current + 1) % slides.length;
+                current = next;
                 slides[current].classList.add('is-active');
             }, intervalMs);
         });

@@ -1384,8 +1384,13 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
 }
 
 .event-o-grid-fade{
-    width: 100%;
-    height: 100%;
+    position: absolute;
+    inset: 0;
+}
+
+.event-o-grid-fade .event-o-grid-img{
+    position: absolute;
+    inset: 0;
 }
 
 .event-o-grid-card:hover .event-o-grid-img{

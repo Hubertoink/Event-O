@@ -338,6 +338,7 @@
             perPage: { type: 'number', default: 4 },
             columns: { type: 'number', default: 4 },
             showPast: { type: 'boolean', default: false },
+            sortOrder: { type: 'string', default: 'auto' },
             categories: { type: 'string', default: '' },
             venues: { type: 'string', default: '' },
             organizers: { type: 'string', default: '' },
@@ -377,6 +378,12 @@
                             label: __('Show past events', 'event-o'),
                             checked: a.showPast,
                             onChange: function (v) { setAttributes({ showPast: v }); }
+                        }),
+                        el(ToggleControl, {
+                            label: __('Sort by date descending', 'event-o'),
+                            help: __('Enabled: newest first. Disabled: oldest first.', 'event-o'),
+                            checked: (a.sortOrder || 'auto') === 'desc' || ((a.sortOrder || 'auto') === 'auto' && !!a.showPast),
+                            onChange: function (v) { setAttributes({ sortOrder: v ? 'desc' : 'asc' }); }
                         })
                     ),
                     el(PanelBody, { title: __('Filters', 'event-o'), initialOpen: false },
@@ -486,6 +493,7 @@
             showDesc: { type: 'boolean', default: true },
             showButton: { type: 'boolean', default: true },
             buttonStyle: { type: 'string', default: 'rounded' },
+            buttonText: { type: 'string', default: '' },
             accentColor: { type: 'string', default: '' },
             heroHeight: { type: 'number', default: 520 },
             overlayColor: { type: 'string', default: 'black' },
@@ -603,6 +611,12 @@
                                 }, __('Outline', 'event-o'))
                             )
                         ),
+                        a.showButton && el(TextControl, {
+                            label: __('Button text', 'event-o'),
+                            help: __('Leave empty to use default: "Zu den Events"', 'event-o'),
+                            value: a.buttonText || '',
+                            onChange: function (v) { setAttributes({ buttonText: v }); }
+                        }),
                         el(RangeControl, {
                             label: __('Height (px)', 'event-o'),
                             help: __('Minimum height of the hero area.', 'event-o'),

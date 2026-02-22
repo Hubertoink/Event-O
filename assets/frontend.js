@@ -49,14 +49,11 @@
 
     function initCopyButtons() {
         document.addEventListener('click', function (e) {
-            // Handle both .event-o-share-copy and .event-o-share-instagram buttons
-            var btn = e.target.closest('.event-o-share-copy, .event-o-share-instagram');
+            var btn = e.target.closest('.event-o-share-copy');
             if (!btn) return;
 
             var url = btn.getAttribute('data-url');
             if (!url) return;
-
-            var isInstagram = btn.classList.contains('event-o-share-instagram');
 
             navigator.clipboard.writeText(url).then(function () {
                 var originalHtml = btn.innerHTML;

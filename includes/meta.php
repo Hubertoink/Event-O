@@ -399,3 +399,43 @@ function event_o_save_event_meta(int $postId): void
     }
 }
 add_action('save_post_event_o_event', 'event_o_save_event_meta');
+
+function event_o_admin_add_event_date_column(array $columns): array
+{
+    $updated = [];
+
+    foreach ($columns as $key => $label) {
+        if ($key === 'date') {
+            $updated['event_o_event_date'] = __('Eventdatum', 'event-o');
+        }
+
+        $updated[$key] = $label;
+    }
+
+    if (!isset($updated['event_o_event_date'])) {
+        $updated['event_o_event_date'] = __('Eventdatum', 'event-o');
+    }
+
+    return $updated;
+}
+add_filter('manage_event_o_event_posts_columns', 'event_o_admin_add_event_date_column');
+
+function event_o_admin_render_event_date_column(string $column, int $postId): void
+{
+    if ($column !== 'event_o_event_date') {
+        return;
+    }
+
+    $startTs = (int) get_post_meta($postId, EVENT_O_META_START_TS, true);
+    if ($startTs <= 0) {
+        $startTs = (int) get_post_meta($postId, EVENT_O_LEGACY_META_START_TS, true);
+    }
+
+    if ($startTs <= 0) {
+        echo '&mdash;';
+        return;
+    }
+
+    echo esc_html(wp_date('d.m.Y', $startTs, wp_timezone()));
+}
+add_action('manage_event_o_event_posts_custom_column', 'event_o_admin_render_event_date_column', 10, 2);

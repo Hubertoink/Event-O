@@ -194,6 +194,14 @@ function event_o_event_query(array $attrs): WP_Query
 {
     $perPage = isset($attrs['perPage']) ? max(1, (int) $attrs['perPage']) : 10;
     $showPast = !empty($attrs['showPast']);
+    $order = $showPast ? 'DESC' : 'ASC';
+
+    if (isset($attrs['sortOrder'])) {
+        $candidate = strtoupper((string) $attrs['sortOrder']);
+        if (in_array($candidate, ['ASC', 'DESC'], true)) {
+            $order = $candidate;
+        }
+    }
 
     $metaQuery = [];
     if (!$showPast) {
@@ -240,7 +248,7 @@ function event_o_event_query(array $attrs): WP_Query
         'posts_per_page' => $perPage,
         'meta_key' => EVENT_O_META_START_TS,
         'orderby' => 'meta_value_num',
-        'order' => $showPast ? 'DESC' : 'ASC',
+        'order' => $order,
     ];
 
     if ($metaQuery) {
@@ -719,11 +727,11 @@ function event_o_render_share_buttons(string $url, string $title, array $calenda
         $out .= '</a>';
     }
 
-    // Instagram (copies URL to clipboard, user pastes in Instagram)
+    // Instagram
     if (in_array('instagram', $enabledOptions, true)) {
-        $out .= '<button type="button" class="event-o-share-btn event-o-share-instagram" data-url="' . esc_attr($url) . '" aria-label="Für Instagram kopieren" title="Für Instagram kopieren">';
-        $out .= '<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>';
-        $out .= '</button>';
+        $out .= '<a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" class="event-o-share-btn event-o-share-instagram" aria-label="Auf Instagram teilen" title="Instagram">';
+        $out .= '<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M7.8 2h8.4C19.4 2 22 4.6 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8C4.6 22 2 19.4 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2m-.2 2A3.6 3.6 0 0 0 4 7.6v8.8C4 18.39 5.61 20 7.6 20h8.8a3.6 3.6 0 0 0 3.6-3.6V7.6C20 5.61 18.39 4 16.4 4H7.6m9.65 1.5a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5M12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10m0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>';
+        $out .= '</a>';
     }
 
     // Calendar button (dropdown with Google Calendar, Outlook, and iCal)
@@ -1227,7 +1235,7 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
             $out .= '<span class="event-o-grid-badge-day">' . esc_html($dayNum) . '.</span>';
             $out .= '<span class="event-o-grid-badge-month">' . esc_html($monthName) . '</span>';
             if ($extraSlotCount > 0) {
-                $out .= '<span class="event-o-grid-badge-end">+' . $extraSlotCount . ' ' . esc_html__('Termine', 'event-o') . '</span>';
+                $out .= '<span class="event-o-grid-badge-end">+' . $extraSlotCount . ' ' . esc_html__('Termin(e)', 'event-o') . '</span>';
             }
             $out .= '<span class="event-o-grid-badge-year">' . esc_html($year) . '</span>';
             $out .= '</div>';
@@ -1681,9 +1689,21 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
         $out .= '<div class="event-o-hero-content">';
         $out .= '<div class="event-o-hero-category">' . esc_html(mb_strtoupper($categoryName)) . '</div>';
         if (!empty($dateSlots)) {
-            $out .= '<div class="event-o-hero-date has-time">';
+            $dateClasses = 'event-o-hero-date';
+            if ($dateVariant === 'date-time') {
+                $dateClasses .= ' has-time';
+            }
+            $out .= '<div class="' . esc_attr($dateClasses) . '">';
             foreach ($dateSlots as $slot) {
-                $out .= '<span class="event-o-hero-date-main">' . esc_html($slot['formatted']) . '</span>';
+                if ($dateVariant === 'date-time') {
+                    $out .= '<span class="event-o-hero-date-main">' . esc_html($slot['formatted']) . '</span>';
+                } else {
+                    // Date only: format without time
+                    $tz = wp_timezone();
+                    $start = (new DateTimeImmutable('@' . $slot['start_ts']))->setTimezone($tz);
+                    $dateOnly = $start->format('j') . '. ' . event_o_get_german_month((int) $start->format('n')) . ' ' . $start->format('Y');
+                    $out .= '<span class="event-o-hero-date-main">' . esc_html($dateOnly) . '</span>';
+                }
             }
             $out .= '</div>';
         }
@@ -1698,7 +1718,8 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
             } elseif ($buttonStyle === 'outline') {
                 $btnClass .= ' is-outline';
             }
-            $out .= '<a href="' . esc_url($permalink) . '" class="' . esc_attr($btnClass) . '">' . esc_html__('Zu den Events', 'event-o') . '</a>';
+            $buttonText = isset($attrs['buttonText']) && $attrs['buttonText'] !== '' ? $attrs['buttonText'] : __('Zu den Events', 'event-o');
+            $out .= '<a href="' . esc_url($permalink) . '" class="' . esc_attr($btnClass) . '">' . esc_html($buttonText) . '</a>';
         }
         $out .= '</div>'; // .event-o-hero-content
         $out .= '</div>'; // .event-o-hero-slide

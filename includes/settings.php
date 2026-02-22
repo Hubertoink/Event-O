@@ -90,6 +90,12 @@ function event_o_register_settings(): void
         'default' => false,
     ]);
 
+    register_setting('event_o_settings', EVENT_O_OPTION_HERO_PARALLAX, [
+        'type' => 'boolean',
+        'sanitize_callback' => static fn($v) => (bool) $v,
+        'default' => false,
+    ]);
+
     register_setting('event_o_settings', EVENT_O_OPTION_LIGHT_SELECTOR, [
         'type' => 'string',
         'sanitize_callback' => 'sanitize_text_field',
@@ -147,6 +153,18 @@ function event_o_register_settings(): void
         static function () {
             $value = (bool) get_option(EVENT_O_OPTION_RELATED_CATEGORY_ONLY, false);
             echo '<label><input type="checkbox" name="' . esc_attr(EVENT_O_OPTION_RELATED_CATEGORY_ONLY) . '" value="1" ' . checked($value, true, false) . ' /> ' . esc_html__('"Weitere Veranstaltungen" auf der Einzelseite nur aus der gleichen Kategorie anzeigen.', 'event-o') . '</label>';
+        },
+        'event_o_settings',
+        'event_o_settings_behavior'
+    );
+
+    add_settings_field(
+        EVENT_O_OPTION_HERO_PARALLAX,
+        __('Parallax Hero-Bild', 'event-o'),
+        static function () {
+            $value = (bool) get_option(EVENT_O_OPTION_HERO_PARALLAX, false);
+            echo '<label><input type="checkbox" name="' . esc_attr(EVENT_O_OPTION_HERO_PARALLAX) . '" value="1" ' . checked($value, true, false) . ' /> ' . esc_html__('Parallax-Scrolleffekt auf dem Hero-Bild der Event-Einzelseite aktivieren.', 'event-o') . '</label>';
+            echo '<p class="description">' . esc_html__('Funktioniert am besten mit hochauflösenden Bildern. Wird bei "prefers-reduced-motion" automatisch deaktiviert.', 'event-o') . '</p>';
         },
         'event_o_settings',
         'event_o_settings_behavior'

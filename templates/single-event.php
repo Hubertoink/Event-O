@@ -50,8 +50,10 @@ while (have_posts()) {
     echo '<main class="event-o event-o-single" data-animation="' . esc_attr((string) get_option(EVENT_O_OPTION_SINGLE_ANIMATION, 'none')) . '">';
 
     // Hero section with full-width image
+    $heroParallax = (bool) get_option(EVENT_O_OPTION_HERO_PARALLAX, false);
     if (!empty($heroImageUrls)) {
-        echo '<div class="event-o-single-hero eo-anim">';
+        $heroClass = 'event-o-single-hero eo-anim' . ($heroParallax ? ' event-o-parallax' : '');
+        echo '<div class="' . esc_attr($heroClass) . '">';
         echo event_o_render_event_image_crossfade($heroImageUrls, 'event-o-single-hero-fade', 'event-o-single-hero-img', $title);
         echo '<div class="event-o-single-hero-overlay">';
         echo '<h1 class="event-o-single-hero-title">' . esc_html($title) . '</h1>';

@@ -977,6 +977,24 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
     position: relative;
 }
 
+/* Parallax hero */
+.event-o-single-hero.event-o-parallax{
+    max-height: 600px;
+}
+
+.event-o-parallax .event-o-single-hero-img,
+.event-o-parallax .event-o-single-hero-fade{
+    height: 600px;
+}
+
+.event-o-parallax .event-o-single-hero-fade .event-o-single-hero-img{
+    height: 100%;
+}
+
+.event-o-parallax .event-o-single-hero-img{
+    will-change: transform;
+}
+
 /* Darken hero for title contrast */
 .event-o-single-hero::before{
     content: '';
@@ -1301,6 +1319,13 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
     }
     .event-o-single-hero-fade{
         height: 300px;
+    }
+    .event-o-parallax .event-o-single-hero-img,
+    .event-o-parallax .event-o-single-hero-fade{
+        height: 350px;
+    }
+    .event-o-parallax{
+        max-height: 350px;
     }
     .event-o-single-hero-overlay{
         padding: 20px 20px;

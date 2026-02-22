@@ -801,6 +801,51 @@
         });
     }
 
+    function initHeroParallax() {
+        var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reducedMotion) return;
+
+        var hero = document.querySelector('.event-o-single-hero.event-o-parallax');
+        if (!hero) return;
+
+        var images = hero.querySelectorAll('.event-o-single-hero-img');
+        if (!images.length) return;
+
+        var ticking = false;
+
+        function updateParallax() {
+            var rect = hero.getBoundingClientRect();
+            var heroH = hero.offsetHeight;
+            var winH = window.innerHeight;
+
+            // Only apply when hero is in viewport
+            if (rect.bottom < 0 || rect.top > winH) {
+                ticking = false;
+                return;
+            }
+
+            // Progress: 0 when hero top is at viewport bottom, 1 when hero bottom is at viewport top
+            var progress = 1 - (rect.bottom / (winH + heroH));
+            // Shift range: move image up to 25% of its height
+            var offset = (progress - 0.5) * heroH * 0.25;
+
+            for (var i = 0; i < images.length; i++) {
+                images[i].style.transform = 'translateY(' + offset.toFixed(1) + 'px) scale(1.08)';
+            }
+            ticking = false;
+        }
+
+        window.addEventListener('scroll', function () {
+            if (!ticking) {
+                ticking = true;
+                requestAnimationFrame(updateParallax);
+            }
+        }, { passive: true });
+
+        // Initial position
+        updateParallax();
+    }
+
     function initSingleAnimations() {
         var single = document.querySelector('.event-o-single[data-animation]');
         if (!single) return;
@@ -883,6 +928,7 @@
         initFilters();
         initProgramLoadMore();
         initDescToggle();
+        initHeroParallax();
         initSingleAnimations();
         initBlockAnimations();
     }

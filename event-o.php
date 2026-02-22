@@ -31,6 +31,7 @@ define('EVENT_O_OPTION_LIGHT_SELECTOR', 'event_o_light_selector');
 define('EVENT_O_OPTION_HIGH_CONTRAST', 'event_o_high_contrast');
 define('EVENT_O_OPTION_SINGLE_ANIMATION', 'event_o_single_animation');
 define('EVENT_O_OPTION_RELATED_CATEGORY_ONLY', 'event_o_related_category_only');
+define('EVENT_O_OPTION_HERO_PARALLAX', 'event_o_hero_parallax');
 
 require_once EVENT_O_PLUGIN_DIR . 'includes/cpt.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/taxonomies.php';

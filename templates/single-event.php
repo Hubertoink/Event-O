@@ -60,7 +60,11 @@ while (have_posts()) {
         echo '<div class="event-o-single-hero-overlay">';
         echo '<h1 class="event-o-single-hero-title">' . esc_html($title) . '</h1>';
         if ($categoryName !== '') {
-            $heroCatStyle = $categoryColor !== '' ? ' style="color:' . esc_attr($categoryColor) . '"' : '';
+            $heroCatStyle = '';
+            if ($categoryColor !== '') {
+                $textColor = event_o_contrast_text_color($categoryColor);
+                $heroCatStyle = ' style="background:' . esc_attr($categoryColor) . ';color:' . esc_attr($textColor) . '"';
+            }
             echo '<span class="event-o-single-hero-cat"' . $heroCatStyle . '>' . esc_html($categoryName) . '</span>';
         }
         echo '</div>';

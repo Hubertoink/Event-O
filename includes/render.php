@@ -582,6 +582,23 @@ function event_o_get_first_category_color(int $postId): string
 }
 
 /**
+ * Return '#fff' or '#000' depending on which has better contrast against the given hex color.
+ */
+function event_o_contrast_text_color(string $hex): string
+{
+    $hex = ltrim($hex, '#');
+    if (strlen($hex) === 3) {
+        $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+    }
+    $r = hexdec(substr($hex, 0, 2));
+    $g = hexdec(substr($hex, 2, 2));
+    $b = hexdec(substr($hex, 4, 2));
+    // Relative luminance (W3C formula)
+    $luminance = (0.299 * $r + 0.587 * $g + 0.114 * $b) / 255;
+    return $luminance > 0.55 ? '#000' : '#fff';
+}
+
+/**
  * Generate Google Calendar URL.
  */
 function event_o_get_google_calendar_url(string $title, int $startTs, int $endTs, string $description = '', string $location = ''): string

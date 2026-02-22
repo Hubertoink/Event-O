@@ -31,6 +31,8 @@ while (have_posts()) {
     $dateSlots = event_o_get_all_date_slots($postId);
     $venueData = event_o_get_venue_data($postId);
     $categoryName = event_o_get_first_term_name($postId, 'event_o_category');
+    $useCategoryColor = (bool) get_option(EVENT_O_OPTION_SINGLE_CATEGORY_COLOR, true);
+    $categoryColor = $useCategoryColor ? event_o_get_first_category_color($postId) : '';
     $organizerData = event_o_get_organizer_data($postId);
     $permalink = get_permalink();
     $title = get_the_title();
@@ -58,7 +60,8 @@ while (have_posts()) {
         echo '<div class="event-o-single-hero-overlay">';
         echo '<h1 class="event-o-single-hero-title">' . esc_html($title) . '</h1>';
         if ($categoryName !== '') {
-            echo '<span class="event-o-single-hero-cat">' . esc_html($categoryName) . '</span>';
+            $heroCatStyle = $categoryColor !== '' ? ' style="color:' . esc_attr($categoryColor) . '"' : '';
+            echo '<span class="event-o-single-hero-cat"' . $heroCatStyle . '>' . esc_html($categoryName) . '</span>';
         }
         echo '</div>';
         echo '</div>';
@@ -161,7 +164,8 @@ while (have_posts()) {
     echo '<header class="event-o-single-header eo-anim">';
     echo '<h1 class="event-o-single-title">' . esc_html($title);
     if ($categoryName !== '') {
-        echo ' <span class="event-o-category-hint">(' . esc_html($categoryName) . ')</span>';
+        $titleCatStyle = $categoryColor !== '' ? ' style="color:' . esc_attr($categoryColor) . '"' : '';
+        echo ' <span class="event-o-category-hint"' . $titleCatStyle . '>(' . esc_html($categoryName) . ')</span>';
     }
     echo '</h1>';
     
@@ -241,7 +245,14 @@ while (have_posts()) {
             echo '</div>';
             echo '<h3 class="event-o-related-card-title">' . esc_html($event['title']);
             if (!empty($event['category'])) {
-                echo ' <span class="event-o-related-card-cat">(' . esc_html($event['category']) . ')</span>';
+                $relCatStyle = '';
+                if ($useCategoryColor && !empty($event['id'])) {
+                    $relCatColor = event_o_get_first_category_color($event['id']);
+                    if ($relCatColor !== '') {
+                        $relCatStyle = ' style="color:' . esc_attr($relCatColor) . '"';
+                    }
+                }
+                echo ' <span class="event-o-related-card-cat"' . $relCatStyle . '>(' . esc_html($event['category']) . ')</span>';
             }
             echo '</h3>';
             echo '</div>';

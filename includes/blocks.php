@@ -108,6 +108,7 @@ function event_o_register_blocks(): void
             'filterByVenue' => ['type' => 'boolean', 'default' => true],
             'filterByOrganizer' => ['type' => 'boolean', 'default' => true],
             'filterStyle' => ['type' => 'string', 'default' => 'dropdown'],
+            'onePerCategory' => ['type' => 'boolean', 'default' => false],
         ],
     ]);
 

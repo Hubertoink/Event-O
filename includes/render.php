@@ -564,6 +564,24 @@ function event_o_get_first_term_name(int $postId, string $taxonomy): string
 }
 
 /**
+ * Get the color assigned to the first category term of an event.
+ * Returns an empty string if no color is set.
+ */
+function event_o_get_first_category_color(int $postId): string
+{
+    $terms = get_the_terms($postId, 'event_o_category');
+    if (!is_array($terms) || !$terms) {
+        return '';
+    }
+    $first = array_shift($terms);
+    if (!$first) {
+        return '';
+    }
+    $color = get_term_meta($first->term_id, 'event_o_category_color', true);
+    return is_string($color) ? $color : '';
+}
+
+/**
  * Generate Google Calendar URL.
  */
 function event_o_get_google_calendar_url(string $title, int $startTs, int $endTs, string $description = '', string $location = ''): string
@@ -882,7 +900,9 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
         $out .= '<div class="event-o-title-wrap">';
         $out .= '<span class="event-o-title">' . esc_html($title) . '</span>';
         if ($categoryName !== '') {
-            $out .= ' <span class="event-o-category-hint">(' . esc_html($categoryName) . ')</span>';
+            $catColor = event_o_get_first_category_color($postId);
+            $catStyle = $catColor !== '' ? ' style="color:' . esc_attr($catColor) . '"' : '';
+            $out .= ' <span class="event-o-category-hint"' . $catStyle . '>(' . esc_html($categoryName) . ')</span>';
         }
         $out .= '</div>';
         $out .= '<div class="event-o-chevron" aria-hidden="true"></div>';
@@ -1250,7 +1270,9 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
             $out .= '<div class="event-o-grid-organizer">' . esc_html($organizerName) . '</div>';
         }
         if ($categoryName !== '') {
-            $out .= '<div class="event-o-grid-category">' . esc_html($categoryName) . '</div>';
+            $catColor = event_o_get_first_category_color($postId);
+            $catStyle = $catColor !== '' ? ' style="color:' . esc_attr($catColor) . '"' : '';
+            $out .= '<div class="event-o-grid-category"' . $catStyle . '>' . esc_html($categoryName) . '</div>';
         }
         if ($venueName !== '') {
             $out .= '<div class="event-o-grid-venue">' . esc_html($venueName) . '</div>';
@@ -1495,7 +1517,9 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
         $out .= '<div class="event-o-program-right">';
 
         if ($categoryName !== '') {
-            $out .= '<div class="event-o-program-category">' . esc_html(mb_strtoupper($categoryName)) . '</div>';
+            $catColor = event_o_get_first_category_color($postId);
+            $catStyle = $catColor !== '' ? ' style="color:' . esc_attr($catColor) . '"' : '';
+            $out .= '<div class="event-o-program-category"' . $catStyle . '>' . esc_html(mb_strtoupper($categoryName)) . '</div>';
         }
 
         if ($venueData) {
@@ -1611,6 +1635,7 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
     }
 
     $showFilters = !empty($attrs['showFilters']);
+    $onePerCategory = !empty($attrs['onePerCategory']);
     $showDate = !array_key_exists('showDate', $attrs) || !empty($attrs['showDate']);
     $dateVariant = isset($attrs['dateVariant']) && $attrs['dateVariant'] === 'date-time' ? 'date-time' : 'date';
     $showDesc = !array_key_exists('showDesc', $attrs) || !empty($attrs['showDesc']);
@@ -1650,14 +1675,25 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
     $out .= '<div class="event-o-hero-track">';
 
     $eventCount = 0;
+    $seenCategories = [];
     while ($q->have_posts()) {
         $q->the_post();
         $postId = get_the_ID();
+
+        $categoryName = event_o_get_first_term_name($postId, 'event_o_category');
+
+        // One per category: skip if we already have an event from this category
+        if ($onePerCategory && $categoryName !== '') {
+            if (in_array($categoryName, $seenCategories, true)) {
+                continue;
+            }
+            $seenCategories[] = $categoryName;
+        }
+
         $eventCount++;
 
         $title = get_the_title();
         $permalink = get_permalink();
-        $categoryName = event_o_get_first_term_name($postId, 'event_o_category');
         if (empty($categoryName)) {
             $categoryName = __('VERANSTALTUNGEN', 'event-o');
         }
@@ -1687,7 +1723,9 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
         $out .= '<div class="event-o-hero-overlay"></div>';
         
         $out .= '<div class="event-o-hero-content">';
-        $out .= '<div class="event-o-hero-category">' . esc_html(mb_strtoupper($categoryName)) . '</div>';
+        $catColor = event_o_get_first_category_color($postId);
+        $catStyle = $catColor !== '' ? ' style="color:' . esc_attr($catColor) . '"' : '';
+        $out .= '<div class="event-o-hero-category"' . $catStyle . '>' . esc_html(mb_strtoupper($categoryName)) . '</div>';
         if (!empty($dateSlots)) {
             $dateClasses = 'event-o-hero-date';
             if ($dateVariant === 'date-time') {

@@ -96,6 +96,12 @@ function event_o_register_settings(): void
         'default' => false,
     ]);
 
+    register_setting('event_o_settings', EVENT_O_OPTION_SINGLE_CATEGORY_COLOR, [
+        'type' => 'boolean',
+        'sanitize_callback' => static fn($v) => (bool) $v,
+        'default' => true,
+    ]);
+
     register_setting('event_o_settings', EVENT_O_OPTION_LIGHT_SELECTOR, [
         'type' => 'string',
         'sanitize_callback' => 'sanitize_text_field',
@@ -189,6 +195,17 @@ function event_o_register_settings(): void
             }
             echo '</select>';
             echo '<p class="description">' . esc_html__('Einblende-Animation für Inhalte auf der Event-Einzelseite.', 'event-o') . '</p>';
+        },
+        'event_o_settings',
+        'event_o_settings_behavior'
+    );
+
+    add_settings_field(
+        EVENT_O_OPTION_SINGLE_CATEGORY_COLOR,
+        __('Kategorie-Farbe auf Einzelseite', 'event-o'),
+        static function () {
+            $value = (bool) get_option(EVENT_O_OPTION_SINGLE_CATEGORY_COLOR, true);
+            echo '<label><input type="checkbox" name="' . esc_attr(EVENT_O_OPTION_SINGLE_CATEGORY_COLOR) . '" value="1" ' . checked($value, true, false) . ' /> ' . esc_html__('Kategorien auf der Event-Einzelseite mit ihrer zugewiesenen Farbe anzeigen.', 'event-o') . '</label>';
         },
         'event_o_settings',
         'event_o_settings_behavior'

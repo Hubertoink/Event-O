@@ -567,6 +567,12 @@
                     ),
                     el(PanelBody, { title: __('Layout', 'event-o'), initialOpen: false },
                         el(ToggleControl, {
+                            label: __('One event per category', 'event-o'),
+                            help: __('Show only the next upcoming event from each category.', 'event-o'),
+                            checked: !!a.onePerCategory,
+                            onChange: function (v) { setAttributes({ onePerCategory: v }); }
+                        }),
+                        el(ToggleControl, {
                             label: __('Show date', 'event-o'),
                             checked: a.showDate,
                             onChange: function (v) { setAttributes({ showDate: v }); }

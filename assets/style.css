@@ -37,7 +37,7 @@
    List / Accordion
    ========================================================================== */
 .event-o-event-list{
-    border-top: 1px solid var(--event-o-border);
+    border-top: none;
 }
 
 .event-o-month{

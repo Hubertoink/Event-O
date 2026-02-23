@@ -33,6 +33,7 @@ define('EVENT_O_OPTION_SINGLE_ANIMATION', 'event_o_single_animation');
 define('EVENT_O_OPTION_RELATED_CATEGORY_ONLY', 'event_o_related_category_only');
 define('EVENT_O_OPTION_HERO_PARALLAX', 'event_o_hero_parallax');
 define('EVENT_O_OPTION_SINGLE_CATEGORY_COLOR', 'event_o_single_category_color');
+define('EVENT_O_OPTION_PAST_GRACE_DAYS', 'event_o_past_grace_days');
 
 require_once EVENT_O_PLUGIN_DIR . 'includes/cpt.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/taxonomies.php';

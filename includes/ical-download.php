@@ -19,6 +19,11 @@ function event_o_register_ical_endpoint(): void
         'index.php?event_o_ical_download=$matches[1]',
         'top'
     );
+    add_rewrite_rule(
+        '^event-o-ical-feed/?$',
+        'index.php?event_o_ical_feed=1',
+        'top'
+    );
 }
 add_action('init', 'event_o_register_ical_endpoint');
 
@@ -28,6 +33,7 @@ add_action('init', 'event_o_register_ical_endpoint');
 function event_o_ical_query_vars(array $vars): array
 {
     $vars[] = 'event_o_ical_download';
+    $vars[] = 'event_o_ical_feed';
     return $vars;
 }
 add_filter('query_vars', 'event_o_ical_query_vars');
@@ -214,6 +220,100 @@ function event_o_get_ical_url(int $postId): string
 {
     return home_url('/event-o-ical/' . $postId . '/');
 }
+
+/**
+ * Get the iCal feed URL for subscribing to all events.
+ */
+function event_o_get_ical_feed_url(): string
+{
+    return home_url('/event-o-ical-feed/');
+}
+
+/**
+ * Handle iCal feed request (all published events).
+ */
+function event_o_handle_ical_feed(): void
+{
+    $feed = get_query_var('event_o_ical_feed', 0);
+    if (!$feed) {
+        return;
+    }
+
+    $args = [
+        'post_type'      => 'event_o_event',
+        'post_status'    => 'publish',
+        'posts_per_page' => -1,
+        'meta_key'       => EVENT_O_META_START_TS,
+        'orderby'        => 'meta_value_num',
+        'order'          => 'ASC',
+    ];
+    $q = new WP_Query($args);
+    $tz = wp_timezone();
+    $host = wp_parse_url(home_url(), PHP_URL_HOST);
+    $siteName = get_bloginfo('name');
+
+    $ical  = "BEGIN:VCALENDAR\r\n";
+    $ical .= "VERSION:2.0\r\n";
+    $ical .= "PRODID:-//Event_O//Event_O Plugin//DE\r\n";
+    $ical .= "CALSCALE:GREGORIAN\r\n";
+    $ical .= "METHOD:PUBLISH\r\n";
+    $ical .= "X-WR-CALNAME:" . event_o_ical_escape_text($siteName . ' Events') . "\r\n";
+
+    while ($q->have_posts()) {
+        $q->the_post();
+        $postId = get_the_ID();
+        $title  = get_the_title();
+        $description = wp_strip_all_tags(get_the_excerpt($postId));
+        $url = get_permalink();
+
+        $location = '';
+        $venueTerms = wp_get_post_terms($postId, 'event_o_venue');
+        if (!is_wp_error($venueTerms) && !empty($venueTerms)) {
+            $location = $venueTerms[0]->name;
+            $address = get_term_meta($venueTerms[0]->term_id, 'event_o_venue_address', true);
+            if ($address) {
+                $location .= ', ' . $address;
+            }
+        }
+
+        $dateSlots = event_o_get_all_date_slots($postId);
+        foreach ($dateSlots as $i => $slot) {
+            $startTs = $slot['start_ts'];
+            $endTs   = $slot['end_ts'] > 0 ? $slot['end_ts'] : $startTs + 7200;
+
+            $uid = 'event-o-' . $postId . '-' . ($i + 1) . '@' . $host;
+            $eventTitle = count($dateSlots) > 1 ? $title . ' (Termin ' . ($i + 1) . ')' : $title;
+
+            $ical .= "BEGIN:VEVENT\r\n";
+            $ical .= "UID:" . $uid . "\r\n";
+            $ical .= "DTSTAMP:" . gmdate('Ymd\THis\Z') . "\r\n";
+            $ical .= "DTSTART:" . gmdate('Ymd\THis\Z', $startTs) . "\r\n";
+            $ical .= "DTEND:" . gmdate('Ymd\THis\Z', $endTs) . "\r\n";
+            $ical .= "SUMMARY:" . event_o_ical_fold(event_o_ical_escape_text($eventTitle)) . "\r\n";
+            if ($description) {
+                $ical .= "DESCRIPTION:" . event_o_ical_fold(event_o_ical_escape_text($description)) . "\r\n";
+            }
+            if ($location) {
+                $ical .= "LOCATION:" . event_o_ical_fold(event_o_ical_escape_text($location)) . "\r\n";
+            }
+            if ($url) {
+                $ical .= "URL:" . $url . "\r\n";
+            }
+            $ical .= "END:VEVENT\r\n";
+        }
+    }
+    wp_reset_postdata();
+
+    $ical .= "END:VCALENDAR\r\n";
+
+    header('Content-Type: text/calendar; charset=utf-8');
+    header('Content-Disposition: inline; filename="events.ics"');
+    header('Cache-Control: no-cache, must-revalidate');
+    header('Expires: 0');
+    echo $ical;
+    exit;
+}
+add_action('template_redirect', 'event_o_handle_ical_feed');
 
 /**
  * Flush rewrite rules on activation.

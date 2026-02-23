@@ -102,6 +102,15 @@ function event_o_register_settings(): void
         'default' => true,
     ]);
 
+    register_setting('event_o_settings', EVENT_O_OPTION_PAST_GRACE_DAYS, [
+        'type' => 'integer',
+        'sanitize_callback' => static function ($v) {
+            $v = (int) $v;
+            return max(0, min(7, $v));
+        },
+        'default' => 3,
+    ]);
+
     register_setting('event_o_settings', EVENT_O_OPTION_LIGHT_SELECTOR, [
         'type' => 'string',
         'sanitize_callback' => 'sanitize_text_field',
@@ -206,6 +215,24 @@ function event_o_register_settings(): void
         static function () {
             $value = (bool) get_option(EVENT_O_OPTION_SINGLE_CATEGORY_COLOR, true);
             echo '<label><input type="checkbox" name="' . esc_attr(EVENT_O_OPTION_SINGLE_CATEGORY_COLOR) . '" value="1" ' . checked($value, true, false) . ' /> ' . esc_html__('Kategorien auf der Event-Einzelseite mit ihrer zugewiesenen Farbe anzeigen.', 'event-o') . '</label>';
+        },
+        'event_o_settings',
+        'event_o_settings_behavior'
+    );
+
+    add_settings_field(
+        EVENT_O_OPTION_PAST_GRACE_DAYS,
+        __('Vergangene Events anzeigen (Tage)', 'event-o'),
+        static function () {
+            $value = (int) get_option(EVENT_O_OPTION_PAST_GRACE_DAYS, 3);
+            echo '<select name="' . esc_attr(EVENT_O_OPTION_PAST_GRACE_DAYS) . '">';
+            for ($i = 0; $i <= 7; $i++) {
+                $selected = selected($value, $i, false);
+                $label = $i === 0 ? __('0 (nur zukünftige Events)', 'event-o') : sprintf(_n('%d Tag', '%d Tage', $i, 'event-o'), $i);
+                echo '<option value="' . esc_attr((string) $i) . '"' . $selected . '>' . esc_html($label) . '</option>';
+            }
+            echo '</select>';
+            echo '<p class="description">' . esc_html__('Wie viele Tage nach dem Eventbeginn soll ein Event noch in den Blöcken angezeigt werden. Events werden immer mindestens bis Mitternacht des Starttages angezeigt.', 'event-o') . '</p>';
         },
         'event_o_settings',
         'event_o_settings_behavior'

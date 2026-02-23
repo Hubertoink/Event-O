@@ -62,5 +62,14 @@ function event_o_enqueue_editor_assets(): void
         EVENT_O_VERSION,
         true
     );
+
+    // Also load frontend.js in the editor so the calendar block can be rendered.
+    wp_enqueue_script(
+        'event-o-frontend',
+        EVENT_O_PLUGIN_URL . 'assets/frontend.js',
+        [],
+        EVENT_O_VERSION,
+        true
+    );
 }
 add_action('enqueue_block_editor_assets', 'event_o_enqueue_editor_assets');

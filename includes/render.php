@@ -1714,7 +1714,9 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
     $overlayColor = isset($attrs['overlayColor']) && $attrs['overlayColor'] === 'white' ? 'white' : 'black';
     $topGradient = isset($attrs['topGradient']) ? $attrs['topGradient'] : 'none';
     $autoPlay = !isset($attrs['autoPlay']) || !empty($attrs['autoPlay']);
-    $autoPlayInterval = isset($attrs['autoPlayInterval']) ? max(2, min(15, (int) $attrs['autoPlayInterval'])) : 5;
+    $autoPlayInterval = isset($attrs['autoPlayInterval']) ? max(3, min(10, (int) $attrs['autoPlayInterval'])) : 5;
+    $transitionSpeed = isset($attrs['transitionSpeed']) ? $attrs['transitionSpeed'] : 'medium';
+    $textAlign = isset($attrs['textAlign']) ? $attrs['textAlign'] : 'left';
     $align = isset($attrs['align']) ? $attrs['align'] : '';
     $styleAttr = '';
     if ($accentColor !== '') {
@@ -1731,8 +1733,11 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
     if ($autoPlay) {
         $dataAttrs .= ' data-autoplay="1" data-autoplay-interval="' . esc_attr((string) $autoPlayInterval) . '"';
     }
+    $dataAttrs .= ' data-transition-speed="' . esc_attr($transitionSpeed) . '"';
 
-    $out = '<div class="event-o event-o-hero' . $alignClass . $overlayClass . $topGradClass . ($showFilters ? ' has-filters' : '') . '" id="' . esc_attr($uid) . '" style="' . $styleAttr . '"' . $dataAttrs . '>';
+    $textAlignClass = $textAlign === 'left-center' ? ' event-o-hero-align-left-center' : '';
+
+    $out = '<div class="event-o event-o-hero' . $alignClass . $overlayClass . $topGradClass . $textAlignClass . ($showFilters ? ' has-filters' : '') . '" id="' . esc_attr($uid) . '" style="' . $styleAttr . '"' . $dataAttrs . '>';
 
     // Render filter bar if enabled.
     if ($showFilters) {

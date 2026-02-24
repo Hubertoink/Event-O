@@ -516,8 +516,10 @@
             heroHeight: { type: 'number', default: 520 },
             overlayColor: { type: 'string', default: 'black' },
             topGradient: { type: 'string', default: 'none' },
+            textAlign: { type: 'string', default: 'left' },
             autoPlay: { type: 'boolean', default: true },
             autoPlayInterval: { type: 'number', default: 5 },
+            transitionSpeed: { type: 'string', default: 'medium' },
             showFilters: { type: 'boolean', default: false },
             filterByCategory: { type: 'boolean', default: true },
             filterByVenue: { type: 'boolean', default: true },
@@ -661,10 +663,34 @@
                             label: __('Interval (seconds)', 'event-o'),
                             help: __('Time between slide changes.', 'event-o'),
                             value: a.autoPlayInterval || 5,
-                            min: 2,
-                            max: 15,
+                            min: 3,
+                            max: 10,
                             onChange: function (v) { setAttributes({ autoPlayInterval: v }); }
-                        })
+                        }),
+                        a.autoPlay !== false && el(SelectControl, {
+                            label: __('Transition speed', 'event-o'),
+                            help: __('Speed of the slide transition animation.', 'event-o'),
+                            value: a.transitionSpeed || 'medium',
+                            options: [
+                                { label: __('Fast', 'event-o'), value: 'fast' },
+                                { label: __('Medium', 'event-o'), value: 'medium' },
+                                { label: __('Slow', 'event-o'), value: 'slow' }
+                            ],
+                            onChange: function (v) { setAttributes({ transitionSpeed: v }); }
+                        }),
+                        el('div', { style: { marginBottom: '16px' } },
+                            el('label', { style: { display: 'block', marginBottom: '8px', fontWeight: '500' } }, __('Text alignment', 'event-o')),
+                            el('div', { style: { display: 'flex', gap: '8px' } },
+                                el(Button, {
+                                    variant: (a.textAlign || 'left') === 'left' ? 'primary' : 'secondary',
+                                    onClick: function () { setAttributes({ textAlign: 'left' }); }
+                                }, __('Left', 'event-o')),
+                                el(Button, {
+                                    variant: a.textAlign === 'left-center' ? 'primary' : 'secondary',
+                                    onClick: function () { setAttributes({ textAlign: 'left-center' }); }
+                                }, __('Left Center', 'event-o'))
+                            )
+                        )
                     ),
                     el(PanelBody, { title: __('Colors', 'event-o'), initialOpen: false },
                         el(ColorControl, {

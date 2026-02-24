@@ -521,6 +521,10 @@
             var autoPlayEnabled = hero.getAttribute('data-autoplay') === '1';
             var autoPlayMs = (parseInt(hero.getAttribute('data-autoplay-interval'), 10) || 5) * 1000;
 
+            // Transition speed
+            var speedAttr = hero.getAttribute('data-transition-speed') || 'medium';
+            var transitionDuration = speedAttr === 'fast' ? 250 : speedAttr === 'slow' ? 800 : 400;
+
             // Drag state
             var isDragging = false;
             var startX = 0;
@@ -578,7 +582,7 @@
                     return;
                 }
                 viewport.classList.add('is-dragging');
-                var duration = 400;
+                var duration = transitionDuration;
                 var startTime = null;
 
                 function step(timestamp) {

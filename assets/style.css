@@ -1972,9 +1972,10 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
 .event-o-hero-overlay-white .event-o-hero-overlay {
     background: linear-gradient(
         to right,
-        rgba(255, 255, 255, 0.70) 0%,
-        rgba(255, 255, 255, 0.40) 35%,
-        rgba(255, 255, 255, 0.15) 60%,
+        rgba(255, 255, 255, 0.90) 0%,
+        rgba(255, 255, 255, 0.65) 25%,
+        rgba(255, 255, 255, 0.35) 50%,
+        rgba(255, 255, 255, 0.10) 70%,
         rgba(255, 255, 255, 0.0) 100%
     ) !important;
 }
@@ -2013,9 +2014,10 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
     height: 100%;
     background: linear-gradient(
         to right,
-        rgba(0, 0, 0, 0.62) 0%,
-        rgba(0, 0, 0, 0.38) 35%,
-        rgba(0, 0, 0, 0.15) 60%,
+        rgba(0, 0, 0, 0.85) 0%,
+        rgba(0, 0, 0, 0.65) 25%,
+        rgba(0, 0, 0, 0.35) 50%,
+        rgba(0, 0, 0, 0.10) 70%,
         rgba(0, 0, 0, 0.0) 100%
     );
     z-index: 2;
@@ -2035,6 +2037,15 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
     text-align: left;
     overflow-wrap: break-word;
     word-break: break-word;
+}
+
+/* Left-center alignment */
+.event-o-hero-align-left-center .event-o-hero-slide {
+    justify-content: flex-start;
+}
+.event-o-hero-align-left-center .event-o-hero-content {
+    margin: 0 auto 0 10%;
+    padding: 0 2rem;
 }
 
 .event-o-hero-category {

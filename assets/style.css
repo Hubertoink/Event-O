@@ -890,6 +890,9 @@
     font-family: var(--event-o-font, inherit);
     color: var(--event-o-text);
     --event-o-active-accent: var(--event-o-primary);
+    margin: 0;
+    padding: 0;
+    border: none;
 }
 
 /* --- Single Event Entrance Animations --- */

@@ -191,7 +191,7 @@ while (have_posts()) {
     echo '</div>';
 
     // Band links
-    echo event_o_render_bands($postId, 'event-o-bands event-o-single-bands');
+    echo event_o_render_bands($postId, 'event-o-bands event-o-single-bands eo-anim');
 
     // Share section
     echo '<div class="event-o-share-section eo-anim">';

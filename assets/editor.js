@@ -503,6 +503,7 @@
         attributes: {
             perPage: { type: 'number', default: 5 },
             showPast: { type: 'boolean', default: false },
+            sortOrder: { type: 'string', default: 'asc' },
             categories: { type: 'string', default: '' },
             venues: { type: 'string', default: '' },
             organizers: { type: 'string', default: '' },
@@ -544,6 +545,15 @@
                             label: __('Show past events', 'event-o'),
                             checked: a.showPast,
                             onChange: function (v) { setAttributes({ showPast: v }); }
+                        }),
+                        el(SelectControl, {
+                            label: __('Sort order', 'event-o'),
+                            value: (a.sortOrder || 'asc').toLowerCase(),
+                            options: [
+                                { label: __('ASC (next event first)', 'event-o'), value: 'asc' },
+                                { label: __('DESC (farthest/newest first)', 'event-o'), value: 'desc' }
+                            ],
+                            onChange: function (v) { setAttributes({ sortOrder: (v === 'desc') ? 'desc' : 'asc' }); }
                         })
                     ),
                     el(PanelBody, { title: __('Filters', 'event-o'), initialOpen: false },

@@ -90,6 +90,7 @@ function event_o_register_blocks(): void
         'attributes' => [
             'perPage' => ['type' => 'number', 'default' => 5],
             'showPast' => ['type' => 'boolean', 'default' => false],
+            'sortOrder' => ['type' => 'string', 'default' => 'asc'],
             'categories' => ['type' => 'string', 'default' => ''],
             'venues' => ['type' => 'string', 'default' => ''],
             'organizers' => ['type' => 'string', 'default' => ''],

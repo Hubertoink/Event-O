@@ -1697,13 +1697,23 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
 
 function event_o_render_event_hero_block(array $attrs, string $content = '', WP_Block $block = null): string
 {
-    $q = event_o_event_query($attrs);
+    $onePerCategory = !empty($attrs['onePerCategory']);
+    $perPage = isset($attrs['perPage']) ? max(1, (int) $attrs['perPage']) : 5;
+
+    // When onePerCategory is active, fetch extra events to ensure enough unique categories.
+    $queryAttrs = $attrs;
+    $sortOrder = isset($attrs['sortOrder']) ? strtolower((string) $attrs['sortOrder']) : '';
+    $queryAttrs['sortOrder'] = ($sortOrder === 'desc') ? 'DESC' : 'ASC';
+    if ($onePerCategory) {
+        $queryAttrs['perPage'] = max($perPage * 4, 40);
+    }
+
+    $q = event_o_event_query($queryAttrs);
     if (!$q->have_posts()) {
         return '<div class="event-o event-o-hero"><p class="event-o-empty">' . esc_html__('No events found.', 'event-o') . '</p></div>';
     }
 
     $showFilters = !empty($attrs['showFilters']);
-    $onePerCategory = !empty($attrs['onePerCategory']);
     $showDate = !array_key_exists('showDate', $attrs) || !empty($attrs['showDate']);
     $dateVariant = isset($attrs['dateVariant']) && $attrs['dateVariant'] === 'date-time' ? 'date-time' : 'date';
     $showDesc = !array_key_exists('showDesc', $attrs) || !empty($attrs['showDesc']);
@@ -1836,6 +1846,11 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
         }
         $out .= '</div>'; // .event-o-hero-content
         $out .= '</div>'; // .event-o-hero-slide
+
+        // When onePerCategory is active, stop after collecting enough unique-category slides.
+        if ($onePerCategory && $eventCount >= $perPage) {
+            break;
+        }
     }
 
     wp_reset_postdata();

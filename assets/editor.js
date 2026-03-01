@@ -240,8 +240,7 @@
             showFilters: { type: 'boolean', default: false },
             filterByCategory: { type: 'boolean', default: true },
             filterByVenue: { type: 'boolean', default: true },
-            filterByOrganizer: { type: 'boolean', default: true },
-            onePerCategory: { type: 'boolean', default: false }
+            filterByOrganizer: { type: 'boolean', default: true }
         },
         edit: function (props) {
             var a = props.attributes;
@@ -524,7 +523,8 @@
             showFilters: { type: 'boolean', default: false },
             filterByCategory: { type: 'boolean', default: true },
             filterByVenue: { type: 'boolean', default: true },
-            filterByOrganizer: { type: 'boolean', default: true }
+            filterByOrganizer: { type: 'boolean', default: true },
+            onePerCategory: { type: 'boolean', default: false }
         },
         edit: function (props) {
             var a = props.attributes;

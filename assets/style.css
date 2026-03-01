@@ -346,9 +346,15 @@
     color: #e6683c;
 }
 
-.event-o-facebook-link:hover{
+.event-o-facebook-link,
+.event-o-facebook-link:visited{
+    color: #1877f2 !important;
+}
+
+.event-o-facebook-link span{
     color: #1877f2;
 }
+
 
 .event-o-facebook-link:hover .event-o-icon{
     color: #1877f2;
@@ -3044,7 +3050,7 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
 
 .event-o-cal-popup-category {
     font-size: 0.75rem;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--cat-color, var(--cal-accent, #4f6b3a));
     margin-bottom: 0.25rem;
 }
@@ -3136,7 +3142,7 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
 
 .event-o-cal-popup-item-cat {
     font-size: 0.7rem;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--cat-color, var(--cal-accent, #4f6b3a));
 }
 

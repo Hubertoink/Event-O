@@ -11,7 +11,7 @@
  *
  * Roles:
  *   event_o_contributor – can create & edit own events but NOT publish (pending review).
- *                          Optionally restricted to specific categories via user-meta.
+ *                          Optionally restricted to specific taxonomy terms via user-meta.
  */
 
 if (!defined('ABSPATH')) {
@@ -123,6 +123,63 @@ function event_o_remove_capabilities(): void
    ────────────────────────────────────────────── */
 
 define('EVENT_O_USER_META_ALLOWED_CATS', 'event_o_allowed_categories');
+define('EVENT_O_USER_META_ALLOWED_VENUES', 'event_o_allowed_venues');
+define('EVENT_O_USER_META_ALLOWED_ORGANIZERS', 'event_o_allowed_organizers');
+
+/**
+ * Get allowed term slugs for a user and taxonomy.
+ */
+function event_o_get_user_allowed_term_slugs(int $userId, string $taxonomy): array
+{
+    $metaKey = '';
+    if ($taxonomy === 'event_o_category') {
+        $metaKey = EVENT_O_USER_META_ALLOWED_CATS;
+    } elseif ($taxonomy === 'event_o_venue') {
+        $metaKey = EVENT_O_USER_META_ALLOWED_VENUES;
+    } elseif ($taxonomy === 'event_o_organizer') {
+        $metaKey = EVENT_O_USER_META_ALLOWED_ORGANIZERS;
+    }
+
+    if ($metaKey === '') {
+        return [];
+    }
+
+    $allowed = (array) get_user_meta($userId, $metaKey, true);
+    if (!is_array($allowed)) {
+        $allowed = [];
+    }
+
+    $allowed = array_map('sanitize_title', $allowed);
+    $allowed = array_filter($allowed, static function ($value) {
+        return $value !== '';
+    });
+
+    return array_values(array_unique($allowed));
+}
+
+/**
+ * Render taxonomy checkboxes for contributor restrictions.
+ */
+function event_o_render_allowed_terms_checkboxes(string $taxonomy, string $fieldName, array $allowedSlugs): void
+{
+    $terms = get_terms([
+        'taxonomy'   => $taxonomy,
+        'hide_empty' => false,
+    ]);
+
+    if (is_array($terms) && !empty($terms)) {
+        foreach ($terms as $term) {
+            $checked = in_array($term->slug, $allowedSlugs, true) ? ' checked' : '';
+            echo '<label style="display:block;margin-bottom:6px;">';
+            echo '<input type="checkbox" name="' . esc_attr($fieldName) . '[]" value="' . esc_attr($term->slug) . '"' . $checked . '> ';
+            echo esc_html($term->name);
+            echo '</label>';
+        }
+        return;
+    }
+
+    echo '<em>' . esc_html__('Keine Begriffe vorhanden.', 'event-o') . '</em>';
+}
 
 /**
  * Show "Erlaubte Event-Kategorien" section on user profile (admin only).
@@ -138,31 +195,22 @@ function event_o_user_profile_fields(\WP_User $user): void
         return;
     }
 
-    $allowed = (array) get_user_meta($user->ID, EVENT_O_USER_META_ALLOWED_CATS, true);
-    if (!is_array($allowed)) {
-        $allowed = [];
-    }
-
-    $allCats = get_terms([
-        'taxonomy'   => 'event_o_category',
-        'hide_empty' => false,
-    ]);
+    $allowedCats = event_o_get_user_allowed_term_slugs((int) $user->ID, 'event_o_category');
+    $allowedVenues = event_o_get_user_allowed_term_slugs((int) $user->ID, 'event_o_venue');
+    $allowedOrganizers = event_o_get_user_allowed_term_slugs((int) $user->ID, 'event_o_organizer');
 
     echo '<h3>' . esc_html__('Event-O: Erlaubte Kategorien', 'event-o') . '</h3>';
-    echo '<p class="description">' . esc_html__('Wenn keine Kategorie ausgewählt ist, kann der/die Beitragende alle Kategorien verwenden. Sonst nur die ausgewählten.', 'event-o') . '</p>';
+    echo '<p class="description">' . esc_html__('Wenn nichts ausgewählt ist, kann der/die Beitragende alle Begriffe verwenden. Sonst nur die ausgewählten.', 'event-o') . '</p>';
     echo '<table class="form-table"><tr><td>';
 
-    if (is_array($allCats) && !empty($allCats)) {
-        foreach ($allCats as $term) {
-            $checked = in_array($term->slug, $allowed, true) ? ' checked' : '';
-            echo '<label style="display:block;margin-bottom:6px;">';
-            echo '<input type="checkbox" name="event_o_allowed_cats[]" value="' . esc_attr($term->slug) . '"' . $checked . '> ';
-            echo esc_html($term->name);
-            echo '</label>';
-        }
-    } else {
-        echo '<em>' . esc_html__('Keine Event-O Kategorien vorhanden.', 'event-o') . '</em>';
-    }
+    echo '<p><strong>' . esc_html__('Kategorien', 'event-o') . '</strong></p>';
+    event_o_render_allowed_terms_checkboxes('event_o_category', 'event_o_allowed_cats', $allowedCats);
+
+    echo '<p style="margin-top:14px;"><strong>' . esc_html__('Venues / Orte', 'event-o') . '</strong></p>';
+    event_o_render_allowed_terms_checkboxes('event_o_venue', 'event_o_allowed_venues', $allowedVenues);
+
+    echo '<p style="margin-top:14px;"><strong>' . esc_html__('Veranstalter / Organizers', 'event-o') . '</strong></p>';
+    event_o_render_allowed_terms_checkboxes('event_o_organizer', 'event_o_allowed_organizers', $allowedOrganizers);
 
     echo '</td></tr></table>';
 }
@@ -183,11 +231,21 @@ function event_o_save_user_profile_fields(int $userId): void
         return;
     }
 
-    $allowed = isset($_POST['event_o_allowed_cats']) && is_array($_POST['event_o_allowed_cats'])
-        ? array_map('sanitize_text_field', $_POST['event_o_allowed_cats'])
+    $allowedCats = isset($_POST['event_o_allowed_cats']) && is_array($_POST['event_o_allowed_cats'])
+        ? array_map('sanitize_title', $_POST['event_o_allowed_cats'])
         : [];
 
-    update_user_meta($userId, EVENT_O_USER_META_ALLOWED_CATS, $allowed);
+    $allowedVenues = isset($_POST['event_o_allowed_venues']) && is_array($_POST['event_o_allowed_venues'])
+        ? array_map('sanitize_title', $_POST['event_o_allowed_venues'])
+        : [];
+
+    $allowedOrganizers = isset($_POST['event_o_allowed_organizers']) && is_array($_POST['event_o_allowed_organizers'])
+        ? array_map('sanitize_title', $_POST['event_o_allowed_organizers'])
+        : [];
+
+    update_user_meta($userId, EVENT_O_USER_META_ALLOWED_CATS, array_values(array_unique(array_filter($allowedCats))));
+    update_user_meta($userId, EVENT_O_USER_META_ALLOWED_VENUES, array_values(array_unique(array_filter($allowedVenues))));
+    update_user_meta($userId, EVENT_O_USER_META_ALLOWED_ORGANIZERS, array_values(array_unique(array_filter($allowedOrganizers))));
 }
 add_action('personal_options_update', 'event_o_save_user_profile_fields');
 add_action('edit_user_profile_update', 'event_o_save_user_profile_fields');
@@ -220,20 +278,26 @@ function event_o_enforce_category_restriction(int $postId, \WP_Post $post, bool 
         return;
     }
 
-    $allowed = (array) get_user_meta($user->ID, EVENT_O_USER_META_ALLOWED_CATS, true);
-    if (empty($allowed)) {
-        return; // No restriction set → allow all
-    }
+    foreach (['event_o_category', 'event_o_venue', 'event_o_organizer'] as $taxonomy) {
+        $allowed = event_o_get_user_allowed_term_slugs((int) $user->ID, $taxonomy);
+        if (empty($allowed)) {
+            continue; // No restriction set → allow all
+        }
 
-    // Get currently assigned categories
-    $assignedTerms = wp_get_object_terms($postId, 'event_o_category', ['fields' => 'slugs']);
-    if (is_wp_error($assignedTerms) || empty($assignedTerms)) {
-        return;
-    }
+        $assignedTerms = wp_get_object_terms($postId, $taxonomy, ['fields' => 'slugs']);
+        if (is_wp_error($assignedTerms)) {
+            continue;
+        }
 
-    // Remove any categories that are not allowed
-    $validTerms = array_intersect($assignedTerms, $allowed);
-    wp_set_object_terms($postId, $validTerms, 'event_o_category');
+        $validTerms = array_values(array_intersect((array) $assignedTerms, $allowed));
+
+        // If exactly one term is allowed and nothing valid is assigned, auto-assign it.
+        if (empty($validTerms) && count($allowed) === 1) {
+            $validTerms = [$allowed[0]];
+        }
+
+        wp_set_object_terms($postId, $validTerms, $taxonomy);
+    }
 }
 add_action('save_post', 'event_o_enforce_category_restriction', 20, 3);
 
@@ -245,7 +309,7 @@ add_action('save_post', 'event_o_enforce_category_restriction', 20, 3);
  * Filter REST API results for event_o_category taxonomy so that
  * event_o_contributor users only see their allowed categories.
  */
-function event_o_filter_category_terms(array $args, \WP_REST_Request $request): array
+function event_o_filter_allowed_terms_for_rest(array $args, string $taxonomy): array
 {
     $user = wp_get_current_user();
     if (!$user || !$user->exists()) {
@@ -256,7 +320,7 @@ function event_o_filter_category_terms(array $args, \WP_REST_Request $request): 
         return $args;
     }
 
-    $allowed = (array) get_user_meta($user->ID, EVENT_O_USER_META_ALLOWED_CATS, true);
+    $allowed = event_o_get_user_allowed_term_slugs((int) $user->ID, $taxonomy);
     if (empty($allowed)) {
         return $args; // No restriction
     }
@@ -266,14 +330,31 @@ function event_o_filter_category_terms(array $args, \WP_REST_Request $request): 
 
     return $args;
 }
+
+function event_o_filter_category_terms(array $args, \WP_REST_Request $request): array
+{
+    return event_o_filter_allowed_terms_for_rest($args, 'event_o_category');
+}
 add_filter('rest_event_o_category_query', 'event_o_filter_category_terms', 10, 2);
+
+function event_o_filter_venue_terms(array $args, \WP_REST_Request $request): array
+{
+    return event_o_filter_allowed_terms_for_rest($args, 'event_o_venue');
+}
+add_filter('rest_event_o_venue_query', 'event_o_filter_venue_terms', 10, 2);
+
+function event_o_filter_organizer_terms(array $args, \WP_REST_Request $request): array
+{
+    return event_o_filter_allowed_terms_for_rest($args, 'event_o_organizer');
+}
+add_filter('rest_event_o_organizer_query', 'event_o_filter_organizer_terms', 10, 2);
 
 /**
  * Also filter the classic editor / admin taxonomy checklist.
  */
 function event_o_filter_category_checklist(array $args, int $postId): array
 {
-    if (!isset($args['taxonomy']) || $args['taxonomy'] !== 'event_o_category') {
+    if (!isset($args['taxonomy']) || !in_array($args['taxonomy'], ['event_o_category', 'event_o_venue', 'event_o_organizer'], true)) {
         return $args;
     }
 
@@ -282,7 +363,8 @@ function event_o_filter_category_checklist(array $args, int $postId): array
         return $args;
     }
 
-    $allowed = (array) get_user_meta($user->ID, EVENT_O_USER_META_ALLOWED_CATS, true);
+    $taxonomy = (string) $args['taxonomy'];
+    $allowed = event_o_get_user_allowed_term_slugs((int) $user->ID, $taxonomy);
     if (empty($allowed)) {
         return $args;
     }
@@ -290,7 +372,7 @@ function event_o_filter_category_checklist(array $args, int $postId): array
     // Get term IDs from slugs
     $termIds = [];
     foreach ($allowed as $slug) {
-        $term = get_term_by('slug', $slug, 'event_o_category');
+        $term = get_term_by('slug', $slug, $taxonomy);
         if ($term) {
             $termIds[] = (int) $term->term_id;
         }

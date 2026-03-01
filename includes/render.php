@@ -2049,7 +2049,8 @@ function event_o_render_event_calendar_block(array $attrs, string $content = '',
             $categoryColor = event_o_get_first_category_color($postId);
             $venueName = event_o_get_first_term_name($postId, 'event_o_venue');
 
-            $imageUrl = has_post_thumbnail($postId) ? get_the_post_thumbnail_url($postId, 'medium') : '';
+            $imageUrls = event_o_get_event_image_urls($postId, 'medium');
+            $imageUrl = !empty($imageUrls) ? (string) $imageUrls[0] : '';
 
             $excerpt = get_the_excerpt();
             if (empty($excerpt)) {

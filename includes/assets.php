@@ -4,6 +4,19 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+function event_o_asset_version(string $relativePath): string
+{
+    $absolutePath = EVENT_O_PLUGIN_DIR . ltrim($relativePath, '/');
+    if (file_exists($absolutePath)) {
+        $mtime = filemtime($absolutePath);
+        if ($mtime !== false) {
+            return (string) $mtime;
+        }
+    }
+
+    return EVENT_O_VERSION;
+}
+
 function event_o_enqueue_frontend_assets(): void
 {
     $styleHandle = 'event-o-style';
@@ -11,7 +24,7 @@ function event_o_enqueue_frontend_assets(): void
         $styleHandle,
         EVENT_O_PLUGIN_URL . 'assets/style.css',
         [],
-        EVENT_O_VERSION
+        event_o_asset_version('assets/style.css')
     );
     wp_add_inline_style($styleHandle, event_o_get_css_vars_inline());
     wp_enqueue_style($styleHandle);
@@ -20,7 +33,7 @@ function event_o_enqueue_frontend_assets(): void
         'event-o-frontend',
         EVENT_O_PLUGIN_URL . 'assets/frontend.js',
         [],
-        EVENT_O_VERSION,
+        event_o_asset_version('assets/frontend.js'),
         true
     );
 
@@ -45,7 +58,7 @@ function event_o_enqueue_editor_assets(): void
         'event-o-editor',
         EVENT_O_PLUGIN_URL . 'assets/editor.css',
         ['wp-edit-blocks'],
-        EVENT_O_VERSION
+        event_o_asset_version('assets/editor.css')
     );
 
     wp_enqueue_script(
@@ -59,7 +72,7 @@ function event_o_enqueue_editor_assets(): void
             'wp-block-editor',
             'wp-server-side-render',
         ],
-        EVENT_O_VERSION,
+        event_o_asset_version('assets/editor.js'),
         true
     );
 
@@ -68,7 +81,7 @@ function event_o_enqueue_editor_assets(): void
         'event-o-frontend',
         EVENT_O_PLUGIN_URL . 'assets/frontend.js',
         [],
-        EVENT_O_VERSION,
+        event_o_asset_version('assets/frontend.js'),
         true
     );
 }

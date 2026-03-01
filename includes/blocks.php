@@ -7,7 +7,7 @@ if (!defined('ABSPATH')) {
 function event_o_register_blocks(): void
 {
     register_block_type('event-o/event-list', [
-        'api_version' => 2,
+        'api_version' => 3,
         'render_callback' => 'event_o_render_event_list_block',
         'attributes' => [
             'perPage' => ['type' => 'number', 'default' => 10],
@@ -35,7 +35,7 @@ function event_o_register_blocks(): void
     ]);
 
     register_block_type('event-o/event-carousel', [
-        'api_version' => 2,
+        'api_version' => 3,
         'render_callback' => 'event_o_render_event_carousel_block',
         'attributes' => [
             'perPage' => ['type' => 'number', 'default' => 8],
@@ -57,7 +57,7 @@ function event_o_register_blocks(): void
     ]);
 
     register_block_type('event-o/event-grid', [
-        'api_version' => 2,
+        'api_version' => 3,
         'render_callback' => 'event_o_render_event_grid_block',
         'attributes' => [
             'perPage' => ['type' => 'number', 'default' => 4],
@@ -82,7 +82,7 @@ function event_o_register_blocks(): void
     ]);
 
     register_block_type('event-o/event-hero', [
-        'api_version' => 2,
+        'api_version' => 3,
         'render_callback' => 'event_o_render_event_hero_block',
         'supports' => [
             'align' => ['wide', 'full'],
@@ -117,7 +117,7 @@ function event_o_register_blocks(): void
     ]);
 
     register_block_type('event-o/event-program', [
-        'api_version' => 2,
+        'api_version' => 3,
         'render_callback' => 'event_o_render_event_program_block',
         'attributes' => [
             'perPage' => ['type' => 'number', 'default' => 8],
@@ -145,7 +145,7 @@ function event_o_register_blocks(): void
     ]);
 
     register_block_type('event-o/event-calendar', [
-        'api_version' => 2,
+        'api_version' => 3,
         'render_callback' => 'event_o_render_event_calendar_block',
         'attributes' => [
             'theme' => ['type' => 'string', 'default' => 'light'],

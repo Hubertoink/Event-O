@@ -387,7 +387,93 @@ function event_o_filter_category_checklist(array $args, int $postId): array
 add_filter('wp_terms_checklist_args', 'event_o_filter_category_checklist', 10, 2);
 
 /* ──────────────────────────────────────────────
-   6. Admin notification for pending review events
+   6. Scoped cross-edit permission for contributors
+   ────────────────────────────────────────────── */
+
+/**
+ * Check whether a post matches the contributor's allowed taxonomy scope.
+ *
+ * Rules:
+ * - Only active when at least one allowed list is configured.
+ * - For each configured taxonomy list, the post must share at least one term.
+ */
+function event_o_post_matches_contributor_scope(int $postId, int $userId): bool
+{
+    $scopeMap = [
+        'event_o_category'  => event_o_get_user_allowed_term_slugs($userId, 'event_o_category'),
+        'event_o_venue'     => event_o_get_user_allowed_term_slugs($userId, 'event_o_venue'),
+        'event_o_organizer' => event_o_get_user_allowed_term_slugs($userId, 'event_o_organizer'),
+    ];
+
+    $hasScopedRules = false;
+    foreach ($scopeMap as $allowedSlugs) {
+        if (!empty($allowedSlugs)) {
+            $hasScopedRules = true;
+            break;
+        }
+    }
+
+    if (!$hasScopedRules) {
+        return false;
+    }
+
+    foreach ($scopeMap as $taxonomy => $allowedSlugs) {
+        if (empty($allowedSlugs)) {
+            continue;
+        }
+
+        $assignedSlugs = wp_get_object_terms($postId, $taxonomy, ['fields' => 'slugs']);
+        if (is_wp_error($assignedSlugs)) {
+            return false;
+        }
+
+        if (empty(array_intersect((array) $assignedSlugs, $allowedSlugs))) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Grant edit access to matching non-owned Event-O events for scoped contributors.
+ */
+function event_o_map_meta_cap_scoped_edit(array $caps, string $cap, int $userId, array $args): array
+{
+    if ($cap !== 'edit_post') {
+        return $caps;
+    }
+
+    $postId = isset($args[0]) ? (int) $args[0] : 0;
+    if ($postId <= 0) {
+        return $caps;
+    }
+
+    $post = get_post($postId);
+    if (!$post || $post->post_type !== 'event_o_event') {
+        return $caps;
+    }
+
+    $user = get_userdata($userId);
+    if (!$user || !in_array('event_o_contributor', (array) $user->roles, true)) {
+        return $caps;
+    }
+
+    // Keep default behavior for own posts.
+    if ((int) $post->post_author === $userId) {
+        return $caps;
+    }
+
+    if (!event_o_post_matches_contributor_scope($postId, $userId)) {
+        return $caps;
+    }
+
+    return ['edit_event_o_event'];
+}
+add_filter('map_meta_cap', 'event_o_map_meta_cap_scoped_edit', 20, 4);
+
+/* ──────────────────────────────────────────────
+   7. Admin notification for pending review events
    ────────────────────────────────────────────── */
 
 /**
@@ -427,7 +513,7 @@ function event_o_notify_pending_review(string $newStatus, string $oldStatus, \WP
 add_action('transition_post_status', 'event_o_notify_pending_review', 10, 3);
 
 /* ──────────────────────────────────────────────
-   7. Admin: pending events count badge
+    8. Admin: pending events count badge
    ────────────────────────────────────────────── */
 
 /**
@@ -456,7 +542,7 @@ function event_o_pending_count_badge(): void
 add_action('admin_menu', 'event_o_pending_count_badge', 99);
 
 /* ──────────────────────────────────────────────
-   8. Dashboard: pending events widget for admins
+    9. Dashboard: pending events widget for admins
    ────────────────────────────────────────────── */
 
 /**

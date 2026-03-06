@@ -2,8 +2,6 @@
     var __ = wp.i18n.__;
     var registerBlockType = wp.blocks.registerBlockType;
     var el = wp.element.createElement;
-    var useRef = wp.element.useRef;
-    var useEffect = wp.element.useEffect;
     var InspectorControls = wp.blockEditor.InspectorControls;
     var PanelBody = wp.components.PanelBody;
     var ToggleControl = wp.components.ToggleControl;
@@ -63,7 +61,6 @@
             filterByVenue: { type: 'boolean', default: true },
             filterByOrganizer: { type: 'boolean', default: true },
             filterStyle: { type: 'string', default: 'dropdown' },
-            filterCategoryColors: { type: 'boolean', default: false },
             animation: { type: 'string', default: 'none' }
         },
         edit: function (props) {
@@ -176,12 +173,6 @@
                             label: __('Filter by organizer', 'event-o'),
                             checked: a.filterByOrganizer,
                             onChange: function (v) { setAttributes({ filterByOrganizer: v }); }
-                        }),
-                        a.showFilters && a.filterByCategory && el(ToggleControl, {
-                            label: __('Category colors in filter', 'event-o'),
-                            help: __('Show category filter buttons in their assigned colors.', 'event-o'),
-                            checked: a.filterCategoryColors,
-                            onChange: function (v) { setAttributes({ filterCategoryColors: v }); }
                         })
                     ),
                     el(PanelBody, { title: __('Colors', 'event-o'), initialOpen: false },
@@ -503,7 +494,6 @@
         attributes: {
             perPage: { type: 'number', default: 5 },
             showPast: { type: 'boolean', default: false },
-            sortOrder: { type: 'string', default: 'asc' },
             categories: { type: 'string', default: '' },
             venues: { type: 'string', default: '' },
             organizers: { type: 'string', default: '' },
@@ -516,16 +506,12 @@
             accentColor: { type: 'string', default: '' },
             heroHeight: { type: 'number', default: 520 },
             overlayColor: { type: 'string', default: 'black' },
-            topGradient: { type: 'string', default: 'none' },
-            textAlign: { type: 'string', default: 'left' },
             autoPlay: { type: 'boolean', default: true },
             autoPlayInterval: { type: 'number', default: 5 },
-            transitionSpeed: { type: 'string', default: 'medium' },
             showFilters: { type: 'boolean', default: false },
             filterByCategory: { type: 'boolean', default: true },
             filterByVenue: { type: 'boolean', default: true },
-            filterByOrganizer: { type: 'boolean', default: true },
-            onePerCategory: { type: 'boolean', default: false }
+            filterByOrganizer: { type: 'boolean', default: true }
         },
         edit: function (props) {
             var a = props.attributes;
@@ -545,15 +531,6 @@
                             label: __('Show past events', 'event-o'),
                             checked: a.showPast,
                             onChange: function (v) { setAttributes({ showPast: v }); }
-                        }),
-                        el(SelectControl, {
-                            label: __('Sort order', 'event-o'),
-                            value: (a.sortOrder || 'asc').toLowerCase(),
-                            options: [
-                                { label: __('ASC (next event first)', 'event-o'), value: 'asc' },
-                                { label: __('DESC (farthest/newest first)', 'event-o'), value: 'desc' }
-                            ],
-                            onChange: function (v) { setAttributes({ sortOrder: (v === 'desc') ? 'desc' : 'asc' }); }
                         })
                     ),
                     el(PanelBody, { title: __('Filters', 'event-o'), initialOpen: false },
@@ -674,34 +651,10 @@
                             label: __('Interval (seconds)', 'event-o'),
                             help: __('Time between slide changes.', 'event-o'),
                             value: a.autoPlayInterval || 5,
-                            min: 3,
-                            max: 10,
+                            min: 2,
+                            max: 15,
                             onChange: function (v) { setAttributes({ autoPlayInterval: v }); }
-                        }),
-                        a.autoPlay !== false && el(SelectControl, {
-                            label: __('Transition speed', 'event-o'),
-                            help: __('Speed of the slide transition animation.', 'event-o'),
-                            value: a.transitionSpeed || 'medium',
-                            options: [
-                                { label: __('Fast', 'event-o'), value: 'fast' },
-                                { label: __('Medium', 'event-o'), value: 'medium' },
-                                { label: __('Slow', 'event-o'), value: 'slow' }
-                            ],
-                            onChange: function (v) { setAttributes({ transitionSpeed: v }); }
-                        }),
-                        el('div', { style: { marginBottom: '16px' } },
-                            el('label', { style: { display: 'block', marginBottom: '8px', fontWeight: '500' } }, __('Text alignment', 'event-o')),
-                            el('div', { style: { display: 'flex', gap: '8px' } },
-                                el(Button, {
-                                    variant: (a.textAlign || 'left') === 'left' ? 'primary' : 'secondary',
-                                    onClick: function () { setAttributes({ textAlign: 'left' }); }
-                                }, __('Left', 'event-o')),
-                                el(Button, {
-                                    variant: a.textAlign === 'left-center' ? 'primary' : 'secondary',
-                                    onClick: function () { setAttributes({ textAlign: 'left-center' }); }
-                                }, __('Left Center', 'event-o'))
-                            )
-                        )
+                        })
                     ),
                     el(PanelBody, { title: __('Colors', 'event-o'), initialOpen: false },
                         el(ColorControl, {
@@ -719,24 +672,6 @@
                                 el(Button, {
                                     variant: a.overlayColor === 'white' ? 'primary' : 'secondary',
                                     onClick: function () { setAttributes({ overlayColor: 'white' }); }
-                                }, __('White', 'event-o'))
-                            )
-                        ),
-                        el('div', { style: { marginBottom: '16px' } },
-                            el('label', { style: { display: 'block', marginBottom: '8px', fontWeight: '500' } }, __('Top Gradient (Menu)', 'event-o')),
-                            el('p', { style: { fontSize: '12px', color: '#757575', marginTop: 0 } }, __('Adds a gradient at the top of the image for better menu readability.', 'event-o')),
-                            el('div', { style: { display: 'flex', gap: '8px' } },
-                                el(Button, {
-                                    variant: (a.topGradient || 'none') === 'none' ? 'primary' : 'secondary',
-                                    onClick: function () { setAttributes({ topGradient: 'none' }); }
-                                }, __('None', 'event-o')),
-                                el(Button, {
-                                    variant: a.topGradient === 'black' ? 'primary' : 'secondary',
-                                    onClick: function () { setAttributes({ topGradient: 'black' }); }
-                                }, __('Black', 'event-o')),
-                                el(Button, {
-                                    variant: a.topGradient === 'white' ? 'primary' : 'secondary',
-                                    onClick: function () { setAttributes({ topGradient: 'white' }); }
                                 }, __('White', 'event-o'))
                             )
                         )
@@ -779,8 +714,7 @@
             filterByCategory: { type: 'boolean', default: true },
             filterByVenue: { type: 'boolean', default: true },
             filterByOrganizer: { type: 'boolean', default: true },
-            filterStyle: { type: 'string', default: 'dropdown' },
-            filterCategoryColors: { type: 'boolean', default: false }
+            filterStyle: { type: 'string', default: 'dropdown' }
         },
         edit: function (props) {
             var a = props.attributes;
@@ -850,12 +784,6 @@
                             label: __('Filter by organizer', 'event-o'),
                             checked: a.filterByOrganizer,
                             onChange: function (v) { setAttributes({ filterByOrganizer: v }); }
-                        }),
-                        a.showFilters && a.filterByCategory && el(ToggleControl, {
-                            label: __('Category colors in filter', 'event-o'),
-                            help: __('Show category filter buttons in their assigned colors.', 'event-o'),
-                            checked: a.filterCategoryColors,
-                            onChange: function (v) { setAttributes({ filterCategoryColors: v }); }
                         })
                     ),
                     el(PanelBody, { title: __('Display', 'event-o'), initialOpen: false },
@@ -928,136 +856,6 @@
                 el('div', { key: 'preview', className: props.className },
                     el(ServerSideRender, {
                         block: 'event-o/event-program',
-                        attributes: a
-                    })
-                )
-            ];
-        },
-        save: function () {
-            return null;
-        }
-    });
-
-    registerBlockType('event-o/event-calendar', {
-        title: 'Event_O – Event Calendar',
-        icon: 'calendar',
-        category: 'widgets',
-        description: __('Displays events in an interactive monthly calendar view.', 'event-o'),
-        attributes: {
-            theme: { type: 'string', default: 'light' },
-            accentColor: { type: 'string', default: '#4f6b3a' },
-            calendarBgLight: { type: 'string', default: '#f3f5f7' },
-            calendarBgDark: { type: 'string', default: '#10141a' },
-            dayBgLight: { type: 'string', default: '#ffffff' },
-            dayBgDark: { type: 'string', default: '#1b2330' },
-            weekStartsMonday: { type: 'boolean', default: true },
-            popupBlur: { type: 'boolean', default: true },
-            showSubscribe: { type: 'boolean', default: true },
-            categories: { type: 'string', default: '' },
-            venues: { type: 'string', default: '' },
-            organizers: { type: 'string', default: '' }
-        },
-        edit: function (props) {
-            var a = props.attributes;
-            var setAttributes = props.setAttributes;
-            var wrapRef = useRef(null);
-
-            useEffect(function () {
-                if (!wrapRef.current) return;
-                var observer = new MutationObserver(function () {
-                    var calWrap = wrapRef.current && wrapRef.current.querySelector('.event-o-cal-wrap');
-                    if (calWrap && !calWrap.getAttribute('data-cal-inited') && window.eventOCalendarInit) {
-                        window.eventOCalendarInit(calWrap);
-                    }
-                });
-                observer.observe(wrapRef.current, { childList: true, subtree: true });
-                return function () { observer.disconnect(); };
-            });
-
-            return [
-                el(InspectorControls, { key: 'inspector' },
-                    el(PanelBody, { title: __('Theme', 'event-o'), initialOpen: true },
-                        el(SelectControl, {
-                            label: __('Color theme', 'event-o'),
-                            value: a.theme || 'light',
-                            options: [
-                                { label: __('Auto (follows system)', 'event-o'), value: 'auto' },
-                                { label: __('Light', 'event-o'), value: 'light' },
-                                { label: __('Dark', 'event-o'), value: 'dark' }
-                            ],
-                            onChange: function (v) { setAttributes({ theme: v }); }
-                        }),
-                        el(SelectControl, {
-                            label: __('Week starts on', 'event-o'),
-                            value: a.weekStartsMonday ? 'monday' : 'sunday',
-                            options: [
-                                { label: __('Monday', 'event-o'), value: 'monday' },
-                                { label: __('Sunday', 'event-o'), value: 'sunday' }
-                            ],
-                            onChange: function (v) { setAttributes({ weekStartsMonday: v === 'monday' }); }
-                        }),
-                        el(ToggleControl, {
-                            label: __('Popup Image Blur', 'event-o'),
-                            help: __('Blur the background image in the event popup.', 'event-o'),
-                            checked: a.popupBlur !== false,
-                            onChange: function (v) { setAttributes({ popupBlur: v }); }
-                        }),
-                        el(ToggleControl, {
-                            label: __('Subscribe Button', 'event-o'),
-                            help: __('Show a calendar subscribe button in the header.', 'event-o'),
-                            checked: a.showSubscribe !== false,
-                            onChange: function (v) { setAttributes({ showSubscribe: v }); }
-                        })
-                    ),
-                    el(PanelBody, { title: __('Filters', 'event-o'), initialOpen: false },
-                        el(TextControl, {
-                            label: __('Categories (slugs, comma-separated)', 'event-o'),
-                            value: a.categories,
-                            onChange: function (v) { setAttributes({ categories: v }); }
-                        }),
-                        el(TextControl, {
-                            label: __('Venues (slugs, comma-separated)', 'event-o'),
-                            value: a.venues,
-                            onChange: function (v) { setAttributes({ venues: v }); }
-                        }),
-                        el(TextControl, {
-                            label: __('Organizers (slugs, comma-separated)', 'event-o'),
-                            value: a.organizers,
-                            onChange: function (v) { setAttributes({ organizers: v }); }
-                        }),
-                        TaxHelp(__('Example: fuehrung, ausstellung', 'event-o'))
-                    ),
-                    el(PanelBody, { title: __('Colors', 'event-o'), initialOpen: false },
-                        el(ColorControl, {
-                            label: __('Accent Color', 'event-o'),
-                            value: a.accentColor,
-                            onChange: function (v) { setAttributes({ accentColor: v }); }
-                        }),
-                        el(ColorControl, {
-                            label: __('Calendar Background (Light)', 'event-o'),
-                            value: a.calendarBgLight,
-                            onChange: function (v) { setAttributes({ calendarBgLight: v || '#f3f5f7' }); }
-                        }),
-                        el(ColorControl, {
-                            label: __('Calendar Background (Dark)', 'event-o'),
-                            value: a.calendarBgDark,
-                            onChange: function (v) { setAttributes({ calendarBgDark: v || '#10141a' }); }
-                        }),
-                        el(ColorControl, {
-                            label: __('Day Cell Color (Light)', 'event-o'),
-                            value: a.dayBgLight,
-                            onChange: function (v) { setAttributes({ dayBgLight: v || '#ffffff' }); }
-                        }),
-                        el(ColorControl, {
-                            label: __('Day Cell Color (Dark)', 'event-o'),
-                            value: a.dayBgDark,
-                            onChange: function (v) { setAttributes({ dayBgDark: v || '#1b2330' }); }
-                        })
-                    )
-                ),
-                el('div', { key: 'preview', className: props.className, ref: wrapRef },
-                    el(ServerSideRender, {
-                        block: 'event-o/event-calendar',
                         attributes: a
                     })
                 )

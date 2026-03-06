@@ -21,7 +21,6 @@ function event_o_collect_filter_terms(WP_Query $q, array $attrs): array
     $filterByOrganizer = !empty($attrs['filterByOrganizer']);
 
     $categories = [];
-    $categoryColors = [];
     $venues = [];
     $organizers = [];
 
@@ -34,12 +33,6 @@ function event_o_collect_filter_terms(WP_Query $q, array $attrs): array
             if (is_array($terms)) {
                 foreach ($terms as $t) {
                     $categories[$t->slug] = $t->name;
-                    if (!isset($categoryColors[$t->slug])) {
-                        $color = get_term_meta($t->term_id, 'event_o_category_color', true);
-                        if (is_string($color) && $color !== '') {
-                            $categoryColors[$t->slug] = $color;
-                        }
-                    }
                 }
             }
         }
@@ -67,7 +60,6 @@ function event_o_collect_filter_terms(WP_Query $q, array $attrs): array
 
     return [
         'categories' => $categories,
-        'categoryColors' => $categoryColors,
         'venues' => $venues,
         'organizers' => $organizers,
     ];
@@ -81,8 +73,6 @@ function event_o_render_filter_bar(array $filterTerms, array $attrs): string
     $filterByCategory = !empty($attrs['filterByCategory']);
     $filterByVenue = !empty($attrs['filterByVenue']);
     $filterByOrganizer = !empty($attrs['filterByOrganizer']);
-    $useCatColors = !empty($attrs['filterCategoryColors']);
-    $catColors = isset($filterTerms['categoryColors']) ? $filterTerms['categoryColors'] : [];
 
     $out = '<div class="event-o-filter-bar">';
 
@@ -91,9 +81,7 @@ function event_o_render_filter_bar(array $filterTerms, array $attrs): string
         $out .= '<select class="event-o-filter-select" data-filter="category">';
         $out .= '<option value="">' . esc_html__('Alle Kategorien', 'event-o') . '</option>';
         foreach ($filterTerms['categories'] as $slug => $name) {
-            $out .= '<option value="' . esc_attr($slug) . '"'
-                . ($useCatColors && !empty($catColors[$slug]) ? ' data-color="' . esc_attr($catColors[$slug]) . '"' : '')
-                . '>' . esc_html($name) . '</option>';
+            $out .= '<option value="' . esc_attr($slug) . '">' . esc_html($name) . '</option>';
         }
         $out .= '</select>';
         $out .= '</div>';
@@ -133,32 +121,14 @@ function event_o_render_filter_bar_tabs(array $filterTerms, array $attrs): strin
     $filterByCategory = !empty($attrs['filterByCategory']);
     $filterByVenue = !empty($attrs['filterByVenue']);
     $filterByOrganizer = !empty($attrs['filterByOrganizer']);
-    $useCatColors = !empty($attrs['filterCategoryColors']);
-    $catColors = isset($filterTerms['categoryColors']) ? $filterTerms['categoryColors'] : [];
 
-    $colorClass = ($useCatColors && !empty($catColors)) ? ' has-category-colors' : '';
-    $out = '<div class="event-o-filter-bar is-tabs' . $colorClass . '">';
-
-    // Mobile filter toggle button (visible only on small screens)
-    $out .= '<button type="button" class="event-o-filter-mobile-toggle" aria-label="' . esc_attr__('Filter', 'event-o') . '">';
-    $out .= '<svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>';
-    $out .= '</button>';
-
-    $out .= '<div class="event-o-filter-tabs-panel">';
+    $out = '<div class="event-o-filter-bar is-tabs">';
 
     if ($filterByCategory && !empty($filterTerms['categories'])) {
         $out .= '<div class="event-o-filter-tab-group" data-filter="category">';
         $out .= '<button type="button" class="event-o-filter-tab is-active" data-value="">' . esc_html__('Alle', 'event-o') . '</button>';
         foreach ($filterTerms['categories'] as $slug => $name) {
-            $colorStyle = '';
-            $colorAttr = '';
-            if ($useCatColors && !empty($catColors[$slug])) {
-                $c = $catColors[$slug];
-                $tc = event_o_contrast_text_color($c);
-                $colorStyle = ' style="--eo-cat-color:' . esc_attr($c) . ';--eo-cat-text:' . esc_attr($tc) . '"';
-                $colorAttr = ' data-color="' . esc_attr($c) . '"';
-            }
-            $out .= '<button type="button" class="event-o-filter-tab' . ($useCatColors && !empty($catColors[$slug]) ? ' has-cat-color' : '') . '" data-value="' . esc_attr($slug) . '"' . $colorStyle . $colorAttr . '>' . esc_html($name) . '</button>';
+            $out .= '<button type="button" class="event-o-filter-tab" data-value="' . esc_attr($slug) . '">' . esc_html($name) . '</button>';
         }
         $out .= '</div>';
     }
@@ -181,8 +151,7 @@ function event_o_render_filter_bar_tabs(array $filterTerms, array $attrs): strin
         $out .= '</div>';
     }
 
-    $out .= '</div>'; // .event-o-filter-tabs-panel
-    $out .= '</div>'; // .event-o-filter-bar
+    $out .= '</div>';
     return $out;
 }
 
@@ -221,26 +190,6 @@ function event_o_get_filter_data_attrs(int $postId): string
          . ' data-organizers="' . esc_attr(implode(',', $orgSlugs)) . '"';
 }
 
-/**
- * Get the cutoff timestamp for filtering past events.
- *
- * Events are always shown for the entire day of their start date (until 23:59:59).
- * Additionally, a configurable grace period (0–7 days) keeps them visible after that.
- */
-function event_o_get_cutoff_timestamp(): int
-{
-    $graceDays = (int) get_option(EVENT_O_OPTION_PAST_GRACE_DAYS, 3);
-    $graceDays = max(0, min(7, $graceDays));
-
-    $tz = wp_timezone();
-    // Start of today (00:00:00) in the site timezone
-    $todayStart = (new DateTimeImmutable('now', $tz))->setTime(0, 0, 0);
-    // Subtract grace days to get the cutoff date start
-    $cutoffDate = $todayStart->modify('-' . $graceDays . ' days');
-
-    return $cutoffDate->getTimestamp();
-}
-
 function event_o_event_query(array $attrs): WP_Query
 {
     $perPage = isset($attrs['perPage']) ? max(1, (int) $attrs['perPage']) : 10;
@@ -258,7 +207,7 @@ function event_o_event_query(array $attrs): WP_Query
     if (!$showPast) {
         $metaQuery[] = [
             'key' => EVENT_O_META_START_TS,
-            'value' => event_o_get_cutoff_timestamp(),
+            'value' => time(),
             'compare' => '>=',
             'type' => 'NUMERIC',
         ];
@@ -864,6 +813,8 @@ function event_o_render_share_buttons(string $url, string $title, array $calenda
 
 function event_o_render_event_list_block(array $attrs, string $content = '', WP_Block $block = null): string
 {
+    event_o_ensure_frontend_assets();
+
     $q = event_o_event_query($attrs);
     if (!$q->have_posts()) {
         return '<div class="event-o event-o-event-list"><p class="event-o-empty">' . esc_html__('No events found.', 'event-o') . '</p></div>';
@@ -1117,6 +1068,8 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
 
 function event_o_render_event_carousel_block(array $attrs, string $content = '', WP_Block $block = null): string
 {
+    event_o_ensure_frontend_assets();
+
     $q = event_o_event_query($attrs);
     if (!$q->have_posts()) {
         return '<div class="event-o event-o-carousel"><p class="event-o-empty">' . esc_html__('No events found.', 'event-o') . '</p></div>';
@@ -1225,6 +1178,8 @@ function event_o_render_event_carousel_block(array $attrs, string $content = '',
 
 function event_o_render_event_grid_block(array $attrs, string $content = '', WP_Block $block = null): string
 {
+    event_o_ensure_frontend_assets();
+
     $q = event_o_event_query($attrs);
     if (!$q->have_posts()) {
         return '<div class="event-o event-o-grid"><p class="event-o-empty">' . esc_html__('No events found.', 'event-o') . '</p></div>';
@@ -1377,6 +1332,8 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
 
 function event_o_render_event_program_block(array $attrs, string $content = '', WP_Block $block = null): string
 {
+    event_o_ensure_frontend_assets();
+
     // Load all events (not just perPage), we hide the rest client-side
     $programAttrs = $attrs;
     $perPage = isset($attrs['perPage']) ? max(1, (int) $attrs['perPage']) : 8;
@@ -1521,8 +1478,8 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
         // === LEFT COLUMN ===
         $out .= '<div class="event-o-program-left">';
 
-        // Weekday (from first date slot) – skip for today's events
-        if (!empty($dateSlots) && !$isToday) {
+        // Weekday (from first date slot)
+        if (!empty($dateSlots)) {
             $weekdayNames = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
             $wdIndex = (int) (new DateTimeImmutable('@' . (int) $dateSlots[0]['start_ts']))->setTimezone($tz)->format('w');
             $out .= '<div class="event-o-program-weekday">' . esc_html($weekdayNames[$wdIndex]) . '</div>';
@@ -1697,23 +1654,15 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
 
 function event_o_render_event_hero_block(array $attrs, string $content = '', WP_Block $block = null): string
 {
-    $onePerCategory = !empty($attrs['onePerCategory']);
-    $perPage = isset($attrs['perPage']) ? max(1, (int) $attrs['perPage']) : 5;
+    event_o_ensure_frontend_assets();
 
-    // When onePerCategory is active, fetch extra events to ensure enough unique categories.
-    $queryAttrs = $attrs;
-    $sortOrder = isset($attrs['sortOrder']) ? strtolower((string) $attrs['sortOrder']) : '';
-    $queryAttrs['sortOrder'] = ($sortOrder === 'desc') ? 'DESC' : 'ASC';
-    if ($onePerCategory) {
-        $queryAttrs['perPage'] = max($perPage * 4, 40);
-    }
-
-    $q = event_o_event_query($queryAttrs);
+    $q = event_o_event_query($attrs);
     if (!$q->have_posts()) {
         return '<div class="event-o event-o-hero"><p class="event-o-empty">' . esc_html__('No events found.', 'event-o') . '</p></div>';
     }
 
     $showFilters = !empty($attrs['showFilters']);
+    $onePerCategory = !empty($attrs['onePerCategory']);
     $showDate = !array_key_exists('showDate', $attrs) || !empty($attrs['showDate']);
     $dateVariant = isset($attrs['dateVariant']) && $attrs['dateVariant'] === 'date-time' ? 'date-time' : 'date';
     $showDesc = !array_key_exists('showDesc', $attrs) || !empty($attrs['showDesc']);
@@ -1722,11 +1671,8 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
     $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? $attrs['accentColor'] : '';
     $heroHeight = isset($attrs['heroHeight']) ? max(520, min(720, (int) $attrs['heroHeight'])) : 520;
     $overlayColor = isset($attrs['overlayColor']) && $attrs['overlayColor'] === 'white' ? 'white' : 'black';
-    $topGradient = isset($attrs['topGradient']) ? $attrs['topGradient'] : 'none';
     $autoPlay = !isset($attrs['autoPlay']) || !empty($attrs['autoPlay']);
-    $autoPlayInterval = isset($attrs['autoPlayInterval']) ? max(3, min(10, (int) $attrs['autoPlayInterval'])) : 5;
-    $transitionSpeed = isset($attrs['transitionSpeed']) ? $attrs['transitionSpeed'] : 'medium';
-    $textAlign = isset($attrs['textAlign']) ? $attrs['textAlign'] : 'left';
+    $autoPlayInterval = isset($attrs['autoPlayInterval']) ? max(2, min(15, (int) $attrs['autoPlayInterval'])) : 5;
     $align = isset($attrs['align']) ? $attrs['align'] : '';
     $styleAttr = '';
     if ($accentColor !== '') {
@@ -1737,17 +1683,13 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
     $uid = 'event-o-hero-' . wp_generate_uuid4();
     $alignClass = $align !== '' ? ' align' . esc_attr($align) : '';
     $overlayClass = $overlayColor === 'white' ? ' event-o-hero-overlay-white' : '';
-    $topGradClass = $topGradient !== 'none' ? ' has-top-gradient-' . esc_attr($topGradient) : '';
 
     $dataAttrs = '';
     if ($autoPlay) {
         $dataAttrs .= ' data-autoplay="1" data-autoplay-interval="' . esc_attr((string) $autoPlayInterval) . '"';
     }
-    $dataAttrs .= ' data-transition-speed="' . esc_attr($transitionSpeed) . '"';
 
-    $textAlignClass = $textAlign === 'left-center' ? ' event-o-hero-align-left-center' : '';
-
-    $out = '<div class="event-o event-o-hero' . $alignClass . $overlayClass . $topGradClass . $textAlignClass . ($showFilters ? ' has-filters' : '') . '" id="' . esc_attr($uid) . '" style="' . $styleAttr . '"' . $dataAttrs . '>';
+    $out = '<div class="event-o event-o-hero' . $alignClass . $overlayClass . ($showFilters ? ' has-filters' : '') . '" id="' . esc_attr($uid) . '" style="' . $styleAttr . '"' . $dataAttrs . '>';
 
     // Render filter bar if enabled.
     if ($showFilters) {
@@ -1846,11 +1788,6 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
         }
         $out .= '</div>'; // .event-o-hero-content
         $out .= '</div>'; // .event-o-hero-slide
-
-        // When onePerCategory is active, stop after collecting enough unique-category slides.
-        if ($onePerCategory && $eventCount >= $perPage) {
-            break;
-        }
     }
 
     wp_reset_postdata();
@@ -1889,7 +1826,7 @@ function event_o_get_related_events(int $excludeId, int $limit = 4, int $categor
         'meta_query' => [
             [
                 'key' => EVENT_O_META_START_TS,
-                'value' => event_o_get_cutoff_timestamp(),
+                'value' => time(),
                 'compare' => '>=',
                 'type' => 'NUMERIC',
             ],
@@ -1937,162 +1874,4 @@ function event_o_get_related_events(int $excludeId, int $limit = 4, int $categor
     wp_reset_postdata();
 
     return $events;
-}
-
-/**
- * Render the Event Calendar block.
- *
- * Outputs a wrapper div with all events as JSON in data-events.
- * The interactive calendar (grid, navigation, popups) is built entirely
- * client-side by frontend.js.
- */
-function event_o_render_event_calendar_block(array $attrs, string $content = '', WP_Block $block = null): string
-{
-    $theme = isset($attrs['theme']) ? $attrs['theme'] : 'auto';
-    $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? $attrs['accentColor'] : '#4f6b3a';
-    $calBgLight = isset($attrs['calendarBgLight']) ? $attrs['calendarBgLight'] : '#f3f5f7';
-    $calBgDark = isset($attrs['calendarBgDark']) ? $attrs['calendarBgDark'] : '#10141a';
-    $dayBgLight = isset($attrs['dayBgLight']) ? $attrs['dayBgLight'] : '#ffffff';
-    $dayBgDark = isset($attrs['dayBgDark']) ? $attrs['dayBgDark'] : '#1b2330';
-    $weekStart = !empty($attrs['weekStartsMonday']) ? '1' : '0';
-    $popupBlur = !isset($attrs['popupBlur']) || !empty($attrs['popupBlur']) ? '1' : '0';
-    $showSubscribe = !isset($attrs['showSubscribe']) || !empty($attrs['showSubscribe']);
-    $subscribeUrl = $showSubscribe ? event_o_get_ical_feed_url() : '';
-
-    // Build taxonomy query
-    $taxQuery = ['relation' => 'AND'];
-    $categories = isset($attrs['categories']) ? event_o_parse_slug_list((string) $attrs['categories']) : [];
-    if ($categories) {
-        $taxQuery[] = [
-            'taxonomy' => 'event_o_category',
-            'field' => 'slug',
-            'terms' => $categories,
-        ];
-    }
-    $venues = isset($attrs['venues']) ? event_o_parse_slug_list((string) $attrs['venues']) : [];
-    if ($venues) {
-        $taxQuery[] = [
-            'taxonomy' => 'event_o_venue',
-            'field' => 'slug',
-            'terms' => $venues,
-        ];
-    }
-    $organizers = isset($attrs['organizers']) ? event_o_parse_slug_list((string) $attrs['organizers']) : [];
-    if ($organizers) {
-        $taxQuery[] = [
-            'taxonomy' => 'event_o_organizer',
-            'field' => 'slug',
-            'terms' => $organizers,
-        ];
-    }
-
-    $args = [
-        'post_type' => 'event_o_event',
-        'post_status' => 'publish',
-        'posts_per_page' => -1,
-        'meta_key' => EVENT_O_META_START_TS,
-        'orderby' => 'meta_value_num',
-        'order' => 'ASC',
-    ];
-    if (count($taxQuery) > 1) {
-        $args['tax_query'] = $taxQuery;
-    }
-
-    $q = new WP_Query($args);
-    $tz = wp_timezone();
-    $eventsData = [];
-
-    while ($q->have_posts()) {
-        $q->the_post();
-        $postId = get_the_ID();
-
-        // Collect all date slots (up to 3) for this event
-        $pairs = [
-            [EVENT_O_META_START_TS, EVENT_O_META_END_TS],
-            [EVENT_O_META_START_TS_2, EVENT_O_META_END_TS_2],
-            [EVENT_O_META_START_TS_3, EVENT_O_META_END_TS_3],
-        ];
-
-        foreach ($pairs as $i => $pair) {
-            $startTs = (int) get_post_meta($postId, $pair[0], true);
-            $endTs = (int) get_post_meta($postId, $pair[1], true);
-
-            // Backward compat for first slot
-            if ($i === 0) {
-                if ($startTs <= 0) {
-                    $startTs = (int) get_post_meta($postId, EVENT_O_LEGACY_META_START_TS, true);
-                }
-                if ($endTs <= 0) {
-                    $endTs = (int) get_post_meta($postId, EVENT_O_LEGACY_META_END_TS, true);
-                }
-            }
-
-            if ($startTs <= 0) {
-                continue;
-            }
-
-            $start = (new DateTimeImmutable('@' . $startTs))->setTimezone($tz);
-            $dateStr = $start->format('Y-m-d');
-            $time = $start->format('H:i');
-            $timeEnd = '';
-            if ($endTs > 0) {
-                $end = (new DateTimeImmutable('@' . $endTs))->setTimezone($tz);
-                $timeEnd = $end->format('H:i');
-            }
-
-            $status = (string) get_post_meta($postId, EVENT_O_META_STATUS, true);
-            if ($status === '') {
-                $status = (string) get_post_meta($postId, EVENT_O_LEGACY_META_STATUS, true);
-            }
-
-            $categoryName = event_o_get_first_term_name($postId, 'event_o_category');
-            $categoryColor = event_o_get_first_category_color($postId);
-            $venueName = event_o_get_first_term_name($postId, 'event_o_venue');
-
-            $imageUrls = event_o_get_event_image_urls($postId, 'medium');
-            $imageUrl = !empty($imageUrls) ? (string) $imageUrls[0] : '';
-
-            $excerpt = get_the_excerpt();
-            if (empty($excerpt)) {
-                $excerpt = wp_trim_words(get_the_content(), 20, '…');
-            } else {
-                $excerpt = wp_trim_words($excerpt, 20, '…');
-            }
-
-            $eventsData[] = [
-                'id' => $postId,
-                'title' => get_the_title(),
-                'date' => $dateStr,
-                'time' => $time,
-                'timeEnd' => $timeEnd,
-                'url' => get_permalink(),
-                'image' => $imageUrl,
-                'category' => $categoryName,
-                'categoryColor' => $categoryColor,
-                'venue' => $venueName,
-                'cancelled' => ($status === 'cancelled'),
-                'soldOut' => ($status === 'soldout'),
-                'excerpt' => $excerpt,
-            ];
-        }
-    }
-    wp_reset_postdata();
-
-    $styleAttr = 'style="'
-        . '--cal-accent:' . esc_attr($accentColor) . ';'
-        . '--cal-bg-light:' . esc_attr($calBgLight) . ';'
-        . '--cal-bg-dark:' . esc_attr($calBgDark) . ';'
-        . '--cal-cell-bg-light:' . esc_attr($dayBgLight) . ';'
-        . '--cal-cell-bg-dark:' . esc_attr($dayBgDark) . ';'
-        . '--cal-empty-bg-light:' . esc_attr($dayBgLight) . ';'
-        . '--cal-empty-bg-dark:' . esc_attr($dayBgDark) . ';'
-        . '"';
-
-    return '<div class="event-o event-o-cal-wrap theme-' . esc_attr($theme) . '" '
-        . 'data-events="' . esc_attr(wp_json_encode($eventsData)) . '" '
-        . 'data-week-start="' . $weekStart . '" '
-        . 'data-popup-blur="' . $popupBlur . '" '
-        . ($showSubscribe ? 'data-subscribe-url="' . esc_attr($subscribeUrl) . '" ' : '')
-        . $styleAttr
-        . '></div>';
 }

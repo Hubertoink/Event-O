@@ -86,6 +86,18 @@ while (have_posts()) {
         foreach ($dateSlots as $slot) {
             echo '<div class="event-o-single-date-slot">' . esc_html($slot['formatted']) . '</div>';
         }
+        $primarySlot = $dateSlots[0];
+        $beginTime = !empty($primarySlot['begin_time']) ? (string) $primarySlot['begin_time'] : '';
+        if ($beginTime !== '') {
+            $tz = wp_timezone();
+            $doorTime = wp_date('H:i', (int) $primarySlot['start_ts'], $tz);
+            echo '<div class="event-o-single-schedule">';
+            if ($doorTime !== '') {
+                echo '<span>' . esc_html__('Einlass', 'event-o') . ' ' . esc_html($doorTime) . ' ' . esc_html__('Uhr', 'event-o') . '</span>';
+            }
+            echo '<span>' . esc_html__('Beginn', 'event-o') . ' ' . esc_html($beginTime) . ' ' . esc_html__('Uhr', 'event-o') . '</span>';
+            echo '</div>';
+        }
     }
     echo '</div>';
 

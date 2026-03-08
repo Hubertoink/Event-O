@@ -1,0 +1,531 @@
+/* ==========================================================================
+   Event-O Wizard – Guided Event Creation
+   ========================================================================== */
+
+.eo-wizard-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.eo-wizard-overlay.is-visible {
+    opacity: 1;
+}
+
+.eo-wizard-modal {
+    position: relative;
+    width: 680px;
+    max-width: 96vw;
+    max-height: 88vh;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    transform: translateY(20px) scale(0.97);
+    transition: transform 0.25s ease;
+    overflow: hidden;
+}
+
+.eo-wizard-overlay.is-visible .eo-wizard-modal {
+    transform: translateY(0) scale(1);
+}
+
+/* --- Progress bar --- */
+.eo-wizard-progress {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 20px 28px 0;
+    flex-shrink: 0;
+}
+
+.eo-wizard-progress-step {
+    flex: 1;
+    height: 4px;
+    background: #e0e0e0;
+    border-radius: 2px;
+    transition: background 0.3s ease;
+    margin: 0 2px;
+}
+
+.eo-wizard-progress-step.is-done {
+    background: #4f6b3a;
+}
+
+.eo-wizard-progress-step.is-active {
+    background: #6b8f50;
+}
+
+/* --- Header --- */
+.eo-wizard-header {
+    padding: 16px 28px 0;
+    flex-shrink: 0;
+}
+
+.eo-wizard-step-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #4f6b3a;
+    margin: 0 0 4px;
+}
+
+.eo-wizard-title {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1d2327;
+    margin: 0 0 4px;
+    line-height: 1.3;
+}
+
+.eo-wizard-subtitle {
+    font-size: 13px;
+    color: #757575;
+    margin: 0;
+}
+
+/* --- Body --- */
+.eo-wizard-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 28px;
+}
+
+.eo-wizard-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.eo-wizard-body::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+/* --- Fields --- */
+.eo-wizard-field {
+    margin-bottom: 18px;
+}
+
+.eo-wizard-field:last-child {
+    margin-bottom: 0;
+}
+
+.eo-wizard-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1d2327;
+    margin-bottom: 6px;
+}
+
+.eo-wizard-label .eo-required {
+    color: #d63638;
+    margin-left: 2px;
+}
+
+.eo-wizard-hint {
+    display: block;
+    font-size: 12px;
+    color: #757575;
+    margin-top: 4px;
+}
+
+.eo-wizard-begin-hint {
+    display: inline-block;
+    width: 15px;
+    height: 15px;
+    font-size: 13px;
+    line-height: 15px;
+    text-align: center;
+    color: #757575;
+    cursor: help;
+    vertical-align: middle;
+}
+
+.eo-wizard-input,
+.eo-wizard-textarea,
+.eo-wizard-select {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    border: 1px solid #c3c4c7;
+    border-radius: 6px;
+    background: #fff;
+    color: #1d2327;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    box-sizing: border-box;
+}
+
+.eo-wizard-input:focus,
+.eo-wizard-textarea:focus,
+.eo-wizard-select:focus {
+    border-color: #4f6b3a;
+    box-shadow: 0 0 0 1px #4f6b3a;
+    outline: none;
+}
+
+.eo-wizard-textarea {
+    min-height: 80px;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.eo-wizard-input.has-error {
+    border-color: #d63638;
+    box-shadow: 0 0 0 1px #d63638;
+}
+
+.eo-wizard-error-msg {
+    font-size: 12px;
+    color: #d63638;
+    margin-top: 4px;
+}
+
+/* --- Row layouts --- */
+.eo-wizard-row {
+    display: flex;
+    gap: 12px;
+}
+
+.eo-wizard-row > .eo-wizard-field {
+    flex: 1;
+    min-width: 0;
+}
+
+/* --- Checkbox/Radio groups --- */
+.eo-wizard-check-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+}
+
+.eo-wizard-check-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    color: #1d2327;
+    cursor: pointer;
+}
+
+.eo-wizard-check-item input {
+    accent-color: #4f6b3a;
+}
+
+/* --- Image upload --- */
+.eo-wizard-image-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.eo-wizard-image-thumb {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #ddd;
+}
+
+.eo-wizard-image-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.eo-wizard-image-remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    color: #fff;
+    font-size: 14px;
+    line-height: 22px;
+    text-align: center;
+    cursor: pointer;
+    padding: 0;
+}
+
+.eo-wizard-image-remove:hover {
+    background: #d63638;
+}
+
+.eo-wizard-upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    border: 1px dashed #c3c4c7;
+    border-radius: 6px;
+    background: #f6f7f7;
+    color: #2271b1;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.eo-wizard-upload-btn:hover {
+    border-color: #4f6b3a;
+    background: #f0f5ec;
+}
+
+/* --- Band rows --- */
+.eo-wizard-band-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.eo-wizard-band-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.eo-wizard-band-row input {
+    flex: 1;
+    min-width: 0;
+}
+
+.eo-wizard-band-remove {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 4px;
+    background: #f0f0f1;
+    color: #d63638;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.eo-wizard-band-remove:hover {
+    background: #fce4e4;
+}
+
+.eo-wizard-band-add {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: #2271b1;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 0;
+}
+
+.eo-wizard-band-add:hover {
+    color: #135e96;
+    text-decoration: underline;
+}
+
+/* --- Additional term toggle --- */
+.eo-wizard-add-term-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: #2271b1;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 0;
+    margin-top: 4px;
+}
+
+.eo-wizard-add-term-btn:hover {
+    color: #135e96;
+    text-decoration: underline;
+}
+
+/* --- Summary --- */
+.eo-wizard-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.eo-wizard-summary-card {
+    background: #f6f7f7;
+    border-radius: 8px;
+    padding: 14px 16px;
+    position: relative;
+}
+
+.eo-wizard-summary-card h4 {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #757575;
+    margin: 0 0 6px;
+}
+
+.eo-wizard-summary-card p {
+    margin: 2px 0;
+    font-size: 14px;
+    color: #1d2327;
+}
+
+.eo-wizard-summary-edit {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-size: 12px;
+    color: #2271b1;
+    cursor: pointer;
+    background: none;
+    border: none;
+    text-decoration: underline;
+}
+
+/* --- Footer --- */
+.eo-wizard-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 28px;
+    border-top: 1px solid #e0e0e0;
+    flex-shrink: 0;
+    background: #fafafa;
+    border-radius: 0 0 12px 12px;
+}
+
+.eo-wizard-footer-left {
+    display: flex;
+    gap: 8px;
+}
+
+.eo-wizard-footer-right {
+    display: flex;
+    gap: 8px;
+}
+
+.eo-wizard-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s, color 0.15s;
+}
+
+.eo-wizard-btn-primary {
+    background: #4f6b3a;
+    color: #fff;
+}
+
+.eo-wizard-btn-primary:hover {
+    background: #3d5530;
+}
+
+.eo-wizard-btn-secondary {
+    background: #f0f0f1;
+    color: #1d2327;
+}
+
+.eo-wizard-btn-secondary:hover {
+    background: #dcdcde;
+}
+
+.eo-wizard-btn-skip {
+    background: none;
+    color: #757575;
+    font-weight: 400;
+    padding: 10px 12px;
+}
+
+.eo-wizard-btn-skip:hover {
+    color: #1d2327;
+}
+
+.eo-wizard-btn-publish {
+    background: #2271b1;
+    color: #fff;
+}
+
+.eo-wizard-btn-publish:hover {
+    background: #135e96;
+}
+
+.eo-wizard-btn-draft {
+    background: #f0f0f1;
+    color: #1d2327;
+}
+
+.eo-wizard-btn-draft:hover {
+    background: #dcdcde;
+}
+
+/* --- Launch button (on the classic editor) --- */
+.eo-wizard-launch {
+    margin: 10px 0;
+}
+
+.eo-wizard-launch-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 6px;
+    background: #4f6b3a;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.eo-wizard-launch-btn:hover {
+    background: #3d5530;
+}
+
+.eo-wizard-launch-btn .dashicons {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+}
+
+/* --- Responsive --- */
+@media (max-width: 600px) {
+    .eo-wizard-modal {
+        max-height: 96vh;
+        border-radius: 8px;
+    }
+
+    .eo-wizard-row {
+        flex-direction: column;
+    }
+
+    .eo-wizard-header,
+    .eo-wizard-body,
+    .eo-wizard-footer {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+}

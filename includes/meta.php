@@ -6,10 +6,13 @@ if (!defined('ABSPATH')) {
 
 const EVENT_O_META_START_TS = '_event_o_start_ts';
 const EVENT_O_META_END_TS = '_event_o_end_ts';
+const EVENT_O_META_BEGIN_TIME = '_event_o_begin_time';
 const EVENT_O_META_START_TS_2 = '_event_o_start_ts_2';
 const EVENT_O_META_END_TS_2 = '_event_o_end_ts_2';
+const EVENT_O_META_BEGIN_TIME_2 = '_event_o_begin_time_2';
 const EVENT_O_META_START_TS_3 = '_event_o_start_ts_3';
 const EVENT_O_META_END_TS_3 = '_event_o_end_ts_3';
+const EVENT_O_META_BEGIN_TIME_3 = '_event_o_begin_time_3';
 const EVENT_O_META_PRICE = '_event_o_price';
 const EVENT_O_META_STATUS = '_event_o_status';
 const EVENT_O_META_BANDS = '_event_o_bands';
@@ -33,10 +36,37 @@ function event_o_register_meta(): void
 
     register_post_meta('event_o_event', EVENT_O_META_START_TS, $metaArgs);
     register_post_meta('event_o_event', EVENT_O_META_END_TS, $metaArgs);
+    register_post_meta('event_o_event', EVENT_O_META_BEGIN_TIME, [
+        'type' => 'string',
+        'single' => true,
+        'show_in_rest' => true,
+        'auth_callback' => static function () {
+            return current_user_can('edit_posts');
+        },
+        'sanitize_callback' => 'sanitize_text_field',
+    ]);
     register_post_meta('event_o_event', EVENT_O_META_START_TS_2, $metaArgs);
     register_post_meta('event_o_event', EVENT_O_META_END_TS_2, $metaArgs);
+    register_post_meta('event_o_event', EVENT_O_META_BEGIN_TIME_2, [
+        'type' => 'string',
+        'single' => true,
+        'show_in_rest' => true,
+        'auth_callback' => static function () {
+            return current_user_can('edit_posts');
+        },
+        'sanitize_callback' => 'sanitize_text_field',
+    ]);
     register_post_meta('event_o_event', EVENT_O_META_START_TS_3, $metaArgs);
     register_post_meta('event_o_event', EVENT_O_META_END_TS_3, $metaArgs);
+    register_post_meta('event_o_event', EVENT_O_META_BEGIN_TIME_3, [
+        'type' => 'string',
+        'single' => true,
+        'show_in_rest' => true,
+        'auth_callback' => static function () {
+            return current_user_can('edit_posts');
+        },
+        'sanitize_callback' => 'sanitize_text_field',
+    ]);
 
     register_post_meta('event_o_event', EVENT_O_META_PRICE, [
         'type' => 'string',
@@ -98,10 +128,13 @@ function event_o_render_event_details_metabox(WP_Post $post): void
 
     $startTs = (int) get_post_meta($post->ID, EVENT_O_META_START_TS, true);
     $endTs = (int) get_post_meta($post->ID, EVENT_O_META_END_TS, true);
+    $beginTime = (string) get_post_meta($post->ID, EVENT_O_META_BEGIN_TIME, true);
     $startTs2 = (int) get_post_meta($post->ID, EVENT_O_META_START_TS_2, true);
     $endTs2 = (int) get_post_meta($post->ID, EVENT_O_META_END_TS_2, true);
+    $beginTime2 = (string) get_post_meta($post->ID, EVENT_O_META_BEGIN_TIME_2, true);
     $startTs3 = (int) get_post_meta($post->ID, EVENT_O_META_START_TS_3, true);
     $endTs3 = (int) get_post_meta($post->ID, EVENT_O_META_END_TS_3, true);
+    $beginTime3 = (string) get_post_meta($post->ID, EVENT_O_META_BEGIN_TIME_3, true);
     $price = (string) get_post_meta($post->ID, EVENT_O_META_PRICE, true);
     $status = (string) get_post_meta($post->ID, EVENT_O_META_STATUS, true);
     $galleryRaw = (string) get_post_meta($post->ID, EVENT_O_META_GALLERY_IDS, true);
@@ -158,35 +191,69 @@ function event_o_render_event_details_metabox(WP_Post $post): void
         'soldout' => __('Sold out', 'event-o'),
     ];
 
-    echo '<fieldset style="border:1px solid #ddd;padding:10px 12px;margin-bottom:12px;border-radius:4px">';
+    $hasSecondTerm = $startTs2 > 0 || $endTs2 > 0 || $beginTime2 !== '';
+    $hasThirdTerm = $startTs3 > 0 || $endTs3 > 0 || $beginTime3 !== '';
+
+    echo '<style>';
+    echo '.event-o-term-fieldset{border:1px solid #ddd;padding:10px 12px;margin-bottom:12px;border-radius:4px}';
+    echo '.event-o-term-grid{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap}';
+    echo '.event-o-term-col{flex:1;min-width:180px}';
+    echo '.event-o-term-actions{display:flex;gap:8px;margin:0 0 12px}';
+    echo '.event-o-term-remove{margin-left:auto}';
+    echo '.event-o-term-wrapper.is-hidden{display:none}';
+    echo '.event-o-begin-hint{display:inline-block;width:16px;height:16px;border-radius:50%;background:#ddd;color:#555;font-size:11px;line-height:16px;text-align:center;cursor:help;vertical-align:middle;margin-left:4px}';
+    echo '</style>';
+
+    echo '<fieldset class="event-o-term-fieldset">';
     echo '<legend style="font-weight:600;padding:0 6px">' . esc_html__('Termin 1', 'event-o') . '</legend>';
-    echo '<div style="display:flex;gap:12px">';
-    echo '<div style="flex:1"><p><label for="event_o_start_datetime"><strong>' . esc_html__('Von', 'event-o') . '</strong></label></p>';
+    echo '<div class="event-o-term-grid">';
+    echo '<div class="event-o-term-col"><p><label for="event_o_start_datetime"><strong>' . esc_html__('Von', 'event-o') . '</strong></label></p>';
     echo '<p><input type="datetime-local" id="event_o_start_datetime" name="event_o_start_datetime" value="' . esc_attr($startValue) . '" style="width:100%" /></p></div>';
-    echo '<div style="flex:1"><p><label for="event_o_end_datetime"><strong>' . esc_html__('Bis', 'event-o') . '</strong></label></p>';
+    echo '<div class="event-o-term-col"><p><label for="event_o_end_datetime"><strong>' . esc_html__('Bis', 'event-o') . '</strong></label></p>';
     echo '<p><input type="datetime-local" id="event_o_end_datetime" name="event_o_end_datetime" value="' . esc_attr($endValue) . '" style="width:100%" /></p></div>';
+    echo '<div class="event-o-term-col"><p><label for="event_o_begin_time"><strong>' . esc_html__('Beginn', 'event-o') . '</strong> <span class="event-o-begin-hint" title="' . esc_attr__('Nur ausfüllen wenn Beginn von Einlass abweicht (z.B. Einlass 19 Uhr, Beginn 20 Uhr). Leer lassen wenn nicht benötigt.', 'event-o') . '">i</span></label></p>';
+    echo '<p><input type="time" id="event_o_begin_time" name="event_o_begin_time" value="' . esc_attr($beginTime) . '" style="width:100%" /></p></div>';
     echo '</div>';
     echo '</fieldset>';
 
-    echo '<fieldset style="border:1px solid #ddd;padding:10px 12px;margin-bottom:12px;border-radius:4px">';
+    echo '<div class="event-o-term-actions">';
+    echo '<button type="button" class="button button-secondary event-o-term-add" data-target="event_o_term_2"' . ($hasSecondTerm ? ' style="display:none"' : '') . '>+ ' . esc_html__('Termin 2 hinzufügen', 'event-o') . '</button>';
+    echo '<button type="button" class="button button-secondary event-o-term-add" data-target="event_o_term_3"' . ($hasThirdTerm || !$hasSecondTerm ? ' style="display:none"' : '') . '>+ ' . esc_html__('Termin 3 hinzufügen', 'event-o') . '</button>';
+    echo '</div>';
+
+    echo '<div id="event_o_term_2" class="event-o-term-wrapper' . ($hasSecondTerm ? '' : ' is-hidden') . '">';
+    echo '<fieldset class="event-o-term-fieldset">';
     echo '<legend style="font-weight:600;padding:0 6px">' . esc_html__('Termin 2 (optional)', 'event-o') . '</legend>';
-    echo '<div style="display:flex;gap:12px">';
-    echo '<div style="flex:1"><p><label for="event_o_start_datetime_2"><strong>' . esc_html__('Von', 'event-o') . '</strong></label></p>';
+    echo '<div class="event-o-term-grid">';
+    echo '<div class="event-o-term-col"><p><label for="event_o_start_datetime_2"><strong>' . esc_html__('Von', 'event-o') . '</strong></label></p>';
     echo '<p><input type="datetime-local" id="event_o_start_datetime_2" name="event_o_start_datetime_2" value="' . esc_attr($startValue2) . '" style="width:100%" /></p></div>';
-    echo '<div style="flex:1"><p><label for="event_o_end_datetime_2"><strong>' . esc_html__('Bis', 'event-o') . '</strong></label></p>';
+    echo '<div class="event-o-term-col"><p><label for="event_o_end_datetime_2"><strong>' . esc_html__('Bis', 'event-o') . '</strong></label></p>';
     echo '<p><input type="datetime-local" id="event_o_end_datetime_2" name="event_o_end_datetime_2" value="' . esc_attr($endValue2) . '" style="width:100%" /></p></div>';
+    echo '<div class="event-o-term-col"><p><label for="event_o_begin_time_2"><strong>' . esc_html__('Beginn', 'event-o') . '</strong> <span class="event-o-begin-hint" title="' . esc_attr__('Nur ausfüllen wenn Beginn von Einlass abweicht.', 'event-o') . '">i</span></label></p>';
+    echo '<p><input type="time" id="event_o_begin_time_2" name="event_o_begin_time_2" value="' . esc_attr($beginTime2) . '" style="width:100%" /></p></div>';
+    echo '<div class="event-o-term-col" style="flex:0 0 auto">';
+    echo '<p><button type="button" class="button-link-delete event-o-term-remove" data-target="event_o_term_2">' . esc_html__('Termin entfernen', 'event-o') . '</button></p>';
+    echo '</div>';
     echo '</div>';
     echo '</fieldset>';
+    echo '</div>';
 
-    echo '<fieldset style="border:1px solid #ddd;padding:10px 12px;margin-bottom:12px;border-radius:4px">';
+    echo '<div id="event_o_term_3" class="event-o-term-wrapper' . ($hasThirdTerm ? '' : ' is-hidden') . '">';
+    echo '<fieldset class="event-o-term-fieldset">';
     echo '<legend style="font-weight:600;padding:0 6px">' . esc_html__('Termin 3 (optional)', 'event-o') . '</legend>';
-    echo '<div style="display:flex;gap:12px">';
-    echo '<div style="flex:1"><p><label for="event_o_start_datetime_3"><strong>' . esc_html__('Von', 'event-o') . '</strong></label></p>';
+    echo '<div class="event-o-term-grid">';
+    echo '<div class="event-o-term-col"><p><label for="event_o_start_datetime_3"><strong>' . esc_html__('Von', 'event-o') . '</strong></label></p>';
     echo '<p><input type="datetime-local" id="event_o_start_datetime_3" name="event_o_start_datetime_3" value="' . esc_attr($startValue3) . '" style="width:100%" /></p></div>';
-    echo '<div style="flex:1"><p><label for="event_o_end_datetime_3"><strong>' . esc_html__('Bis', 'event-o') . '</strong></label></p>';
+    echo '<div class="event-o-term-col"><p><label for="event_o_end_datetime_3"><strong>' . esc_html__('Bis', 'event-o') . '</strong></label></p>';
     echo '<p><input type="datetime-local" id="event_o_end_datetime_3" name="event_o_end_datetime_3" value="' . esc_attr($endValue3) . '" style="width:100%" /></p></div>';
+    echo '<div class="event-o-term-col"><p><label for="event_o_begin_time_3"><strong>' . esc_html__('Beginn', 'event-o') . '</strong> <span class="event-o-begin-hint" title="' . esc_attr__('Nur ausfüllen wenn Beginn von Einlass abweicht.', 'event-o') . '">i</span></label></p>';
+    echo '<p><input type="time" id="event_o_begin_time_3" name="event_o_begin_time_3" value="' . esc_attr($beginTime3) . '" style="width:100%" /></p></div>';
+    echo '<div class="event-o-term-col" style="flex:0 0 auto">';
+    echo '<p><button type="button" class="button-link-delete event-o-term-remove" data-target="event_o_term_3">' . esc_html__('Termin entfernen', 'event-o') . '</button></p>';
+    echo '</div>';
     echo '</div>';
     echo '</fieldset>';
+    echo '</div>';
 
     echo '<p><label for="event_o_price"><strong>' . esc_html__('Price', 'event-o') . '</strong></label></p>';
     echo '<p><input type="text" id="event_o_price" name="event_o_price" value="' . esc_attr($price) . '" placeholder="z.B. Frei / 5 €" style="width:100%" /></p>';
@@ -234,6 +301,83 @@ function event_o_event_admin_scripts($hook): void
     }
 
     wp_enqueue_media();
+
+    // Wizard mode – conditionally enqueue wizard assets
+    if (get_option(EVENT_O_OPTION_WIZARD_MODE, false)) {
+        $wizVer = defined('EVENT_O_VERSION') ? EVENT_O_VERSION : '1.0.0';
+        wp_enqueue_style('event-o-wizard', EVENT_O_PLUGIN_URL . 'assets/wizard.css', [], $wizVer);
+        wp_enqueue_script('event-o-wizard', EVENT_O_PLUGIN_URL . 'assets/wizard.js', ['jquery', 'media-editor', 'wp-data', 'wp-blocks', 'wp-block-editor'], $wizVer, true);
+
+        // Per-user term restrictions (empty = all allowed)
+        $currentUserId = get_current_user_id();
+        $allowedCatSlugs = event_o_get_user_allowed_term_slugs($currentUserId, 'event_o_category');
+        $allowedVenueSlugs = event_o_get_user_allowed_term_slugs($currentUserId, 'event_o_venue');
+        $allowedOrgSlugs = event_o_get_user_allowed_term_slugs($currentUserId, 'event_o_organizer');
+
+        $catTerms = get_terms(['taxonomy' => 'event_o_category', 'hide_empty' => false]);
+        $wizCats = [];
+        if (!is_wp_error($catTerms)) {
+            foreach ($catTerms as $t) {
+                if (!empty($allowedCatSlugs) && !in_array($t->slug, $allowedCatSlugs, true)) {
+                    continue;
+                }
+                $wizCats[] = [
+                    'id'    => $t->term_id,
+                    'name'  => $t->name,
+                    'color' => get_term_meta($t->term_id, 'event_o_category_color', true) ?: '',
+                ];
+            }
+        }
+
+        $venueTerms = get_terms(['taxonomy' => 'event_o_venue', 'hide_empty' => false]);
+        $wizVenues = [];
+        if (!is_wp_error($venueTerms)) {
+            foreach ($venueTerms as $t) {
+                if (!empty($allowedVenueSlugs) && !in_array($t->slug, $allowedVenueSlugs, true)) {
+                    continue;
+                }
+                $wizVenues[] = [
+                    'id'   => $t->term_id,
+                    'name' => $t->name,
+                ];
+            }
+        }
+
+        $orgTerms = get_terms(['taxonomy' => 'event_o_organizer', 'hide_empty' => false]);
+        $wizOrgs = [];
+        if (!is_wp_error($orgTerms)) {
+            foreach ($orgTerms as $t) {
+                if (!empty($allowedOrgSlugs) && !in_array($t->slug, $allowedOrgSlugs, true)) {
+                    continue;
+                }
+                $wizOrgs[] = [
+                    'id'   => $t->term_id,
+                    'name' => $t->name,
+                ];
+            }
+        }
+
+        $isNewPost = isset($GLOBALS['pagenow']) && $GLOBALS['pagenow'] === 'post-new.php';
+
+        wp_localize_script('event-o-wizard', 'eoWizardData', [
+            'categories'       => $wizCats,
+            'venues'           => $wizVenues,
+            'organizers'       => $wizOrgs,
+            'preselectCats'    => count($wizCats) === 1 ? '1' : '0',
+            'preselectVenues'  => count($wizVenues) === 1 ? '1' : '0',
+            'preselectOrgs'    => count($wizOrgs) === 1 ? '1' : '0',
+            'isNew'      => $isNewPost ? '1' : '0',
+            'canPublish' => current_user_can('publish_posts') ? '1' : '0',
+            'texts'      => [
+                'openWizard'    => __('Event-Wizard öffnen', 'event-o'),
+                'classicEditor' => __('Klassischer Editor', 'event-o'),
+                'back'          => __('Zurück', 'event-o'),
+                'next'          => __('Weiter', 'event-o'),
+                'publish'       => current_user_can('publish_posts') ? __('Veröffentlichen', 'event-o') : __('Zur Überprüfung einreichen', 'event-o'),
+                'saveDraft'     => __('Entwurf speichern', 'event-o'),
+            ],
+        ]);
+    }
 
     wp_add_inline_script('media-editor', "
         jQuery(function($){
@@ -306,6 +450,38 @@ function event_o_event_admin_scripts($hook): void
                 writeIds(ids);
                 item.remove();
             });
+
+            function toggleAddButtons(){
+                var term2Visible = !$('#event_o_term_2').hasClass('is-hidden');
+                var term3Visible = !$('#event_o_term_3').hasClass('is-hidden');
+
+                $('.event-o-term-add[data-target=\'event_o_term_2\']').toggle(!term2Visible);
+                $('.event-o-term-add[data-target=\'event_o_term_3\']').toggle(term2Visible && !term3Visible);
+            }
+
+            $(document).on('click', '.event-o-term-add', function(e){
+                e.preventDefault();
+                var target = $('#' + $(this).data('target'));
+                target.removeClass('is-hidden');
+                toggleAddButtons();
+            });
+
+            $(document).on('click', '.event-o-term-remove', function(e){
+                e.preventDefault();
+                var targetId = $(this).data('target');
+                var wrap = $('#' + targetId);
+                wrap.find('input').val('');
+                wrap.addClass('is-hidden');
+
+                if (targetId === 'event_o_term_2') {
+                    $('#event_o_term_3').find('input').val('');
+                    $('#event_o_term_3').addClass('is-hidden');
+                }
+
+                toggleAddButtons();
+            });
+
+            toggleAddButtons();
         });
     ");
 }
@@ -330,14 +506,15 @@ function event_o_save_event_meta(int $postId): void
 
     // Parse and save up to 3 date slots
     $dateFields = [
-        ['start_field' => 'event_o_start_datetime', 'end_field' => 'event_o_end_datetime', 'start_key' => EVENT_O_META_START_TS, 'end_key' => EVENT_O_META_END_TS],
-        ['start_field' => 'event_o_start_datetime_2', 'end_field' => 'event_o_end_datetime_2', 'start_key' => EVENT_O_META_START_TS_2, 'end_key' => EVENT_O_META_END_TS_2],
-        ['start_field' => 'event_o_start_datetime_3', 'end_field' => 'event_o_end_datetime_3', 'start_key' => EVENT_O_META_START_TS_3, 'end_key' => EVENT_O_META_END_TS_3],
+        ['start_field' => 'event_o_start_datetime', 'end_field' => 'event_o_end_datetime', 'begin_field' => 'event_o_begin_time', 'start_key' => EVENT_O_META_START_TS, 'end_key' => EVENT_O_META_END_TS, 'begin_key' => EVENT_O_META_BEGIN_TIME],
+        ['start_field' => 'event_o_start_datetime_2', 'end_field' => 'event_o_end_datetime_2', 'begin_field' => 'event_o_begin_time_2', 'start_key' => EVENT_O_META_START_TS_2, 'end_key' => EVENT_O_META_END_TS_2, 'begin_key' => EVENT_O_META_BEGIN_TIME_2],
+        ['start_field' => 'event_o_start_datetime_3', 'end_field' => 'event_o_end_datetime_3', 'begin_field' => 'event_o_begin_time_3', 'start_key' => EVENT_O_META_START_TS_3, 'end_key' => EVENT_O_META_END_TS_3, 'begin_key' => EVENT_O_META_BEGIN_TIME_3],
     ];
 
     foreach ($dateFields as $df) {
         $startRaw = isset($_POST[$df['start_field']]) ? (string) $_POST[$df['start_field']] : '';
         $endRaw = isset($_POST[$df['end_field']]) ? (string) $_POST[$df['end_field']] : '';
+        $beginRaw = isset($_POST[$df['begin_field']]) ? sanitize_text_field((string) $_POST[$df['begin_field']]) : '';
 
         $startTs = 0;
         if ($startRaw !== '') {
@@ -365,6 +542,12 @@ function event_o_save_event_meta(int $postId): void
             update_post_meta($postId, $df['end_key'], $endTs);
         } else {
             delete_post_meta($postId, $df['end_key']);
+        }
+
+        if ($beginRaw !== '' && preg_match('/^\d{2}:\d{2}$/', $beginRaw)) {
+            update_post_meta($postId, $df['begin_key'], $beginRaw);
+        } else {
+            delete_post_meta($postId, $df['begin_key']);
         }
     }
 

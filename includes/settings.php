@@ -117,6 +117,14 @@ function event_o_register_settings(): void
         'default' => 'html[data-neve-theme="light"]',
     ]);
 
+    register_setting('event_o_settings', EVENT_O_OPTION_WIZARD_MODE, [
+        'type' => 'boolean',
+        'sanitize_callback' => static function ($value) {
+            return (bool) $value;
+        },
+        'default' => false,
+    ]);
+
     add_settings_section(
         'event_o_settings_design',
         __('Design', 'event-o'),
@@ -233,6 +241,18 @@ function event_o_register_settings(): void
             }
             echo '</select>';
             echo '<p class="description">' . esc_html__('Wie viele Tage nach dem Eventbeginn soll ein Event noch in den Blöcken angezeigt werden. Events werden immer mindestens bis Mitternacht des Starttages angezeigt.', 'event-o') . '</p>';
+        },
+        'event_o_settings',
+        'event_o_settings_behavior'
+    );
+
+    add_settings_field(
+        EVENT_O_OPTION_WIZARD_MODE,
+        __('Geführte Event-Eingabe', 'event-o'),
+        static function () {
+            $value = (bool) get_option(EVENT_O_OPTION_WIZARD_MODE, false);
+            echo '<label><input type="checkbox" name="' . esc_attr(EVENT_O_OPTION_WIZARD_MODE) . '" value="1" ' . checked($value, true, false) . ' /> ' . esc_html__('Geführten Wizard beim Erstellen/Bearbeiten von Events anzeigen.', 'event-o') . '</label>';
+            echo '<p class="description">' . esc_html__('Aktiviert eine schrittweise Eingabemaske (Wizard) für Redakteure. Der klassische Editor bleibt über einen Button jederzeit erreichbar.', 'event-o') . '</p>';
         },
         'event_o_settings',
         'event_o_settings_behavior'

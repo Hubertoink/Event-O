@@ -12,6 +12,7 @@ function event_o_get_frontend_block_names(): array
         'event-o/event-grid',
         'event-o/event-hero',
         'event-o/event-program',
+        'event-o/event-calendar',
     ];
 }
 

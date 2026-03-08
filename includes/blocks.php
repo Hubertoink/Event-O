@@ -95,6 +95,7 @@ function event_o_register_blocks(): void
             'showDate' => ['type' => 'boolean', 'default' => true],
             'dateVariant' => ['type' => 'string', 'default' => 'date'],
             'showDesc' => ['type' => 'boolean', 'default' => true],
+            'descWordLimit' => ['type' => 'number', 'default' => 20],
             'showButton' => ['type' => 'boolean', 'default' => true],
             'buttonStyle' => ['type' => 'string', 'default' => 'rounded'],
             'buttonText' => ['type' => 'string', 'default' => ''],
@@ -136,6 +137,26 @@ function event_o_register_blocks(): void
             'filterByVenue' => ['type' => 'boolean', 'default' => true],
             'filterByOrganizer' => ['type' => 'boolean', 'default' => true],
             'filterStyle' => ['type' => 'string', 'default' => 'dropdown'],
+            'filterCategoryColors' => ['type' => 'boolean', 'default' => false],
+        ],
+    ]);
+
+    register_block_type('event-o/event-calendar', [
+        'api_version' => 3,
+        'render_callback' => 'event_o_render_event_calendar_block',
+        'attributes' => [
+            'theme' => ['type' => 'string', 'default' => 'light'],
+            'accentColor' => ['type' => 'string', 'default' => '#4f6b3a'],
+            'calendarBgLight' => ['type' => 'string', 'default' => '#f3f5f7'],
+            'calendarBgDark' => ['type' => 'string', 'default' => '#10141a'],
+            'dayBgLight' => ['type' => 'string', 'default' => '#ffffff'],
+            'dayBgDark' => ['type' => 'string', 'default' => '#1b2330'],
+            'weekStartsMonday' => ['type' => 'boolean', 'default' => true],
+            'popupBlur' => ['type' => 'boolean', 'default' => true],
+            'showSubscribe' => ['type' => 'boolean', 'default' => true],
+            'categories' => ['type' => 'string', 'default' => ''],
+            'venues' => ['type' => 'string', 'default' => ''],
+            'organizers' => ['type' => 'string', 'default' => ''],
         ],
     ]);
 }

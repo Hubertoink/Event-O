@@ -1349,6 +1349,12 @@
 
         // Build time string
         function buildTimeStr(item) {
+            var parts = [];
+            if (item.beginTime) {
+                if (item.time) parts.push('Einlass ' + item.time + ' Uhr');
+                parts.push('Beginn ' + item.beginTime + ' Uhr');
+                return parts.join(' · ');
+            }
             if (item.time && item.timeEnd) return item.time + ' – ' + item.timeEnd + ' Uhr';
             if (item.time) return 'ab ' + item.time + ' Uhr';
             if (item.timeEnd) return 'bis ' + item.timeEnd + ' Uhr';
@@ -1374,7 +1380,7 @@
         // Venue
         var venueHtml = '';
         if (ev.venue) {
-            venueHtml = '<div class="event-o-cal-popup-venue"><span>📍</span> ' + calEscHtml(ev.venue) + '</div>';
+            venueHtml = '<div class="event-o-cal-popup-venue"><svg class="event-o-icon" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg> ' + calEscHtml(ev.venue) + '</div>';
         }
 
         // Background image (blur controlled by setting)
@@ -1409,10 +1415,10 @@
                     itemCat = '<span class="event-o-cal-popup-item-cat"' + iCatStyle + '>' + calEscHtml(item.category) + '</span>';
                 }
                 return '<a href="' + calEscAttr(item.url || '#') + '" class="event-o-cal-popup-item">'
+                    + itemStatus
                     + '<div class="event-o-cal-popup-item-title">' + calEscHtml(item.title) + ' <span class="event-o-cal-popup-arrow">→</span></div>'
                     + (itemTime ? '<div class="event-o-cal-popup-item-time">' + calEscHtml(itemTime) + '</div>' : '')
                     + itemCat
-                    + itemStatus
                     + '</a>';
             }).join('');
 
@@ -1425,6 +1431,7 @@
             popup.innerHTML =
                 bgHtml +
                 '<a href="' + calEscAttr(ev.url || '#') + '" class="event-o-cal-popup-link">' +
+                    statusHtml +
                     '<div class="event-o-cal-popup-title">' +
                         calEscHtml(ev.title) +
                         ' <span class="event-o-cal-popup-arrow">→</span>' +
@@ -1433,7 +1440,6 @@
                     categoryHtml +
                     venueHtml +
                     excerptHtml +
-                    statusHtml +
                 '</a>';
         }
 

@@ -42,6 +42,7 @@ require_once EVENT_O_PLUGIN_DIR . 'includes/meta.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/organizer-meta.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/venue-meta.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/settings.php';
+require_once EVENT_O_PLUGIN_DIR . 'includes/dashboard.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/capabilities.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/render.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/blocks.php';
@@ -66,6 +67,7 @@ add_action('admin_init', 'event_o_admin_init');
 
 function event_o_admin_menu(): void
 {
+    event_o_register_dashboard_page();
     event_o_register_settings_page();
 }
 add_action('admin_menu', 'event_o_admin_menu');

@@ -1174,6 +1174,16 @@
                 if (dayEvents.length >= 3) cell.classList.add('event-count-3plus');
                 cell._dayEvents = dayEvents;
 
+                var dots = document.createElement('div');
+                dots.className = 'event-o-cal-day-dots';
+                dayEvents.forEach(function(ev) {
+                    var dot = document.createElement('span');
+                    dot.className = 'event-o-cal-day-dot';
+                    if (ev.categoryColor) dot.style.setProperty('--dot-color', ev.categoryColor);
+                    dots.appendChild(dot);
+                });
+                cell.appendChild(dots);
+
                 dayEvents.forEach(function(ev) {
                     var el = document.createElement('div');
                     el.className = 'event-o-cal-event';
@@ -1448,27 +1458,17 @@
             popup.classList.add('is-mobile');
             popup.classList.remove('is-desktop');
 
-            var cellW = cell.offsetWidth;
-            var cellH = cell.offsetHeight;
-            var gridGapM = parseFloat(window.getComputedStyle(grid).columnGap || window.getComputedStyle(grid).gap || '0') || 0;
-            var pw = 3 * cellW + 2 * gridGapM;
-            var ph = 2 * cellH + gridGapM;
-            var topPos = cell.offsetTop + cellH + gridGapM;
-            var leftPos = cell.offsetLeft + cellW / 2 - pw / 2;
+            var viewportWidth = window.innerWidth || document.documentElement.clientWidth || 360;
+            var viewportHeight = window.innerHeight || document.documentElement.clientHeight || 640;
+            var popupWidth = Math.min(460, Math.max(320, viewportWidth - 24));
+            var popupMaxHeight = Math.max(280, viewportHeight - 32);
 
-            if (leftPos < 4) leftPos = 4;
-            if (leftPos + pw > grid.offsetWidth - 4) leftPos = grid.offsetWidth - pw - 4;
-            if (topPos + ph > grid.offsetHeight) {
-                topPos = Math.max(0, cell.offsetTop - ph - gridGapM);
-            }
-
-            var arrowLeft = (cell.offsetLeft + cellW / 2) - leftPos;
-            popup.style.setProperty('--arrow-left', arrowLeft + 'px');
-
-            popup.style.left = leftPos + 'px';
-            popup.style.top = topPos + 'px';
-            popup.style.width = pw + 'px';
-            popup.style.height = ph + 'px';
+            popup.style.removeProperty('--arrow-left');
+            popup.style.left = '50%';
+            popup.style.top = '50%';
+            popup.style.width = popupWidth + 'px';
+            popup.style.height = 'auto';
+            popup.style.maxHeight = popupMaxHeight + 'px';
         } else {
             popup.classList.add('is-desktop');
             popup.classList.remove('is-mobile');
@@ -1497,6 +1497,7 @@
             popup.style.top = topPosDesktop + 'px';
             popup.style.width = spanW + 'px';
             popup.style.height = spanH + 'px';
+            popup.style.maxHeight = '';
         }
 
         popup.style.display = 'flex';
@@ -1510,6 +1511,7 @@
         setTimeout(function() {
             popup.style.display = 'none';
             popup.classList.remove('is-mobile', 'is-desktop');
+            popup.style.maxHeight = '';
         }, 200);
         state.activeEl = null;
         state.activeCell = null;

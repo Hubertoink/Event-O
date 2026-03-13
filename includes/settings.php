@@ -102,6 +102,21 @@ function event_o_register_settings(): void
         'default' => true,
     ]);
 
+    register_setting('event_o_settings', EVENT_O_OPTION_SINGLE_TITLE_LAYOUT, [
+        'type' => 'string',
+        'sanitize_callback' => static function ($value) {
+            $allowed = ['both', 'hero', 'content'];
+            return in_array($value, $allowed, true) ? $value : 'both';
+        },
+        'default' => 'both',
+    ]);
+
+    register_setting('event_o_settings', EVENT_O_OPTION_SINGLE_SHOW_TAGS, [
+        'type' => 'boolean',
+        'sanitize_callback' => static fn($v) => (bool) $v,
+        'default' => false,
+    ]);
+
     register_setting('event_o_settings', EVENT_O_OPTION_PAST_GRACE_DAYS, [
         'type' => 'integer',
         'sanitize_callback' => static function ($v) {
@@ -223,6 +238,38 @@ function event_o_register_settings(): void
         static function () {
             $value = (bool) get_option(EVENT_O_OPTION_SINGLE_CATEGORY_COLOR, true);
             echo '<label><input type="checkbox" name="' . esc_attr(EVENT_O_OPTION_SINGLE_CATEGORY_COLOR) . '" value="1" ' . checked($value, true, false) . ' /> ' . esc_html__('Kategorien auf der Event-Einzelseite mit ihrer zugewiesenen Farbe anzeigen.', 'event-o') . '</label>';
+        },
+        'event_o_settings',
+        'event_o_settings_behavior'
+    );
+
+    add_settings_field(
+        EVENT_O_OPTION_SINGLE_TITLE_LAYOUT,
+        __('Titel-Position auf Einzelseite', 'event-o'),
+        static function () {
+            $value = (string) get_option(EVENT_O_OPTION_SINGLE_TITLE_LAYOUT, 'both');
+            $options = [
+                'both' => __('Oben im Bild und unten im Inhalt', 'event-o'),
+                'hero' => __('Nur oben im Bild', 'event-o'),
+                'content' => __('Nur unten im Inhalt', 'event-o'),
+            ];
+            echo '<select name="' . esc_attr(EVENT_O_OPTION_SINGLE_TITLE_LAYOUT) . '">';
+            foreach ($options as $key => $label) {
+                echo '<option value="' . esc_attr($key) . '"' . selected($value, $key, false) . '>' . esc_html($label) . '</option>';
+            }
+            echo '</select>';
+            echo '<p class="description">' . esc_html__('Steuert, ob der Event-Titel auf der Einzelseite im Hero-Bild, im Inhaltsbereich oder an beiden Stellen angezeigt wird.', 'event-o') . '</p>';
+        },
+        'event_o_settings',
+        'event_o_settings_behavior'
+    );
+
+    add_settings_field(
+        EVENT_O_OPTION_SINGLE_SHOW_TAGS,
+        __('Schlagwörter auf Einzelseite', 'event-o'),
+        static function () {
+            $value = (bool) get_option(EVENT_O_OPTION_SINGLE_SHOW_TAGS, false);
+            echo '<label><input type="checkbox" name="' . esc_attr(EVENT_O_OPTION_SINGLE_SHOW_TAGS) . '" value="1" ' . checked($value, true, false) . ' /> ' . esc_html__('Schlagwörter auf der Event-Einzelseite anzeigen.', 'event-o') . '</label>';
         },
         'event_o_settings',
         'event_o_settings_behavior'

@@ -15,8 +15,11 @@ const EVENT_O_META_END_TS_3 = '_event_o_end_ts_3';
 const EVENT_O_META_BEGIN_TIME_3 = '_event_o_begin_time_3';
 const EVENT_O_META_PRICE = '_event_o_price';
 const EVENT_O_META_STATUS = '_event_o_status';
+const EVENT_O_META_STATUS_LABEL = '_event_o_status_label';
 const EVENT_O_META_BANDS = '_event_o_bands';
 const EVENT_O_META_GALLERY_IDS = '_event_o_gallery_ids';
+const EVENT_O_META_HIGHLIGHT = '_event_o_highlight';
+const EVENT_O_META_HIGHLIGHT_UNTIL = '_event_o_highlight_until_ts';
 
 const EVENT_O_LEGACY_META_START_TS = '_evento_start_ts';
 const EVENT_O_LEGACY_META_END_TS = '_evento_end_ts';
@@ -88,6 +91,16 @@ function event_o_register_meta(): void
         'sanitize_callback' => 'sanitize_text_field',
     ]);
 
+    register_post_meta('event_o_event', EVENT_O_META_STATUS_LABEL, [
+        'type' => 'string',
+        'single' => true,
+        'show_in_rest' => true,
+        'auth_callback' => static function () {
+            return current_user_can('edit_posts');
+        },
+        'sanitize_callback' => 'sanitize_text_field',
+    ]);
+
     register_post_meta('event_o_event', EVENT_O_META_BANDS, [
         'type' => 'string',
         'single' => true,
@@ -107,6 +120,18 @@ function event_o_register_meta(): void
         },
         'sanitize_callback' => 'sanitize_text_field',
     ]);
+
+    register_post_meta('event_o_event', EVENT_O_META_HIGHLIGHT, [
+        'type' => 'boolean',
+        'single' => true,
+        'show_in_rest' => true,
+        'auth_callback' => static function () {
+            return current_user_can('edit_posts');
+        },
+        'sanitize_callback' => 'rest_sanitize_boolean',
+    ]);
+
+    register_post_meta('event_o_event', EVENT_O_META_HIGHLIGHT_UNTIL, $metaArgs);
 }
 
 function event_o_admin_meta_boxes(): void
@@ -137,9 +162,12 @@ function event_o_render_event_details_metabox(WP_Post $post): void
     $beginTime3 = (string) get_post_meta($post->ID, EVENT_O_META_BEGIN_TIME_3, true);
     $price = (string) get_post_meta($post->ID, EVENT_O_META_PRICE, true);
     $status = (string) get_post_meta($post->ID, EVENT_O_META_STATUS, true);
+    $statusLabel = (string) get_post_meta($post->ID, EVENT_O_META_STATUS_LABEL, true);
     $galleryRaw = (string) get_post_meta($post->ID, EVENT_O_META_GALLERY_IDS, true);
     $galleryIds = array_values(array_filter(array_map('absint', array_map('trim', explode(',', $galleryRaw))), static fn($id) => $id > 0));
     $galleryIds = array_slice(array_unique($galleryIds), 0, 2);
+    $isHighlight = (bool) get_post_meta($post->ID, EVENT_O_META_HIGHLIGHT, true);
+    $highlightUntilTs = (int) get_post_meta($post->ID, EVENT_O_META_HIGHLIGHT_UNTIL, true);
 
     // Backward compat if someone tested earlier builds.
     if ($startTs <= 0) {
@@ -182,6 +210,11 @@ function event_o_render_event_details_metabox(WP_Post $post): void
     $endValue3 = '';
     if ($endTs3 > 0) {
         $endValue3 = (new DateTimeImmutable('@' . $endTs3))->setTimezone($tz)->format('Y-m-d\\TH:i');
+    }
+
+    $highlightUntilValue = '';
+    if ($highlightUntilTs > 0) {
+        $highlightUntilValue = (new DateTimeImmutable('@' . $highlightUntilTs))->setTimezone($tz)->format('Y-m-d\\TH:i');
     }
 
     $statuses = [
@@ -264,6 +297,20 @@ function event_o_render_event_details_metabox(WP_Post $post): void
         echo '<option value="' . esc_attr($key) . '" ' . selected($status, $key, false) . '>' . esc_html($label) . '</option>';
     }
     echo '</select></p>';
+    echo '<div id="event_o_status_label_wrap" style="margin-top:8px;' . ($status === 'soldout' ? '' : 'display:none;') . '">';
+    echo '<p><label for="event_o_status_label"><strong>' . esc_html__('Text für Ausverkauft-Badge', 'event-o') . '</strong></label></p>';
+    echo '<p><input type="text" id="event_o_status_label" name="event_o_status_label" value="' . esc_attr($statusLabel) . '" placeholder="z.B. Restkarten an der Abendkasse" style="width:100%" /></p>';
+    echo '<p style="color:#666;font-size:12px;margin-top:2px">' . esc_html__('Nur relevant, wenn Status auf „Sold out“ steht. Leer = Standardtext.', 'event-o') . '</p>';
+    echo '</div>';
+
+    echo '<hr style="margin:14px 0">';
+    echo '<p><label><strong>' . esc_html__('Highlight im Hero', 'event-o') . '</strong></label></p>';
+    echo '<p><label><input type="checkbox" id="event_o_highlight" name="event_o_highlight" value="1"' . checked($isHighlight, true, false) . '> ' . esc_html__('Dieses Event im Hero bevorzugen', 'event-o') . '</label></p>';
+    echo '<div id="event_o_highlight_until_wrap" style="margin-top:8px;' . ($isHighlight ? '' : 'display:none;') . '">';
+    echo '<p><label for="event_o_highlight_until"><strong>' . esc_html__('Highlight bis', 'event-o') . '</strong></label></p>';
+    echo '<p><input type="datetime-local" id="event_o_highlight_until" name="event_o_highlight_until" value="' . esc_attr($highlightUntilValue) . '" style="width:100%" /></p>';
+    echo '<p style="color:#666;font-size:12px;margin-top:2px">' . esc_html__('Leer lassen, damit das Highlight ohne Ablaufdatum aktiv bleibt.', 'event-o') . '</p>';
+    echo '</div>';
 
     echo '<hr style="margin:14px 0">';
     echo '<p><label><strong>' . esc_html__('Event-Galerie (max. 2 zusätzliche Bilder)', 'event-o') . '</strong></label></p>';
@@ -304,9 +351,13 @@ function event_o_event_admin_scripts($hook): void
 
     // Wizard mode – conditionally enqueue wizard assets
     if (get_option(EVENT_O_OPTION_WIZARD_MODE, false)) {
-        $wizVer = defined('EVENT_O_VERSION') ? EVENT_O_VERSION : '1.0.0';
-        wp_enqueue_style('event-o-wizard', EVENT_O_PLUGIN_URL . 'assets/wizard.css', [], $wizVer);
-        wp_enqueue_script('event-o-wizard', EVENT_O_PLUGIN_URL . 'assets/wizard.js', ['jquery', 'media-editor', 'wp-data', 'wp-blocks', 'wp-block-editor'], $wizVer, true);
+        $wizardCssPath = EVENT_O_PLUGIN_DIR . 'assets/wizard.css';
+        $wizardJsPath = EVENT_O_PLUGIN_DIR . 'assets/wizard.js';
+        $wizCssVer = file_exists($wizardCssPath) ? (string) filemtime($wizardCssPath) : (defined('EVENT_O_VERSION') ? EVENT_O_VERSION : '1.0.0');
+        $wizJsVer = file_exists($wizardJsPath) ? (string) filemtime($wizardJsPath) : (defined('EVENT_O_VERSION') ? EVENT_O_VERSION : '1.0.0');
+
+        wp_enqueue_style('event-o-wizard', EVENT_O_PLUGIN_URL . 'assets/wizard.css', [], $wizCssVer);
+        wp_enqueue_script('event-o-wizard', EVENT_O_PLUGIN_URL . 'assets/wizard.js', ['jquery', 'media-editor', 'wp-data', 'wp-blocks', 'wp-block-editor'], $wizJsVer, true);
 
         // Per-user term restrictions (empty = all allowed)
         $currentUserId = get_current_user_id();
@@ -357,12 +408,25 @@ function event_o_event_admin_scripts($hook): void
             }
         }
 
+        $tagTerms = get_terms(['taxonomy' => 'post_tag', 'hide_empty' => false]);
+        $wizTags = [];
+        if (!is_wp_error($tagTerms)) {
+            foreach ($tagTerms as $t) {
+                $wizTags[] = [
+                    'id'    => $t->term_id,
+                    'name'  => $t->name,
+                    'count' => (int) $t->count,
+                ];
+            }
+        }
+
         $isNewPost = isset($GLOBALS['pagenow']) && $GLOBALS['pagenow'] === 'post-new.php';
 
         wp_localize_script('event-o-wizard', 'eoWizardData', [
             'categories'       => $wizCats,
             'venues'           => $wizVenues,
             'organizers'       => $wizOrgs,
+            'tags'             => $wizTags,
             'preselectCats'    => count($wizCats) === 1 ? '1' : '0',
             'preselectVenues'  => count($wizVenues) === 1 ? '1' : '0',
             'preselectOrgs'    => count($wizOrgs) === 1 ? '1' : '0',
@@ -459,6 +523,22 @@ function event_o_event_admin_scripts($hook): void
                 $('.event-o-term-add[data-target=\'event_o_term_3\']').toggle(term2Visible && !term3Visible);
             }
 
+            function toggleHighlightFields(){
+                var active = $('#event_o_highlight').is(':checked');
+                $('#event_o_highlight_until_wrap').toggle(active);
+                if (!active) {
+                    $('#event_o_highlight_until').val('');
+                }
+            }
+
+            function toggleStatusLabelField(){
+                var isSoldOut = $('#event_o_status').val() === 'soldout';
+                $('#event_o_status_label_wrap').toggle(isSoldOut);
+                if (!isSoldOut) {
+                    $('#event_o_status_label').val('');
+                }
+            }
+
             $(document).on('click', '.event-o-term-add', function(e){
                 e.preventDefault();
                 var target = $('#' + $(this).data('target'));
@@ -481,7 +561,12 @@ function event_o_event_admin_scripts($hook): void
                 toggleAddButtons();
             });
 
+            $(document).on('change', '#event_o_highlight', toggleHighlightFields);
+            $(document).on('change', '#event_o_status', toggleStatusLabelField);
+
             toggleAddButtons();
+            toggleHighlightFields();
+            toggleStatusLabelField();
         });
     ");
 }
@@ -563,6 +648,35 @@ function event_o_save_event_meta(int $postId): void
         update_post_meta($postId, EVENT_O_META_STATUS, $status);
     } else {
         delete_post_meta($postId, EVENT_O_META_STATUS);
+    }
+
+    $statusLabel = isset($_POST['event_o_status_label']) ? sanitize_text_field((string) $_POST['event_o_status_label']) : '';
+    if ($status === 'soldout' && $statusLabel !== '') {
+        update_post_meta($postId, EVENT_O_META_STATUS_LABEL, $statusLabel);
+    } else {
+        delete_post_meta($postId, EVENT_O_META_STATUS_LABEL);
+    }
+
+    $isHighlight = !empty($_POST['event_o_highlight']);
+    if ($isHighlight) {
+        update_post_meta($postId, EVENT_O_META_HIGHLIGHT, true);
+    } else {
+        delete_post_meta($postId, EVENT_O_META_HIGHLIGHT);
+    }
+
+    $highlightUntilRaw = isset($_POST['event_o_highlight_until']) ? (string) $_POST['event_o_highlight_until'] : '';
+    $highlightUntilTs = 0;
+    if ($isHighlight && $highlightUntilRaw !== '') {
+        $dt = DateTimeImmutable::createFromFormat('Y-m-d\\TH:i', $highlightUntilRaw, $tz);
+        if ($dt instanceof DateTimeImmutable) {
+            $highlightUntilTs = $dt->getTimestamp();
+        }
+    }
+
+    if ($highlightUntilTs > 0) {
+        update_post_meta($postId, EVENT_O_META_HIGHLIGHT_UNTIL, $highlightUntilTs);
+    } else {
+        delete_post_meta($postId, EVENT_O_META_HIGHLIGHT_UNTIL);
     }
 
     $bands = isset($_POST['event_o_bands']) ? sanitize_textarea_field((string) $_POST['event_o_bands']) : '';

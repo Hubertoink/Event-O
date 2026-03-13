@@ -219,6 +219,78 @@
     accent-color: #4f6b3a;
 }
 
+.eo-wizard-tag-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.eo-wizard-tag-selected,
+.eo-wizard-tag-quick,
+.eo-wizard-tag-search-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.eo-wizard-tag-hint {
+    margin-top: 0;
+    margin-bottom: 6px;
+}
+
+.eo-wizard-tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: #eef4e7;
+    color: #2f471f;
+    font-size: 13px;
+    line-height: 1;
+}
+
+.eo-wizard-tag-chip-remove {
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 0;
+}
+
+.eo-wizard-tag-option {
+    border: 1px solid #c3c4c7;
+    background: #fff;
+    color: #1d2327;
+    border-radius: 999px;
+    padding: 7px 11px;
+    font-size: 13px;
+    line-height: 1.1;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.eo-wizard-tag-option:hover,
+.eo-wizard-tag-option:focus {
+    border-color: #4f6b3a;
+    color: #2f471f;
+    outline: none;
+}
+
+.eo-wizard-tag-option.is-active {
+    background: #4f6b3a;
+    border-color: #4f6b3a;
+    color: #fff;
+}
+
+.eo-wizard-tag-empty {
+    font-size: 12px;
+    color: #757575;
+    padding: 2px 0;
+}
+
 /* --- Image upload --- */
 .eo-wizard-image-preview {
     display: flex;

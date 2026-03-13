@@ -125,6 +125,15 @@ function event_o_remove_capabilities(): void
 define('EVENT_O_USER_META_ALLOWED_CATS', 'event_o_allowed_categories');
 define('EVENT_O_USER_META_ALLOWED_VENUES', 'event_o_allowed_venues');
 define('EVENT_O_USER_META_ALLOWED_ORGANIZERS', 'event_o_allowed_organizers');
+define('EVENT_O_USER_META_ALLOW_STANDARD_POSTS', 'event_o_allow_standard_posts');
+
+/**
+ * Whether an Event-O contributor may also create normal WordPress posts.
+ */
+function event_o_user_has_standard_posts_access(int $userId): bool
+{
+    return (bool) get_user_meta($userId, EVENT_O_USER_META_ALLOW_STANDARD_POSTS, true);
+}
 
 /**
  * Get allowed term slugs for a user and taxonomy.
@@ -198,6 +207,7 @@ function event_o_user_profile_fields(\WP_User $user): void
     $allowedCats = event_o_get_user_allowed_term_slugs((int) $user->ID, 'event_o_category');
     $allowedVenues = event_o_get_user_allowed_term_slugs((int) $user->ID, 'event_o_venue');
     $allowedOrganizers = event_o_get_user_allowed_term_slugs((int) $user->ID, 'event_o_organizer');
+    $allowStandardPosts = event_o_user_has_standard_posts_access((int) $user->ID);
 
     echo '<h3>' . esc_html__('Event-O: Erlaubte Kategorien', 'event-o') . '</h3>';
     echo '<p class="description">' . esc_html__('Wenn nichts ausgewählt ist, kann der/die Beitragende alle Begriffe verwenden. Sonst nur die ausgewählten.', 'event-o') . '</p>';
@@ -211,6 +221,12 @@ function event_o_user_profile_fields(\WP_User $user): void
 
     echo '<p style="margin-top:14px;"><strong>' . esc_html__('Veranstalter / Organizers', 'event-o') . '</strong></p>';
     event_o_render_allowed_terms_checkboxes('event_o_organizer', 'event_o_allowed_organizers', $allowedOrganizers);
+
+    echo '<p style="margin-top:18px;"><strong>' . esc_html__('WordPress Beiträge', 'event-o') . '</strong></p>';
+    echo '<label style="display:block;margin-bottom:6px;">';
+    echo '<input type="checkbox" name="event_o_allow_standard_posts" value="1"' . checked($allowStandardPosts, true, false) . '> ';
+    echo esc_html__('Darf auch normale WordPress-Beiträge erstellen und bearbeiten', 'event-o');
+    echo '</label>';
 
     echo '</td></tr></table>';
 }
@@ -243,12 +259,181 @@ function event_o_save_user_profile_fields(int $userId): void
         ? array_map('sanitize_title', $_POST['event_o_allowed_organizers'])
         : [];
 
+    $allowStandardPosts = !empty($_POST['event_o_allow_standard_posts']);
+
     update_user_meta($userId, EVENT_O_USER_META_ALLOWED_CATS, array_values(array_unique(array_filter($allowedCats))));
     update_user_meta($userId, EVENT_O_USER_META_ALLOWED_VENUES, array_values(array_unique(array_filter($allowedVenues))));
     update_user_meta($userId, EVENT_O_USER_META_ALLOWED_ORGANIZERS, array_values(array_unique(array_filter($allowedOrganizers))));
+    update_user_meta($userId, EVENT_O_USER_META_ALLOW_STANDARD_POSTS, $allowStandardPosts ? '1' : '0');
 }
 add_action('personal_options_update', 'event_o_save_user_profile_fields');
 add_action('edit_user_profile_update', 'event_o_save_user_profile_fields');
+
+/**
+ * Optionally allow Event-O contributors to also manage standard WP posts.
+ */
+function event_o_maybe_grant_standard_post_caps(array $allcaps, array $caps, array $args, \WP_User $user): array
+{
+    if (!$user->exists() || !in_array('event_o_contributor', (array) $user->roles, true)) {
+        return $allcaps;
+    }
+
+    if (!event_o_user_has_standard_posts_access((int) $user->ID)) {
+        return $allcaps;
+    }
+
+    $allcaps['edit_posts'] = true;
+    $allcaps['delete_posts'] = true;
+    $allcaps['create_posts'] = true;
+
+    return $allcaps;
+}
+add_filter('user_has_cap', 'event_o_maybe_grant_standard_post_caps', 20, 4);
+
+/**
+ * Add Event-O event counts to the users list table.
+ */
+function event_o_add_users_event_column(array $columns): array
+{
+    $updated = [];
+
+    foreach ($columns as $key => $label) {
+        if ($key === 'posts') {
+            $updated['event_o_events'] = __('Event-O Events', 'event-o');
+        }
+
+        $updated[$key] = $label;
+    }
+
+    if (!isset($updated['event_o_events'])) {
+        $updated['event_o_events'] = __('Event-O Events', 'event-o');
+    }
+
+    return $updated;
+}
+add_filter('manage_users_columns', 'event_o_add_users_event_column');
+
+/**
+ * Collect Event-O event counts for the currently visible users.
+ *
+ * Returns:
+ * [ user_id => [ 'total' => int, 'publish' => int ] ]
+ */
+function event_o_get_users_page_event_counts(array $fallbackUserIds = []): array
+{
+    static $cache = null;
+
+    if (is_array($cache)) {
+        return $cache;
+    }
+
+    global $wpdb, $wp_list_table;
+
+    $userIds = [];
+    if (isset($wp_list_table) && isset($wp_list_table->items) && is_array($wp_list_table->items)) {
+        foreach ($wp_list_table->items as $user) {
+            if (isset($user->ID)) {
+                $userIds[] = (int) $user->ID;
+            }
+        }
+    }
+
+    if (empty($userIds)) {
+        $userIds = array_map('intval', $fallbackUserIds);
+    }
+
+    $userIds = array_values(array_filter(array_unique($userIds), static fn($userId) => $userId > 0));
+    $cache = [];
+
+    if (empty($userIds)) {
+        return $cache;
+    }
+
+    foreach ($userIds as $userId) {
+        $cache[$userId] = [
+            'total' => 0,
+            'publish' => 0,
+        ];
+    }
+
+    $placeholders = implode(', ', array_fill(0, count($userIds), '%d'));
+    $sql = $wpdb->prepare(
+        "SELECT post_author, post_status, COUNT(ID) AS event_count
+         FROM {$wpdb->posts}
+         WHERE post_type = %s
+           AND post_author IN ($placeholders)
+           AND post_status NOT IN ('auto-draft', 'trash', 'inherit')
+         GROUP BY post_author, post_status",
+        array_merge(['event_o_event'], $userIds)
+    );
+
+    $rows = $wpdb->get_results($sql);
+    if (!is_array($rows)) {
+        return $cache;
+    }
+
+    foreach ($rows as $row) {
+        $authorId = isset($row->post_author) ? (int) $row->post_author : 0;
+        $status = isset($row->post_status) ? (string) $row->post_status : '';
+        $count = isset($row->event_count) ? (int) $row->event_count : 0;
+
+        if ($authorId <= 0 || !isset($cache[$authorId])) {
+            continue;
+        }
+
+        $cache[$authorId]['total'] += $count;
+        if ($status === 'publish') {
+            $cache[$authorId]['publish'] += $count;
+        }
+    }
+
+    return $cache;
+}
+
+/**
+ * Render the Event-O event count column in the users table.
+ */
+function event_o_render_users_event_column(string $output, string $columnName, int $userId): string
+{
+    if ($columnName !== 'event_o_events') {
+        return $output;
+    }
+
+    $counts = event_o_get_users_page_event_counts([$userId]);
+    $userCounts = $counts[$userId] ?? ['total' => 0, 'publish' => 0];
+    $total = (int) $userCounts['total'];
+    $published = (int) $userCounts['publish'];
+
+    if ($total <= 0) {
+        return '0';
+    }
+
+    $eventsUrl = add_query_arg([
+        'post_type' => 'event_o_event',
+        'author' => $userId,
+    ], admin_url('edit.php'));
+
+    $publishedHtml = sprintf(
+        /* translators: %d = number of published events */
+        __('%d veröffentlicht', 'event-o'),
+        $published
+    );
+
+    if (!current_user_can('edit_event_o_events')) {
+        return sprintf(
+            /* translators: 1: total event count, 2: published event count */
+            __('%1$d gesamt, %2$s', 'event-o'),
+            $total,
+            $publishedHtml
+        );
+    }
+
+    return '<a href="' . esc_url($eventsUrl) . '"><strong>' . esc_html((string) $total) . '</strong></a>'
+        . '<div style="color:#646970;font-size:12px;line-height:1.4">'
+        . esc_html($publishedHtml)
+        . '</div>';
+}
+add_filter('manage_users_custom_column', 'event_o_render_users_event_column', 10, 3);
 
 /* ──────────────────────────────────────────────
    4. Restrict categories on save (server-side)

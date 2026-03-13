@@ -528,8 +528,10 @@
             // Drag state
             var isDragging = false;
             var startX = 0;
+            var startY = 0;
             var scrollStart = 0;
             var dragDelta = 0;
+            var touchAxis = null;
 
             // --- Infinite scroll: clone first and last slides ---
             var cloneLast = realSlides[slideCount - 1].cloneNode(true);
@@ -693,17 +695,42 @@
             viewport.addEventListener('touchstart', function (e) {
                 if (isAnimating) return;
                 startX = e.touches[0].pageX;
+                startY = e.touches[0].pageY;
                 scrollStart = viewport.scrollLeft;
                 dragDelta = 0;
+                touchAxis = null;
                 isDragging = true;
-                viewport.classList.add('is-dragging');
                 stopAutoPlay();
             }, { passive: true });
 
             viewport.addEventListener('touchmove', function (e) {
                 if (!isDragging) return;
-                e.preventDefault();
                 var dx = e.touches[0].pageX - startX;
+                var dy = e.touches[0].pageY - startY;
+
+                if (touchAxis === null) {
+                    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) {
+                        return;
+                    }
+
+                    touchAxis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+
+                    if (touchAxis === 'y') {
+                        isDragging = false;
+                        startAutoPlay();
+                        return;
+                    }
+
+                    startX = e.touches[0].pageX;
+                    scrollStart = viewport.scrollLeft;
+                    dragDelta = 0;
+                    viewport.classList.add('is-dragging');
+                    return;
+                }
+
+                if (touchAxis !== 'x') return;
+
+                e.preventDefault();
                 dragDelta = dx;
                 viewport.scrollLeft = scrollStart - dx;
             }, { passive: false });
@@ -711,6 +738,13 @@
             viewport.addEventListener('touchend', function () {
                 if (!isDragging) return;
                 isDragging = false;
+
+                if (touchAxis !== 'x') {
+                    viewport.classList.remove('is-dragging');
+                    touchAxis = null;
+                    startAutoPlay();
+                    return;
+                }
 
                 var minDrag = 30;
                 if (dragDelta < -minDrag) {
@@ -720,6 +754,15 @@
                 } else {
                     scrollToSlide(currentIndex);
                 }
+                touchAxis = null;
+                startAutoPlay();
+            }, { passive: true });
+
+            viewport.addEventListener('touchcancel', function () {
+                if (!isDragging) return;
+                isDragging = false;
+                touchAxis = null;
+                viewport.classList.remove('is-dragging');
                 startAutoPlay();
             }, { passive: true });
 
@@ -992,6 +1035,41 @@
         return window.matchMedia('(max-width: 768px)').matches;
     }
 
+    function calGetCategoryColors(item) {
+        if (!item || !Array.isArray(item.categories)) return [];
+
+        return item.categories
+            .map(function (category) {
+                return category && category.color ? String(category.color).trim() : '';
+            })
+            .filter(function (color, index, colors) {
+                return color !== '' && colors.indexOf(color) === index;
+            });
+    }
+
+    function calBuildCategoryGradient(item) {
+        var colors = calGetCategoryColors(item);
+        if (!colors.length) return item && item.categoryColor ? item.categoryColor : '';
+        if (colors.length === 1) return colors[0];
+
+        return 'linear-gradient(135deg, ' + colors.map(function (color, index) {
+            var position = Math.round((index / (colors.length - 1)) * 100);
+            return color + ' ' + position + '%';
+        }).join(', ') + ')';
+    }
+
+    function calRenderCategoryLabels(item, itemClass, separatorClass) {
+        if (!item || !Array.isArray(item.categories) || !item.categories.length) return '';
+
+        return item.categories.map(function (category, index) {
+            if (!category || !category.name) return '';
+
+            var label = '<span class="' + itemClass + '"' + (category.color ? ' style="color:' + calEscAttr(category.color) + '"' : '') + '>' + calEscHtml(category.name) + '</span>';
+            if (index === 0) return label;
+            return '<span class="' + separatorClass + '"> / </span>' + label;
+        }).join('');
+    }
+
     function initEventCalendars() {
         var wrappers = document.querySelectorAll('.event-o-cal-wrap');
         for (var i = 0; i < wrappers.length; i++) {
@@ -1036,6 +1114,9 @@
         var header = document.createElement('div');
         header.className = 'event-o-cal-header';
 
+        var titleNav = document.createElement('div');
+        titleNav.className = 'event-o-cal-title-nav';
+
         var prevBtn = document.createElement('button');
         prevBtn.className = 'event-o-cal-nav prev';
         prevBtn.innerHTML = '&#8249;';
@@ -1060,8 +1141,10 @@
         label.className = 'event-o-cal-month-label';
         label.textContent = CAL_MONTHS_DE[state.month] + ' ' + state.year;
 
-        header.appendChild(prevBtn);
-        header.appendChild(label);
+        titleNav.appendChild(prevBtn);
+        titleNav.appendChild(label);
+        titleNav.appendChild(nextBtn);
+        header.appendChild(titleNav);
 
         /* Subscribe button (optional) */
         if (state.subscribeUrl) {
@@ -1113,8 +1196,6 @@
             subWrap.appendChild(subMenu);
             header.appendChild(subWrap);
         }
-
-        header.appendChild(nextBtn);
         wrap.appendChild(header);
 
         /* Grid */
@@ -1169,6 +1250,10 @@
 
             var dayEvents = state.eventsMap[dateStr];
             if (dayEvents && dayEvents.length) {
+                var maxVisibleDayEvents = 2;
+                var visibleDayEvents = dayEvents.slice(0, maxVisibleDayEvents);
+                var hiddenDayEventsCount = Math.max(0, dayEvents.length - visibleDayEvents.length);
+
                 cell.classList.add('has-events');
                 if (dayEvents.length === 2) cell.classList.add('event-count-2');
                 if (dayEvents.length >= 3) cell.classList.add('event-count-3plus');
@@ -1179,17 +1264,22 @@
                 dayEvents.forEach(function(ev) {
                     var dot = document.createElement('span');
                     dot.className = 'event-o-cal-day-dot';
-                    if (ev.categoryColor) dot.style.setProperty('--dot-color', ev.categoryColor);
+                    var dotGradient = calBuildCategoryGradient(ev);
+                    if (dotGradient) dot.style.background = dotGradient;
                     dots.appendChild(dot);
                 });
                 cell.appendChild(dots);
 
-                dayEvents.forEach(function(ev) {
+                var eventsWrap = document.createElement('div');
+                eventsWrap.className = 'event-o-cal-day-events';
+
+                visibleDayEvents.forEach(function(ev) {
                     var el = document.createElement('div');
                     el.className = 'event-o-cal-event';
                     if (ev.cancelled) el.classList.add('is-cancelled');
                     if (ev.soldOut) el.classList.add('is-sold-out');
-                    if (ev.categoryColor) el.style.setProperty('--ev-cat-color', ev.categoryColor);
+                    var eventGradient = calBuildCategoryGradient(ev);
+                    if (eventGradient) el.style.background = eventGradient;
                     el.dataset.eventId = ev.id;
 
                     var html = '';
@@ -1201,8 +1291,18 @@
 
                     el._eventData = ev;
                     el._dayEvents = dayEvents;
-                    cell.appendChild(el);
+                    eventsWrap.appendChild(el);
                 });
+
+                if (hiddenDayEventsCount > 0) {
+                    var moreEl = document.createElement('div');
+                    moreEl.className = 'event-o-cal-more';
+                    moreEl.textContent = '+' + hiddenDayEventsCount;
+                    moreEl.title = hiddenDayEventsCount + ' weitere Events';
+                    eventsWrap.appendChild(moreEl);
+                }
+
+                cell.appendChild(eventsWrap);
             }
 
             grid.appendChild(cell);
@@ -1375,16 +1475,16 @@
         // Status badge
         var statusHtml = '';
         if (ev.cancelled) {
-            statusHtml = '<span class="event-o-cal-popup-badge cancelled">Abgesagt</span>';
+            statusHtml = '<span class="event-o-cal-popup-badge cancelled">' + calEscHtml(ev.statusLabel || 'Abgesagt') + '</span>';
         } else if (ev.soldOut) {
-            statusHtml = '<span class="event-o-cal-popup-badge sold-out">Ausgebucht</span>';
+            statusHtml = '<span class="event-o-cal-popup-badge sold-out">' + calEscHtml(ev.statusLabel || 'Ausverkauft') + '</span>';
         }
 
         // Category badge
         var categoryHtml = '';
         if (ev.category) {
-            var catStyle = ev.categoryColor ? ' style="--cat-color:' + calEscAttr(ev.categoryColor) + '"' : '';
-            categoryHtml = '<div class="event-o-cal-popup-category"' + catStyle + '>' + calEscHtml(ev.category) + '</div>';
+            var categoryLabels = calRenderCategoryLabels(ev, 'event-o-cal-popup-category-item', 'event-o-cal-popup-category-sep');
+            categoryHtml = '<div class="event-o-cal-popup-category">' + (categoryLabels || calEscHtml(ev.category)) + '</div>';
         }
 
         // Venue
@@ -1415,14 +1515,14 @@
                 var itemTime = buildTimeStr(item);
                 var itemStatus = '';
                 if (item.cancelled) {
-                    itemStatus = '<span class="event-o-cal-popup-badge cancelled">Abgesagt</span>';
+                    itemStatus = '<span class="event-o-cal-popup-badge cancelled">' + calEscHtml(item.statusLabel || 'Abgesagt') + '</span>';
                 } else if (item.soldOut) {
-                    itemStatus = '<span class="event-o-cal-popup-badge sold-out">Ausgebucht</span>';
+                    itemStatus = '<span class="event-o-cal-popup-badge sold-out">' + calEscHtml(item.statusLabel || 'Ausverkauft') + '</span>';
                 }
                 var itemCat = '';
                 if (item.category) {
-                    var iCatStyle = item.categoryColor ? ' style="--cat-color:' + calEscAttr(item.categoryColor) + '"' : '';
-                    itemCat = '<span class="event-o-cal-popup-item-cat"' + iCatStyle + '>' + calEscHtml(item.category) + '</span>';
+                    var itemCategoryLabels = calRenderCategoryLabels(item, 'event-o-cal-popup-item-cat-part', 'event-o-cal-popup-item-cat-sep');
+                    itemCat = '<span class="event-o-cal-popup-item-cat">' + (itemCategoryLabels || calEscHtml(item.category)) + '</span>';
                 }
                 return '<a href="' + calEscAttr(item.url || '#') + '" class="event-o-cal-popup-item">'
                     + itemStatus
@@ -1476,14 +1576,23 @@
             var cw = cell.offsetWidth;
             var ch = cell.offsetHeight;
             var gridGap = parseFloat(window.getComputedStyle(grid).columnGap || window.getComputedStyle(grid).gap || '0') || 0;
-            var spanW = 2 * cw + gridGap;
-            var spanH = 2 * ch + gridGap;
+            var spanCols = 3;
+            var spanRows = 3;
+            var spanW = (spanCols * cw) + ((spanCols - 1) * gridGap);
+            var spanH = (spanRows * ch) + ((spanRows - 1) * gridGap);
             var left;
+            var rightSideLeft = cell.offsetLeft + cw + gridGap;
+            var leftSideLeft = cell.offsetLeft - spanW - gridGap;
+            var centeredLeft = cell.offsetLeft - ((spanW - cw) / 2);
+            var fitsRight = rightSideLeft + spanW <= grid.offsetWidth;
+            var fitsLeft = leftSideLeft >= 0;
 
-            if (col <= 4) {
-                left = cell.offsetLeft + cw + gridGap;
+            if (fitsRight) {
+                left = rightSideLeft;
+            } else if (fitsLeft) {
+                left = leftSideLeft;
             } else {
-                left = cell.offsetLeft - spanW - gridGap;
+                left = centeredLeft;
             }
             if (left < 0) left = 0;
             if (left + spanW > grid.offsetWidth) left = grid.offsetWidth - spanW;

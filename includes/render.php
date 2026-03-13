@@ -16,6 +16,11 @@ function event_o_parse_slug_list(string $raw): array
  */
 function event_o_collect_filter_terms(WP_Query $q, array $attrs): array
 {
+    return event_o_collect_filter_terms_from_posts($q->posts, $attrs);
+}
+
+function event_o_collect_filter_terms_from_posts(array $posts, array $attrs): array
+{
     $filterByCategory = !empty($attrs['filterByCategory']);
     $filterByVenue = !empty($attrs['filterByVenue']);
     $filterByOrganizer = !empty($attrs['filterByOrganizer']);
@@ -24,7 +29,6 @@ function event_o_collect_filter_terms(WP_Query $q, array $attrs): array
     $venues = [];
     $organizers = [];
 
-    $posts = $q->posts;
     foreach ($posts as $post) {
         $pid = $post->ID;
 
@@ -202,7 +206,7 @@ function event_o_get_filter_data_attrs(int $postId): string
          . ' data-organizers="' . esc_attr(implode(',', $orgSlugs)) . '"';
 }
 
-function event_o_event_query(array $attrs): WP_Query
+function event_o_get_event_query_args(array $attrs, ?int $postsPerPage = null): array
 {
     $perPage = isset($attrs['perPage']) ? max(1, (int) $attrs['perPage']) : 10;
     $showPast = !empty($attrs['showPast']);
@@ -257,7 +261,7 @@ function event_o_event_query(array $attrs): WP_Query
     $args = [
         'post_type' => 'event_o_event',
         'post_status' => 'publish',
-        'posts_per_page' => $perPage,
+        'posts_per_page' => $postsPerPage !== null ? $postsPerPage : $perPage,
         'meta_key' => EVENT_O_META_START_TS,
         'orderby' => 'meta_value_num',
         'order' => $order,
@@ -271,7 +275,75 @@ function event_o_event_query(array $attrs): WP_Query
         $args['tax_query'] = $taxQuery;
     }
 
-    return new WP_Query($args);
+    return $args;
+}
+
+function event_o_event_query(array $attrs): WP_Query
+{
+    return new WP_Query(event_o_get_event_query_args($attrs));
+}
+
+function event_o_is_event_highlight_active(int $postId): bool
+{
+    $isHighlight = (bool) get_post_meta($postId, EVENT_O_META_HIGHLIGHT, true);
+    if (!$isHighlight) {
+        return false;
+    }
+
+    $highlightUntilTs = (int) get_post_meta($postId, EVENT_O_META_HIGHLIGHT_UNTIL, true);
+    if ($highlightUntilTs > 0 && $highlightUntilTs < time()) {
+        return false;
+    }
+
+    return true;
+}
+
+function event_o_get_hero_display_posts(array $attrs): array
+{
+    $perPage = isset($attrs['perPage']) ? max(1, (int) $attrs['perPage']) : 5;
+    $onePerCategory = !empty($attrs['onePerCategory']);
+    $preferHighlights = !array_key_exists('preferHighlights', $attrs) || !empty($attrs['preferHighlights']);
+    $query = new WP_Query(event_o_get_event_query_args($attrs, -1));
+    $orderedPosts = $query->posts;
+
+    if ($preferHighlights && count($orderedPosts) > 1) {
+        $highlightedPosts = [];
+        $regularPosts = [];
+
+        foreach ($orderedPosts as $post) {
+            if (event_o_is_event_highlight_active($post->ID)) {
+                $highlightedPosts[] = $post;
+            } else {
+                $regularPosts[] = $post;
+            }
+        }
+
+        $orderedPosts = array_merge($highlightedPosts, $regularPosts);
+    }
+
+    if (!$onePerCategory) {
+        return array_slice($orderedPosts, 0, $perPage);
+    }
+
+    $displayPosts = [];
+    $seenCategories = [];
+
+    foreach ($orderedPosts as $post) {
+        $categoryName = event_o_get_first_term_name($post->ID, 'event_o_category');
+        if ($categoryName !== '' && in_array($categoryName, $seenCategories, true)) {
+            continue;
+        }
+        if ($categoryName !== '') {
+            $seenCategories[] = $categoryName;
+        }
+
+        $displayPosts[] = $post;
+        if (count($displayPosts) >= $perPage) {
+            break;
+        }
+    }
+
+    return $displayPosts;
 }
 
 function event_o_format_event_datetime(int $startTs, int $endTs = 0): string
@@ -291,6 +363,48 @@ function event_o_format_event_datetime(int $startTs, int $endTs = 0): string
     }
 
     return $out;
+}
+
+function event_o_normalize_event_status(string $status): string
+{
+    $status = strtolower(trim($status));
+    if ($status === 'sold-out') {
+        return 'soldout';
+    }
+    return $status;
+}
+
+function event_o_get_event_status(int $postId): string
+{
+    $status = (string) get_post_meta($postId, EVENT_O_META_STATUS, true);
+    if ($status === '') {
+        $status = (string) get_post_meta($postId, EVENT_O_LEGACY_META_STATUS, true);
+    }
+
+    return event_o_normalize_event_status($status);
+}
+
+function event_o_get_event_status_label(int $postId, string $status = ''): string
+{
+    $status = $status !== '' ? event_o_normalize_event_status($status) : event_o_get_event_status($postId);
+    if ($status === '' || $status === 'normal' || $status === 'scheduled') {
+        return '';
+    }
+
+    if ($status === 'soldout') {
+        $customLabel = trim((string) get_post_meta($postId, EVENT_O_META_STATUS_LABEL, true));
+        if ($customLabel !== '') {
+            return $customLabel;
+        }
+    }
+
+    $statusLabels = [
+        'cancelled' => __('Abgesagt', 'event-o'),
+        'postponed' => __('Verschoben', 'event-o'),
+        'soldout' => __('Ausverkauft', 'event-o'),
+    ];
+
+    return $statusLabels[$status] ?? mb_strtoupper($status);
 }
 
 /**
@@ -562,19 +676,147 @@ function event_o_render_event_bg_crossfade(array $urls, string $wrapperClass = '
     return $out;
 }
 
-function event_o_get_first_term_name(int $postId, string $taxonomy): string
+function event_o_get_event_terms(int $postId, string $taxonomy): array
 {
     $terms = get_the_terms($postId, $taxonomy);
     if (!is_array($terms) || !$terms) {
-        return '';
+        return [];
     }
 
-    $first = array_shift($terms);
+    return array_values(array_filter($terms, static function ($term) {
+        return $term instanceof WP_Term && !empty($term->name);
+    }));
+}
+
+function event_o_get_first_term_name(int $postId, string $taxonomy): string
+{
+    $terms = event_o_get_event_terms($postId, $taxonomy);
+    $first = $terms[0] ?? null;
     if (!$first || empty($first->name)) {
         return '';
     }
 
     return (string) $first->name;
+}
+
+function event_o_get_event_category_terms(int $postId): array
+{
+    return event_o_get_event_terms($postId, 'event_o_category');
+}
+
+function event_o_get_event_tag_terms(int $postId): array
+{
+    return event_o_get_event_terms($postId, 'post_tag');
+}
+
+function event_o_get_event_category_names(int $postId): array
+{
+    return array_map(static function (WP_Term $term): string {
+        return (string) $term->name;
+    }, event_o_get_event_category_terms($postId));
+}
+
+function event_o_get_event_category_details(int $postId): array
+{
+    $details = [];
+
+    foreach (event_o_get_event_category_terms($postId) as $term) {
+        $details[] = [
+            'name' => (string) $term->name,
+            'color' => (string) get_term_meta($term->term_id, 'event_o_category_color', true),
+        ];
+    }
+
+    return $details;
+}
+
+function event_o_render_event_category_labels(int $postId, array $args = []): string
+{
+    $terms = event_o_get_event_category_terms($postId);
+    $fallback = isset($args['fallback']) ? (string) $args['fallback'] : '';
+    $wrapperClass = isset($args['wrapper_class']) ? (string) $args['wrapper_class'] : '';
+    $itemClass = isset($args['item_class']) ? (string) $args['item_class'] : 'event-o-category-hint';
+    $uppercase = !empty($args['uppercase']);
+    $useColors = !array_key_exists('use_colors', $args) || !empty($args['use_colors']);
+    $parentheses = !empty($args['parentheses']);
+
+    if (!$terms && $fallback === '') {
+        return '';
+    }
+
+    $items = [];
+
+    if ($terms) {
+        foreach ($terms as $term) {
+            $label = (string) $term->name;
+            if ($uppercase) {
+                $label = mb_strtoupper($label);
+            }
+            if ($parentheses) {
+                $label = '(' . $label . ')';
+            }
+
+            $style = '';
+            if ($useColors) {
+                $termColor = (string) get_term_meta($term->term_id, 'event_o_category_color', true);
+                if ($termColor !== '') {
+                    $style = ' style="color:' . esc_attr($termColor) . '"';
+                }
+            }
+
+            $items[] = '<span class="' . esc_attr($itemClass) . '"' . $style . '>' . esc_html($label) . '</span>';
+        }
+    } elseif ($fallback !== '') {
+        $label = $uppercase ? mb_strtoupper($fallback) : $fallback;
+        if ($parentheses) {
+            $label = '(' . $label . ')';
+        }
+        $items[] = '<span class="' . esc_attr($itemClass) . '">' . esc_html($label) . '</span>';
+    }
+
+    if (!$items) {
+        return '';
+    }
+
+    $html = implode('', $items);
+    if ($wrapperClass !== '') {
+        $html = '<div class="' . esc_attr($wrapperClass) . '">' . $html . '</div>';
+    }
+
+    return $html;
+}
+
+function event_o_render_event_tag_links(int $postId, array $args = []): string
+{
+    $terms = event_o_get_event_tag_terms($postId);
+    if (!$terms) {
+        return '';
+    }
+
+    $wrapperClass = isset($args['wrapper_class']) ? (string) $args['wrapper_class'] : 'event-o-tag-list';
+    $label = isset($args['label']) ? (string) $args['label'] : __('Schlagwörter:', 'event-o');
+    $labelClass = isset($args['label_class']) ? (string) $args['label_class'] : 'event-o-tag-label';
+    $itemsClass = isset($args['items_class']) ? (string) $args['items_class'] : 'event-o-tag-items';
+    $itemClass = isset($args['item_class']) ? (string) $args['item_class'] : 'event-o-tag-chip';
+
+    $links = [];
+    foreach ($terms as $term) {
+        $termLink = get_term_link($term);
+        if (is_wp_error($termLink)) {
+            continue;
+        }
+
+        $links[] = '<a class="' . esc_attr($itemClass) . '" href="' . esc_url($termLink) . '">' . esc_html($term->name) . '</a>';
+    }
+
+    if (!$links) {
+        return '';
+    }
+
+    return '<div class="' . esc_attr($wrapperClass) . '">'
+        . '<span class="' . esc_attr($labelClass) . '">' . esc_html($label) . '</span>'
+        . '<div class="' . esc_attr($itemsClass) . '">' . implode('', $links) . '</div>'
+        . '</div>';
 }
 
 /**
@@ -583,14 +825,12 @@ function event_o_get_first_term_name(int $postId, string $taxonomy): string
  */
 function event_o_get_first_category_color(int $postId): string
 {
-    $terms = get_the_terms($postId, 'event_o_category');
-    if (!is_array($terms) || !$terms) {
-        return '';
-    }
-    $first = array_shift($terms);
+    $terms = event_o_get_event_category_terms($postId);
+    $first = $terms[0] ?? null;
     if (!$first) {
         return '';
     }
+
     $color = get_term_meta($first->term_id, 'event_o_category_color', true);
     return is_string($color) ? $color : '';
 }
@@ -691,47 +931,6 @@ function event_o_get_outlook_calendar_url(string $title, int $startTs, int $endT
 }
 
 /**
- * Generate iCal (.ics) data URL.
- */
-function event_o_get_ical_data(string $title, int $startTs, int $endTs, string $description = '', string $location = '', string $url = ''): string
-{
-    $start = gmdate('Ymd\THis\Z', $startTs);
-    
-    // If no end time, default to 2 hours after start
-    if ($endTs <= 0) {
-        $endTs = $startTs + 7200;
-    }
-    $end = gmdate('Ymd\THis\Z', $endTs);
-    $now = gmdate('Ymd\THis\Z');
-    $uid = md5($startTs . $title) . '@event-o';
-
-    $ical = "BEGIN:VCALENDAR\r\n";
-    $ical .= "VERSION:2.0\r\n";
-    $ical .= "PRODID:-//Event_O//Event_O Plugin//DE\r\n";
-    $ical .= "BEGIN:VEVENT\r\n";
-    $ical .= "UID:" . $uid . "\r\n";
-    $ical .= "DTSTAMP:" . $now . "\r\n";
-    $ical .= "DTSTART:" . $start . "\r\n";
-    $ical .= "DTEND:" . $end . "\r\n";
-    $ical .= "SUMMARY:" . event_o_ical_escape($title) . "\r\n";
-    
-    if ($description) {
-        $ical .= "DESCRIPTION:" . event_o_ical_escape($description) . "\r\n";
-    }
-    if ($location) {
-        $ical .= "LOCATION:" . event_o_ical_escape($location) . "\r\n";
-    }
-    if ($url) {
-        $ical .= "URL:" . $url . "\r\n";
-    }
-    
-    $ical .= "END:VEVENT\r\n";
-    $ical .= "END:VCALENDAR\r\n";
-
-    return 'data:text/calendar;charset=utf-8,' . rawurlencode($ical);
-}
-
-/**
  * Escape string for iCal format.
  */
 function event_o_ical_escape(string $str): string
@@ -750,16 +949,13 @@ function event_o_render_share_buttons(string $url, string $title, array $calenda
 
     // Get enabled share options from settings
     $enabledOptions = get_option(EVENT_O_OPTION_SHARE_OPTIONS, ['facebook', 'twitter', 'whatsapp', 'linkedin', 'email', 'instagram', 'calendar', 'copy']);
-    if (!is_array($enabledOptions)) {
-        $enabledOptions = ['facebook', 'twitter', 'whatsapp', 'linkedin', 'email', 'instagram', 'calendar', 'copy'];
-    }
 
     $out = '<div class="event-o-share-buttons">';
 
     // Facebook
     if (in_array('facebook', $enabledOptions, true)) {
         $out .= '<a href="https://www.facebook.com/sharer/sharer.php?u=' . $encodedUrl . '" target="_blank" rel="noopener noreferrer" class="event-o-share-btn event-o-share-facebook" aria-label="Auf Facebook teilen" title="Facebook">';
-        $out .= '<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>';
+        $out .= '<svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073c0 6.019 4.388 10.998 10.125 11.854v-8.385H7.078v-3.47h3.047V9.41c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.49 0-1.956.926-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.071 24 18.092 24 12.073z"/></svg>';
         $out .= '</a>';
     }
 
@@ -857,6 +1053,7 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
     $showVenue = !empty($attrs['showVenue']);
     $showOrganizer = !empty($attrs['showOrganizer']);
     $showPrice = !empty($attrs['showPrice']);
+    $showTags = !empty($attrs['showTags']);
     $showMoreLink = isset($attrs['showMoreLink']) ? $attrs['showMoreLink'] : true;
     $showFilters = !empty($attrs['showFilters']);
 
@@ -887,7 +1084,7 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
         $startTs = (int) get_post_meta($postId, EVENT_O_META_START_TS, true);
         $endTs = (int) get_post_meta($postId, EVENT_O_META_END_TS, true);
         $price = (string) get_post_meta($postId, EVENT_O_META_PRICE, true);
-        $status = (string) get_post_meta($postId, EVENT_O_META_STATUS, true);
+        $status = event_o_get_event_status($postId);
 
         // Backward compat for early builds.
         if ($startTs <= 0) {
@@ -899,10 +1096,6 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
         if ($price === '') {
             $price = (string) get_post_meta($postId, EVENT_O_LEGACY_META_PRICE, true);
         }
-        if ($status === '') {
-            $status = (string) get_post_meta($postId, EVENT_O_LEGACY_META_STATUS, true);
-        }
-
         $monthKey = '';
         $monthLabel = '';
         if ($startTs > 0) {
@@ -920,8 +1113,11 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
         $permalink = get_permalink();
         $dateSlots = event_o_get_all_date_slots($postId);
 
-        // Get category for display after title.
-        $categoryName = event_o_get_first_term_name($postId, 'event_o_category');
+        $categoryMarkup = event_o_render_event_category_labels($postId, [
+            'wrapper_class' => 'event-o-category-hints',
+            'item_class' => 'event-o-category-hint',
+            'parentheses' => true,
+        ]);
 
         $venueData = $showVenue ? event_o_get_venue_data($postId) : null;
         $organizerData = $showOrganizer ? event_o_get_organizer_data($postId) : null;
@@ -941,16 +1137,33 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
         $out .= '<div class="event-o-when">';
         if (!empty($dateSlots)) {
             foreach ($dateSlots as $slot) {
-                $out .= '<span class="event-o-date-slot">' . esc_html($slot['formatted']) . '</span>';
+                $slotStartTs = isset($slot['start_ts']) ? (int) $slot['start_ts'] : 0;
+                $slotEndTs = isset($slot['end_ts']) ? (int) $slot['end_ts'] : 0;
+
+                if ($slotStartTs > 0) {
+                    $slotStart = (new DateTimeImmutable('@' . $slotStartTs))->setTimezone($tz);
+                    $slotDate = $slotStart->format('j') . '. ' . event_o_get_german_month((int) $slotStart->format('n')) . ' ' . $slotStart->format('Y');
+                    $slotTime = $slotStart->format('H:i');
+
+                    if ($slotEndTs > 0) {
+                        $slotEnd = (new DateTimeImmutable('@' . $slotEndTs))->setTimezone($tz);
+                        $slotTime .= ' – ' . $slotEnd->format('H:i');
+                    }
+
+                    $out .= '<div class="event-o-date-slot">';
+                    $out .= '<span class="event-o-date">' . esc_html($slotDate) . '</span>';
+                    $out .= '<span class="event-o-time">' . esc_html($slotTime . ' Uhr') . '</span>';
+                    $out .= '</div>';
+                } else {
+                    $out .= '<span class="event-o-date-slot event-o-date-slot-legacy">' . esc_html($slot['formatted']) . '</span>';
+                }
             }
         }
         $out .= '</div>';
         $out .= '<div class="event-o-title-wrap">';
         $out .= '<span class="event-o-title">' . esc_html($title) . '</span>';
-        if ($categoryName !== '') {
-            $catColor = event_o_get_first_category_color($postId);
-            $catStyle = $catColor !== '' ? ' style="color:' . esc_attr($catColor) . '"' : '';
-            $out .= ' <span class="event-o-category-hint"' . $catStyle . '>(' . esc_html($categoryName) . ')</span>';
+        if ($categoryMarkup !== '') {
+            $out .= $categoryMarkup;
         }
         $out .= '</div>';
         $out .= '<div class="event-o-chevron" aria-hidden="true"></div>';
@@ -967,12 +1180,11 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
 
         if ($organizerData) {
             $out .= '<div class="event-o-organizer-card">';
+            $out .= '<h4 class="event-o-sidebar-title">' . esc_html__('VERANSTALTER', 'event-o') . '</h4>';
             if (!empty($organizerData['logo'])) {
                 $out .= '<div class="event-o-org-logo"><img src="' . esc_url($organizerData['logo']) . '" alt="' . esc_attr($organizerData['name']) . '"></div>';
             }
             $out .= '<div class="event-o-org-name">' . esc_html($organizerData['name']) . '</div>';
-
-            $out .= '<h4 class="event-o-sidebar-title">' . esc_html__('VERANSTALTER', 'event-o') . '</h4>';
 
             if (!empty($organizerData['phone'])) {
                 $out .= '<div class="event-o-org-row">';
@@ -1059,6 +1271,15 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
         // Prominent event image at top of content area.
         if (!empty($imageUrls)) {
             $out .= event_o_render_event_image_crossfade($imageUrls, 'event-o-featured-image', '', $title);
+        }
+
+        if ($showTags) {
+            $tagMarkup = event_o_render_event_tag_links($postId, [
+                'wrapper_class' => 'event-o-tag-list event-o-list-tags',
+            ]);
+            if ($tagMarkup !== '') {
+                $out .= $tagMarkup;
+            }
         }
 
         // Content/excerpt.
@@ -1282,8 +1503,17 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
         $title = get_the_title();
         $permalink = get_permalink();
         $organizerName = $showOrganizer ? event_o_get_first_term_name($postId, 'event_o_organizer') : '';
-        $categoryName = $showCategory ? event_o_get_first_term_name($postId, 'event_o_category') : '';
+        $categoryMarkup = $showCategory ? event_o_render_event_category_labels($postId, [
+            'wrapper_class' => 'event-o-grid-cats',
+            'item_class' => 'event-o-grid-category',
+        ]) : '';
         $venueName = $showVenue ? event_o_get_first_term_name($postId, 'event_o_venue') : '';
+        $excerpt = get_the_excerpt();
+        if ($excerpt === '') {
+            $excerpt = wp_trim_words(wp_strip_all_tags(get_the_content()), 20, '...');
+        } else {
+            $excerpt = wp_trim_words($excerpt, 20, '...');
+        }
 
         // Filter data attributes for client-side filtering.
         $filterDataAttrs = $showFilters ? event_o_get_filter_data_attrs($postId) : '';
@@ -1309,6 +1539,15 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
             $imageUrls = event_o_get_event_image_urls($postId, 'large');
             if (!empty($imageUrls)) {
                 $out .= event_o_render_event_image_crossfade($imageUrls, 'event-o-grid-fade', 'event-o-grid-img', $title);
+                if ($excerpt !== '') {
+                    $overlayClass = 'event-o-grid-overlay';
+                    if ($extraSlotCount > 0) {
+                        $overlayClass .= ' has-extra-slots';
+                    }
+                    $out .= '<div class="' . esc_attr($overlayClass) . '">';
+                    $out .= '<p class="event-o-grid-excerpt">' . esc_html($excerpt) . '</p>';
+                    $out .= '</div>';
+                }
             } else {
                 $out .= '<div class="event-o-grid-placeholder"></div>';
             }
@@ -1317,7 +1556,11 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
         }
         // Date badge
         if ($dayNum !== '') {
-            $out .= '<div class="event-o-grid-badge">';
+            $badgeClass = 'event-o-grid-badge';
+            if ($extraSlotCount > 0) {
+                $badgeClass .= ' has-extra-slots';
+            }
+            $out .= '<div class="' . esc_attr($badgeClass) . '">';
             $out .= '<span class="event-o-grid-badge-day">' . esc_html($dayNum) . '.</span>';
             $out .= '<span class="event-o-grid-badge-month">' . esc_html($monthName) . '</span>';
             if ($extraSlotCount > 0) {
@@ -1335,10 +1578,8 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
         if ($organizerName !== '') {
             $out .= '<div class="event-o-grid-organizer">' . esc_html($organizerName) . '</div>';
         }
-        if ($categoryName !== '') {
-            $catColor = event_o_get_first_category_color($postId);
-            $catStyle = $catColor !== '' ? ' style="color:' . esc_attr($catColor) . '"' : '';
-            $out .= '<div class="event-o-grid-category"' . $catStyle . '>' . esc_html($categoryName) . '</div>';
+        if ($categoryMarkup !== '') {
+            $out .= $categoryMarkup;
         }
         if ($venueName !== '') {
             $out .= '<div class="event-o-grid-venue">' . esc_html($venueName) . '</div>';
@@ -1451,7 +1692,7 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
         $startTs = (int) get_post_meta($postId, EVENT_O_META_START_TS, true);
         $endTs = (int) get_post_meta($postId, EVENT_O_META_END_TS, true);
         $price = (string) get_post_meta($postId, EVENT_O_META_PRICE, true);
-        $status = (string) get_post_meta($postId, EVENT_O_META_STATUS, true);
+        $status = event_o_get_event_status($postId);
         $bandsRaw = (string) get_post_meta($postId, EVENT_O_META_BANDS, true);
 
         if ($startTs <= 0) {
@@ -1463,14 +1704,14 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
         if ($price === '') {
             $price = (string) get_post_meta($postId, EVENT_O_LEGACY_META_PRICE, true);
         }
-        if ($status === '') {
-            $status = (string) get_post_meta($postId, EVENT_O_LEGACY_META_STATUS, true);
-        }
-
         $isToday = ($startTs >= $todayStart && $startTs <= $todayEnd);
         $dateSlots = event_o_get_all_date_slots($postId);
 
-        $categoryName = $showCategory ? event_o_get_first_term_name($postId, 'event_o_category') : '';
+        $categoryMarkup = $showCategory ? event_o_render_event_category_labels($postId, [
+            'wrapper_class' => 'event-o-program-cats',
+            'item_class' => 'event-o-program-category',
+            'uppercase' => true,
+        ]) : '';
         $venueData = $showVenue ? event_o_get_venue_data($postId) : null;
 
         // Parse bands: "Name | spotify | bandcamp" per line
@@ -1544,12 +1785,7 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
 
         // Status badge
         if ($status !== '' && $status !== 'normal') {
-            $statusLabels = [
-                'cancelled' => __('ABGESAGT', 'event-o'),
-                'postponed' => __('VERSCHOBEN', 'event-o'),
-                'soldout' => __('AUSVERKAUFT', 'event-o'),
-            ];
-            $statusLabel = $statusLabels[$status] ?? mb_strtoupper($status);
+            $statusLabel = event_o_get_event_status_label($postId, $status);
             $out .= '<span class="event-o-program-status event-o-status-' . esc_attr($status) . '">' . esc_html($statusLabel) . '</span>';
         }
 
@@ -1588,10 +1824,8 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
         // === RIGHT COLUMN ===
         $out .= '<div class="event-o-program-right">';
 
-        if ($categoryName !== '') {
-            $catColor = event_o_get_first_category_color($postId);
-            $catStyle = $catColor !== '' ? ' style="color:' . esc_attr($catColor) . '"' : '';
-            $out .= '<div class="event-o-program-category"' . $catStyle . '>' . esc_html(mb_strtoupper($categoryName)) . '</div>';
+        if ($categoryMarkup !== '') {
+            $out .= $categoryMarkup;
         }
 
         if ($venueData) {
@@ -1780,12 +2014,11 @@ function event_o_render_event_calendar_block(array $attrs, string $content = '',
     while ($query->have_posts()) {
         $query->the_post();
         $postId = get_the_ID();
-        $status = (string) get_post_meta($postId, EVENT_O_META_STATUS, true);
-        if ($status === '') {
-            $status = (string) get_post_meta($postId, EVENT_O_LEGACY_META_STATUS, true);
-        }
+        $status = event_o_get_event_status($postId);
 
-        $categoryName = event_o_get_first_term_name($postId, 'event_o_category');
+        $categoryDetails = event_o_get_event_category_details($postId);
+        $categoryNames = event_o_get_event_category_names($postId);
+        $categoryName = implode(' / ', $categoryNames);
         $categoryColor = event_o_get_first_category_color($postId);
         $venueName = event_o_get_first_term_name($postId, 'event_o_venue');
         $imageUrls = event_o_get_event_image_urls($postId, 'medium');
@@ -1827,8 +2060,11 @@ function event_o_render_event_calendar_block(array $attrs, string $content = '',
                 'url' => get_permalink(),
                 'image' => $imageUrl,
                 'category' => $categoryName,
+                'categories' => $categoryDetails,
                 'categoryColor' => $categoryColor,
                 'venue' => $venueName,
+                'status' => $status,
+                'statusLabel' => event_o_get_event_status_label($postId, $status),
                 'cancelled' => ($status === 'cancelled'),
                 'soldOut' => ($status === 'soldout'),
                 'excerpt' => $excerpt,
@@ -1861,13 +2097,14 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
 {
     event_o_ensure_frontend_assets();
 
-    $q = event_o_event_query($attrs);
-    if (!$q->have_posts()) {
+    $posts = event_o_get_hero_display_posts($attrs);
+    if (empty($posts)) {
         return '<div class="event-o event-o-hero"><p class="event-o-empty">' . esc_html__('No events found.', 'event-o') . '</p></div>';
     }
 
     $showFilters = !empty($attrs['showFilters']);
     $onePerCategory = !empty($attrs['onePerCategory']);
+    $preferHighlights = !array_key_exists('preferHighlights', $attrs) || !empty($attrs['preferHighlights']);
     $showDate = !array_key_exists('showDate', $attrs) || !empty($attrs['showDate']);
     $dateVariant = isset($attrs['dateVariant']) && $attrs['dateVariant'] === 'date-time' ? 'date-time' : 'date';
     $showDesc = !array_key_exists('showDesc', $attrs) || !empty($attrs['showDesc']);
@@ -1899,7 +2136,7 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
 
     // Render filter bar if enabled.
     if ($showFilters) {
-        $filterTerms = event_o_collect_filter_terms($q, $attrs);
+        $filterTerms = event_o_collect_filter_terms_from_posts($posts, $attrs);
         $filterStyle = isset($attrs['filterStyle']) ? $attrs['filterStyle'] : 'dropdown';
         $out .= ($filterStyle === 'tabs') ? event_o_render_filter_bar_tabs($filterTerms, $attrs) : event_o_render_filter_bar($filterTerms, $attrs);
     }
@@ -1909,11 +2146,16 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
 
     $eventCount = 0;
     $seenCategories = [];
-    while ($q->have_posts()) {
-        $q->the_post();
-        $postId = get_the_ID();
+    foreach ($posts as $post) {
+        $postId = $post->ID;
 
         $categoryName = event_o_get_first_term_name($postId, 'event_o_category');
+        $categoryMarkup = event_o_render_event_category_labels($postId, [
+            'wrapper_class' => 'event-o-hero-cats',
+            'item_class' => 'event-o-hero-category',
+            'uppercase' => true,
+            'fallback' => __('VERANSTALTUNGEN', 'event-o'),
+        ]);
 
         // One per category: skip if we already have an event from this category
         if ($onePerCategory && $categoryName !== '') {
@@ -1925,15 +2167,12 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
 
         $eventCount++;
 
-        $title = get_the_title();
-        $permalink = get_permalink();
-        if (empty($categoryName)) {
-            $categoryName = __('VERANSTALTUNGEN', 'event-o');
-        }
+        $title = get_the_title($postId);
+        $permalink = get_permalink($postId);
 
-        $excerpt = get_the_excerpt();
+        $excerpt = get_the_excerpt($postId);
         if (empty($excerpt)) {
-            $excerpt = wp_trim_words(get_the_content(), $descWordLimit, '…');
+            $excerpt = wp_trim_words((string) get_post_field('post_content', $postId), $descWordLimit, '…');
         } else {
             $excerpt = wp_trim_words($excerpt, $descWordLimit, '…');
         }
@@ -1954,11 +2193,12 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
         $out .= '<div class="event-o-hero-slide"' . $filterDataAttrs . '>';
         $out .= event_o_render_event_bg_crossfade($imageUrls, 'event-o-hero-bg');
         $out .= '<div class="event-o-hero-overlay"></div>';
-        
+
         $out .= '<div class="event-o-hero-content">';
-        $catColor = event_o_get_first_category_color($postId);
-        $catStyle = $catColor !== '' ? ' style="color:' . esc_attr($catColor) . '"' : '';
-        $out .= '<div class="event-o-hero-category"' . $catStyle . '>' . esc_html(mb_strtoupper($categoryName)) . '</div>';
+        $out .= $categoryMarkup;
+        if ($preferHighlights && event_o_is_event_highlight_active($postId)) {
+            $out .= '<div class="event-o-hero-highlight-badge">' . esc_html__('Highlight', 'event-o') . '</div>';
+        }
         if (!empty($dateSlots)) {
             $dateClasses = 'event-o-hero-date';
             if ($dateVariant === 'date-time') {

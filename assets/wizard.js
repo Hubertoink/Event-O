@@ -12,6 +12,7 @@
     var categories = D.categories || [];
     var venues     = D.venues || [];
     var organizers = D.organizers || [];
+    var tags       = D.tags || [];
     var isNew      = D.isNew === '1';
     var canPublish = D.canPublish === '1';
     var texts      = D.texts || {};
@@ -89,6 +90,7 @@
             title:       getTitle(),
             description: getEditorContent(),
             categories:  getTaxIds('event_o_category'),
+            tags:        getTagIds(),
             startDate1:  $('#event_o_start_datetime').val() || '',
             endDate1:    $('#event_o_end_datetime').val() || '',
             beginTime1:  $('#event_o_begin_time').val() || '',
@@ -102,6 +104,9 @@
             organizers:  getTaxIds('event_o_organizer'),
             price:       $('#event_o_price').val() || '',
             status:      $('#event_o_status').val() || '',
+            statusLabel: $('#event_o_status_label').val() || '',
+            isHighlight: $('#event_o_highlight').is(':checked'),
+            highlightUntil: $('#event_o_highlight_until').val() || '',
             bands:       parseBands($('#event_o_bands').val() || ''),
             galleryIds:  ($('#event_o_gallery_ids').val() || '').split(',').filter(Boolean).map(Number)
         };
@@ -166,6 +171,7 @@
             postUpdate.event_o_category  = s.categories;
             postUpdate.event_o_venue     = s.venues;
             postUpdate.event_o_organizer = s.organizers;
+            postUpdate.tags              = s.tags;
 
             // Featured image
             if (featuredImageId > 0) {
@@ -192,6 +198,7 @@
             setTaxCheckboxes('event_o_categorychecklist', s.categories);
             setTaxCheckboxes('event_o_venuechecklist', s.venues);
             setTaxCheckboxes('event_o_organizerchecklist', s.organizers);
+            setClassicTagInput(s.tags);
             if (featuredImageId > 0) {
                 setFeaturedImage(featuredImageId);
             }
@@ -217,6 +224,10 @@
 
         setVal('#event_o_price', s.price);
         setVal('#event_o_status', s.status);
+        setVal('#event_o_status_label', s.status === 'soldout' ? s.statusLabel : '');
+        $('#event_o_status').trigger('change');
+        $('#event_o_highlight').prop('checked', !!s.isHighlight).trigger('change');
+        setVal('#event_o_highlight_until', s.isHighlight ? s.highlightUntil : '');
 
         var bandsStr = s.bands.map(function (b) {
             return [b.name, b.spotify, b.bandcamp, b.website].join(' | ');
@@ -233,12 +244,18 @@
        STEP DEFINITIONS
        ================================================================ */
     var steps = [
-        { key: 'basics',   label: 'Schritt 1 von 5', title: 'Grundlagen',     subtitle: 'Titel, Kategorie und Beschreibung', render: renderBasics },
+        { key: 'basics',   label: 'Schritt 1 von 5', title: 'Grundlagen',     subtitle: 'Titel, Kategorie, Schlagwörter und Beschreibung', render: renderBasics },
         { key: 'when',     label: 'Schritt 2 von 5', title: 'Wann?',          subtitle: 'Datum, Uhrzeit und optionale Zusatztermine', render: renderWhen },
         { key: 'where',    label: 'Schritt 3 von 5', title: 'Wo & Wer?',      subtitle: 'Veranstaltungsort und Veranstalter', render: renderWhere },
         { key: 'details',  label: 'Schritt 4 von 5', title: 'Details',         subtitle: 'Preis, Status, Bilder und Bands', render: renderDetails },
         { key: 'summary',  label: 'Schritt 5 von 5', title: 'Zusammenfassung', subtitle: 'Überprüfe deine Eingaben', render: renderSummary }
     ];
+
+    var statusLabels = {
+        cancelled: 'Abgesagt',
+        postponed: 'Verschoben',
+        soldout: 'Ausverkauft'
+    };
 
     /* ================================================================
        RENDER STEP
@@ -334,6 +351,21 @@
             html += '</div></div>';
         }
 
+        if (tags.length) {
+            html += '<div class="eo-wizard-field">';
+            html += '<label class="eo-wizard-label">Schlagwörter</label>';
+            html += '<div class="eo-wizard-tag-picker">';
+            html += '<input type="text" id="eo_wiz_tag_search" class="eo-wizard-input" value="" placeholder="Schlagwort suchen…">';
+            html += '<input type="hidden" id="eo_wiz_tag_ids" value="' + escAttr((wizardState.tags || []).join(',')) + '">';
+            html += '<div class="eo-wizard-tag-selected" id="eo_wiz_tag_selected"></div>';
+            html += '<div class="eo-wizard-tag-quick-wrap">';
+            html += '<span class="eo-wizard-hint eo-wizard-tag-hint">Häufigste Schlagwörter</span>';
+            html += '<div class="eo-wizard-tag-quick" id="eo_wiz_tag_quick"></div>';
+            html += '</div>';
+            html += '<div class="eo-wizard-tag-results" id="eo_wiz_tag_results"></div>';
+            html += '</div></div>';
+        }
+
         // Description
         html += '<div class="eo-wizard-field">';
         html += '<label class="eo-wizard-label">Beschreibung</label>';
@@ -341,6 +373,10 @@
         html += '</div>';
 
         $body.html(html);
+
+        if (tags.length) {
+            initTagPicker($body);
+        }
 
         // Auto-focus title
         setTimeout(function () { $body.find('#eo_wiz_title').focus(); }, 100);
@@ -471,6 +507,20 @@
         html += '<div class="eo-wizard-field"><label class="eo-wizard-label">Preis</label><input type="text" id="eo_wiz_price" class="eo-wizard-input" value="' + escAttr(wizardState.price) + '" placeholder="z.B. Frei / 5 €"></div>';
         html += '<div class="eo-wizard-field"><label class="eo-wizard-label">Status</label><select id="eo_wiz_status" class="eo-wizard-select"><option value="">Normal</option><option value="cancelled"' + (wizardState.status === 'cancelled' ? ' selected' : '') + '>Cancelled</option><option value="postponed"' + (wizardState.status === 'postponed' ? ' selected' : '') + '>Postponed</option><option value="soldout"' + (wizardState.status === 'soldout' ? ' selected' : '') + '>Sold out</option></select></div>';
         html += '</div>';
+        html += '<div id="eo_wiz_status_label_wrap" class="eo-wizard-field" style="' + (wizardState.status === 'soldout' ? '' : 'display:none;') + '">';
+        html += '<label class="eo-wizard-label">Text für Ausverkauft-Badge</label>';
+        html += '<input type="text" id="eo_wiz_status_label" class="eo-wizard-input" value="' + escAttr(wizardState.statusLabel || '') + '" placeholder="z.B. Restkarten an der Abendkasse">';
+        html += '<span class="eo-wizard-hint">Nur sichtbar, wenn der Status auf Sold out steht. Leer = Standardtext.</span>';
+        html += '</div>';
+
+        html += '<div class="eo-wizard-field">';
+        html += '<label class="eo-wizard-check-item"><input type="checkbox" id="eo_wiz_is_highlight"' + (wizardState.isHighlight ? ' checked' : '') + '> Event als Highlight im Hero bevorzugen</label>';
+        html += '<div id="eo_wiz_highlight_until_wrap" style="margin-top:12px;' + (wizardState.isHighlight ? '' : 'display:none;') + '">';
+        html += '<label class="eo-wizard-label">Highlight bis</label>';
+        html += '<input type="datetime-local" id="eo_wiz_highlight_until" class="eo-wizard-input" value="' + escAttr(wizardState.highlightUntil) + '">';
+        html += '<span class="eo-wizard-hint">Leer lassen, damit das Highlight ohne Ablaufdatum aktiv bleibt.</span>';
+        html += '</div>';
+        html += '</div>';
 
         // Featured image
         html += '<div class="eo-wizard-field">';
@@ -568,6 +618,24 @@
         $body.on('click', '.eo-wizard-band-remove', function () {
             $(this).closest('.eo-wizard-band-row').remove();
         });
+
+        $body.on('change', '#eo_wiz_is_highlight', function () {
+            var checked = $(this).is(':checked');
+            var $wrap = $body.find('#eo_wiz_highlight_until_wrap');
+            $wrap.toggle(checked);
+            if (!checked) {
+                $wrap.find('#eo_wiz_highlight_until').val('');
+            }
+        });
+
+        $body.on('change', '#eo_wiz_status', function () {
+            var isSoldOut = $(this).val() === 'soldout';
+            var $wrap = $body.find('#eo_wiz_status_label_wrap');
+            $wrap.toggle(isSoldOut);
+            if (!isSoldOut) {
+                $wrap.find('#eo_wiz_status_label').val('');
+            }
+        });
     }
 
     function thumbHtml(id, url, type) {
@@ -598,7 +666,8 @@
         html += summaryCard('Grundlagen', 0,
             '<p><strong>' + esc(s.title || '—') + '</strong></p>' +
             (s.description ? '<p style="color:#555;font-size:13px">' + esc(truncate(s.description, 120)) + '</p>' : '') +
-            catLabels(s.categories)
+            catLabels(s.categories) +
+            tagLabels(s.tags)
         );
 
         // Wann
@@ -618,7 +687,13 @@
         // Details
         var detailHtml = '';
         if (s.price)  detailHtml += '<p>💰 ' + esc(s.price) + '</p>';
-        if (s.status) detailHtml += '<p>📌 ' + esc(s.status) + '</p>';
+        if (s.status) {
+            var statusText = s.status === 'soldout' && s.statusLabel ? s.statusLabel : getStatusLabel(s.status);
+            detailHtml += '<p>📌 ' + esc(statusText || s.status) + '</p>';
+        }
+        if (s.isHighlight) {
+            detailHtml += '<p>⭐ Highlight aktiv' + (s.highlightUntil ? ' bis ' + esc(formatDT(s.highlightUntil)) : '') + '</p>';
+        }
         if (featuredImageId) detailHtml += '<p>🖼️ Beitragsbild gesetzt</p>';
         if (galleryImages.length) detailHtml += '<p>🖼️ ' + galleryImages.length + ' Galerie-Bild(er)</p>';
         if (s.bands.filter(function (b) { return b.name; }).length) detailHtml += '<p>🎵 ' + s.bands.filter(function (b) { return b.name; }).length + ' Band(s)</p>';
@@ -703,6 +778,7 @@
                 $b.find('[data-tax="category"]:checked').each(function () {
                     wizardState.categories.push(parseInt($(this).val(), 10));
                 });
+                wizardState.tags = getSelectedTagIds($b);
                 break;
 
             case 1: // When
@@ -734,6 +810,9 @@
             case 3: // Details
                 wizardState.price = $b.find('#eo_wiz_price').val() || '';
                 wizardState.status = $b.find('#eo_wiz_status').val() || '';
+                wizardState.statusLabel = wizardState.status === 'soldout' ? ($b.find('#eo_wiz_status_label').val() || '') : '';
+                wizardState.isHighlight = $b.find('#eo_wiz_is_highlight').is(':checked');
+                wizardState.highlightUntil = wizardState.isHighlight ? ($b.find('#eo_wiz_highlight_until').val() || '') : '';
                 wizardState.bands = [];
                 $b.find('.eo-wizard-band-row').each(function () {
                     var $r = $(this);
@@ -782,6 +861,10 @@
         if (parts.length < 2) return val;
         var d = parts[0].split('-');
         return d[2] + '.' + d[1] + '.' + d[0] + ' ' + parts[1];
+    }
+
+    function getStatusLabel(status) {
+        return statusLabels[status] || status || '';
     }
 
     function parseBands(raw) {
@@ -851,6 +934,28 @@
         return getCheckedTaxIds(checklistMap[taxonomy] || '');
     }
 
+    function getTagIds() {
+        if (isGutenberg) {
+            return (wp.data.select('core/editor').getEditedPostAttribute('tags') || []).slice();
+        }
+
+        var raw = ($('#tax-input-post_tag').val() || '').trim();
+        if (!raw) return [];
+
+        var wanted = raw.split(',').map(function (name) {
+            return name.trim().toLowerCase();
+        }).filter(Boolean);
+        var ids = [];
+
+        tags.forEach(function (tag) {
+            if (wanted.indexOf(String(tag.name).trim().toLowerCase()) !== -1) {
+                ids.push(tag.id);
+            }
+        });
+
+        return ids;
+    }
+
     function getCheckedTaxIds(checklistId) {
         var ids = [];
         $('#' + checklistId + ' input:checked').each(function () {
@@ -858,6 +963,165 @@
             if (val > 0) ids.push(val);
         });
         return ids;
+    }
+
+    function initTagPicker($body) {
+        renderTagPicker($body);
+
+        $body.on('input', '#eo_wiz_tag_search', function () {
+            renderTagPicker($body);
+        });
+
+        $body.on('keydown', '#eo_wiz_tag_search', function (e) {
+            if (e.key !== 'Enter') return;
+
+            var tagId = getFirstSelectableTagId($body);
+            if (!tagId) return;
+
+            e.preventDefault();
+
+            var selectedIds = getSelectedTagIds($body);
+            if (selectedIds.indexOf(tagId) === -1) {
+                selectedIds.push(tagId);
+                setSelectedTagIds($body, selectedIds);
+            }
+
+            $(this).val('');
+            renderTagPicker($body);
+        });
+
+        $body.on('click', '.eo-wizard-tag-option', function () {
+            var tagId = parseInt($(this).attr('data-tag-id'), 10);
+            if (!tagId) return;
+
+            var selectedIds = getSelectedTagIds($body);
+            var idx = selectedIds.indexOf(tagId);
+            if (idx === -1) {
+                selectedIds.push(tagId);
+            } else {
+                selectedIds.splice(idx, 1);
+            }
+
+            setSelectedTagIds($body, selectedIds);
+            renderTagPicker($body);
+            $body.find('#eo_wiz_tag_search').focus();
+        });
+
+        $body.on('click', '.eo-wizard-tag-chip-remove', function () {
+            var tagId = parseInt($(this).attr('data-tag-id'), 10);
+            if (!tagId) return;
+
+            var selectedIds = getSelectedTagIds($body).filter(function (id) {
+                return id !== tagId;
+            });
+
+            setSelectedTagIds($body, selectedIds);
+            renderTagPicker($body);
+        });
+    }
+
+    function renderTagPicker($body) {
+        var selectedIds = getSelectedTagIds($body);
+        var query = ($body.find('#eo_wiz_tag_search').val() || '').trim().toLowerCase();
+        var quickTags = getTopTags(6);
+        var resultTags = query ? getMatchingTags(query, selectedIds, 8) : [];
+
+        $body.find('#eo_wiz_tag_selected').html(buildSelectedTagMarkup(selectedIds));
+        $body.find('#eo_wiz_tag_quick').html(buildTagOptionMarkup(quickTags, selectedIds));
+
+        if (!query) {
+            $body.find('#eo_wiz_tag_results').html('');
+            return;
+        }
+
+        if (!resultTags.length) {
+            $body.find('#eo_wiz_tag_results').html('<div class="eo-wizard-tag-empty">Keine passenden Schlagwörter gefunden.</div>');
+            return;
+        }
+
+        $body.find('#eo_wiz_tag_results').html(
+            '<span class="eo-wizard-hint eo-wizard-tag-hint">Suchergebnisse</span>' +
+            '<div class="eo-wizard-tag-search-list">' + buildTagOptionMarkup(resultTags, selectedIds) + '</div>'
+        );
+    }
+
+    function getSelectedTagIds($body) {
+        var raw = ($body.find('#eo_wiz_tag_ids').val() || '').trim();
+        if (!raw) return [];
+
+        return raw.split(',').map(function (value) {
+            return parseInt(value, 10);
+        }).filter(function (value, index, values) {
+            return !isNaN(value) && value > 0 && values.indexOf(value) === index;
+        });
+    }
+
+    function setSelectedTagIds($body, ids) {
+        $body.find('#eo_wiz_tag_ids').val(ids.join(','));
+    }
+
+    function getTopTags(limit) {
+        return tags.slice().sort(function (a, b) {
+            var countDiff = getTagCount(b) - getTagCount(a);
+            if (countDiff !== 0) return countDiff;
+            return String(a.name || '').localeCompare(String(b.name || ''), 'de', { sensitivity: 'base' });
+        }).slice(0, limit);
+    }
+
+    function getFirstSelectableTagId($body) {
+        var selectedIds = getSelectedTagIds($body);
+        var query = ($body.find('#eo_wiz_tag_search').val() || '').trim().toLowerCase();
+        var source = query ? getMatchingTags(query, selectedIds, 1) : getTopTags(6).filter(function (tag) {
+            return selectedIds.indexOf(tag.id) === -1;
+        }).slice(0, 1);
+
+        if (!source.length) {
+            return 0;
+        }
+
+        return source[0].id || 0;
+    }
+
+    function getMatchingTags(query, selectedIds, limit) {
+        return tags.filter(function (tag) {
+            if (selectedIds.indexOf(tag.id) !== -1) return false;
+            return String(tag.name || '').toLowerCase().indexOf(query) !== -1;
+        }).sort(function (a, b) {
+            var countDiff = getTagCount(b) - getTagCount(a);
+            if (countDiff !== 0) return countDiff;
+            return String(a.name || '').localeCompare(String(b.name || ''), 'de', { sensitivity: 'base' });
+        }).slice(0, limit);
+    }
+
+    function getTagCount(tag) {
+        var count = parseInt(tag && tag.count ? tag.count : 0, 10);
+        return isNaN(count) ? 0 : count;
+    }
+
+    function buildSelectedTagMarkup(selectedIds) {
+        if (!selectedIds.length) {
+            return '<div class="eo-wizard-tag-empty">Noch keine Schlagwörter ausgewählt.</div>';
+        }
+
+        var selectedTags = tags.filter(function (tag) {
+            return selectedIds.indexOf(tag.id) !== -1;
+        }).sort(function (a, b) {
+            return selectedIds.indexOf(a.id) - selectedIds.indexOf(b.id);
+        });
+
+        return selectedTags.map(function (tag) {
+            return '<span class="eo-wizard-tag-chip">' +
+                '<span class="eo-wizard-tag-chip-label">' + esc(tag.name) + '</span>' +
+                '<button type="button" class="eo-wizard-tag-chip-remove" data-tag-id="' + tag.id + '" aria-label="' + escAttr(tag.name + ' entfernen') + '">×</button>' +
+            '</span>';
+        }).join('');
+    }
+
+    function buildTagOptionMarkup(list, selectedIds) {
+        return list.map(function (tag) {
+            var active = selectedIds.indexOf(tag.id) !== -1 ? ' is-active' : '';
+            return '<button type="button" class="eo-wizard-tag-option' + active + '" data-tag-id="' + tag.id + '">' + esc(tag.name) + '</button>';
+        }).join('');
     }
 
     function setTaxCheckboxes(checklistId, ids) {
@@ -869,6 +1133,20 @@
         });
     }
 
+    function setClassicTagInput(ids) {
+        var $field = $('#tax-input-post_tag');
+        if (!$field.length) return;
+
+        var names = [];
+        tags.forEach(function (tag) {
+            if (ids.indexOf(tag.id) !== -1) {
+                names.push(tag.name);
+            }
+        });
+
+        $field.val(names.join(', ')).trigger('change');
+    }
+
     function catLabels(ids) {
         if (!ids.length) return '';
         var names = [];
@@ -876,6 +1154,15 @@
             if (ids.indexOf(c.id) !== -1) names.push(esc(c.name));
         });
         return names.length ? '<p style="font-size:12px;color:#757575">Kategorien: ' + names.join(', ') + '</p>' : '';
+    }
+
+    function tagLabels(ids) {
+        if (!ids.length) return '';
+        var names = [];
+        tags.forEach(function (tag) {
+            if (ids.indexOf(tag.id) !== -1) names.push(esc(tag.name));
+        });
+        return names.length ? '<p style="font-size:12px;color:#757575">Schlagwörter: ' + names.join(', ') + '</p>' : '';
     }
 
     function termNames(list, ids) {

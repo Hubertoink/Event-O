@@ -56,6 +56,7 @@
             showVenue: { type: 'boolean', default: true },
             showOrganizer: { type: 'boolean', default: true },
             showPrice: { type: 'boolean', default: true },
+            showTags: { type: 'boolean', default: false },
             showMoreLink: { type: 'boolean', default: true },
             accentColor: { type: 'string', default: '' },
             showFilters: { type: 'boolean', default: false },
@@ -63,6 +64,7 @@
             filterByVenue: { type: 'boolean', default: true },
             filterByOrganizer: { type: 'boolean', default: true },
             filterStyle: { type: 'string', default: 'dropdown' },
+            filterCategoryColors: { type: 'boolean', default: false },
             animation: { type: 'string', default: 'none' }
         },
         edit: function (props) {
@@ -140,6 +142,11 @@
                             onChange: function (v) { setAttributes({ showPrice: v }); }
                         }),
                         el(ToggleControl, {
+                            label: __('Show tags', 'event-o'),
+                            checked: a.showTags,
+                            onChange: function (v) { setAttributes({ showTags: v }); }
+                        }),
+                        el(ToggleControl, {
                             label: __('Show "More" link', 'event-o'),
                             checked: a.showMoreLink,
                             onChange: function (v) { setAttributes({ showMoreLink: v }); }
@@ -160,6 +167,12 @@
                                 { label: __('Tabs / Pills', 'event-o'), value: 'tabs' }
                             ],
                             onChange: function (v) { setAttributes({ filterStyle: v }); }
+                        }),
+                        a.showFilters && (a.filterStyle || 'dropdown') === 'tabs' && a.filterByCategory && el(ToggleControl, {
+                            label: __('Use category colors for active tabs', 'event-o'),
+                            help: __('Selected category tabs use the assigned category color.', 'event-o'),
+                            checked: !!a.filterCategoryColors,
+                            onChange: function (v) { setAttributes({ filterCategoryColors: v }); }
                         }),
                         a.showFilters && el(ToggleControl, {
                             label: __('Filter by category', 'event-o'),
@@ -514,7 +527,10 @@
             showFilters: { type: 'boolean', default: false },
             filterByCategory: { type: 'boolean', default: true },
             filterByVenue: { type: 'boolean', default: true },
-            filterByOrganizer: { type: 'boolean', default: true }
+            filterByOrganizer: { type: 'boolean', default: true },
+            filterStyle: { type: 'string', default: 'dropdown' },
+            onePerCategory: { type: 'boolean', default: false },
+            preferHighlights: { type: 'boolean', default: true }
         },
         edit: function (props) {
             var a = props.attributes;
@@ -534,6 +550,12 @@
                             label: __('Show past events', 'event-o'),
                             checked: a.showPast,
                             onChange: function (v) { setAttributes({ showPast: v }); }
+                        }),
+                        el(ToggleControl, {
+                            label: __('Prefer highlighted events first', 'event-o'),
+                            help: __('Shows active event highlights before regular events.', 'event-o'),
+                            checked: a.preferHighlights !== false,
+                            onChange: function (v) { setAttributes({ preferHighlights: v }); }
                         })
                     ),
                     el(PanelBody, { title: __('Filters', 'event-o'), initialOpen: false },

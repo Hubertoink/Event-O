@@ -24,19 +24,26 @@ while (have_posts()) {
     if ($price === '') {
         $price = (string) get_post_meta($postId, EVENT_O_LEGACY_META_PRICE, true);
     }
-    if ($status === '') {
-        $status = (string) get_post_meta($postId, EVENT_O_LEGACY_META_STATUS, true);
-    }
+    $status = event_o_get_event_status($postId);
+    $statusLabel = event_o_get_event_status_label($postId, $status);
 
     $dateSlots = event_o_get_all_date_slots($postId);
     $venueData = event_o_get_venue_data($postId);
     $categoryName = event_o_get_first_term_name($postId, 'event_o_category');
     $useCategoryColor = (bool) get_option(EVENT_O_OPTION_SINGLE_CATEGORY_COLOR, true);
     $categoryColor = $useCategoryColor ? event_o_get_first_category_color($postId) : '';
+    $categoryTerms = get_the_terms($postId, 'event_o_category');
+    if (!is_array($categoryTerms)) {
+        $categoryTerms = [];
+    }
     $organizerData = event_o_get_organizer_data($postId);
     $permalink = get_permalink();
     $title = get_the_title();
     $heroImageUrls = event_o_get_event_image_urls($postId, 'full');
+    $singleTitleLayout = (string) get_option(EVENT_O_OPTION_SINGLE_TITLE_LAYOUT, 'both');
+    $showHeroTitle = in_array($singleTitleLayout, ['both', 'hero'], true);
+    $showContentTitle = in_array($singleTitleLayout, ['both', 'content'], true);
+    $showSingleTags = (bool) get_option(EVENT_O_OPTION_SINGLE_SHOW_TAGS, false);
 
     // Get related events
     $relatedCategoryOnly = (bool) get_option(EVENT_O_OPTION_RELATED_CATEGORY_ONLY, false);
@@ -57,17 +64,26 @@ while (have_posts()) {
         $heroClass = 'event-o-single-hero eo-anim' . ($heroParallax ? ' event-o-parallax' : '');
         echo '<div class="' . esc_attr($heroClass) . '">';
         echo event_o_render_event_image_crossfade($heroImageUrls, 'event-o-single-hero-fade', 'event-o-single-hero-img', $title);
-        echo '<div class="event-o-single-hero-overlay">';
-        echo '<h1 class="event-o-single-hero-title">' . esc_html($title) . '</h1>';
-        if ($categoryName !== '') {
-            $heroCatStyle = '';
-            if ($categoryColor !== '') {
-                $textColor = event_o_contrast_text_color($categoryColor);
-                $heroCatStyle = ' style="background:' . esc_attr($categoryColor) . ';color:' . esc_attr($textColor) . '"';
+        if ($showHeroTitle) {
+            echo '<div class="event-o-single-hero-overlay">';
+            echo '<h1 class="event-o-single-hero-title">' . esc_html($title) . '</h1>';
+            if (!empty($categoryTerms)) {
+                echo '<div class="event-o-single-hero-cats">';
+                foreach ($categoryTerms as $categoryTerm) {
+                    $heroCatStyle = '';
+                    if ($useCategoryColor) {
+                        $termColor = (string) get_term_meta($categoryTerm->term_id, 'event_o_category_color', true);
+                        if ($termColor !== '') {
+                            $textColor = event_o_contrast_text_color($termColor);
+                            $heroCatStyle = ' style="background:' . esc_attr($termColor) . ';color:' . esc_attr($textColor) . '"';
+                        }
+                    }
+                    echo '<span class="event-o-single-hero-cat"' . $heroCatStyle . '>' . esc_html($categoryTerm->name) . '</span>';
+                }
+                echo '</div>';
             }
-            echo '<span class="event-o-single-hero-cat"' . $heroCatStyle . '>' . esc_html($categoryName) . '</span>';
+            echo '</div>';
         }
-        echo '</div>';
         echo '</div>';
     }
 
@@ -115,10 +131,10 @@ while (have_posts()) {
     // Organizer card
     if ($organizerData) {
         echo '<div class="event-o-single-card">';
+        echo '<h3 class="event-o-single-card-title">' . esc_html__('VERANSTALTER', 'event-o') . '</h3>';
         if (!empty($organizerData['logo'])) {
             echo '<div class="event-o-org-logo"><img src="' . esc_url($organizerData['logo']) . '" alt="' . esc_attr($organizerData['name']) . '"></div>';
         }
-        echo '<h3 class="event-o-single-card-title">' . esc_html__('VERANSTALTER', 'event-o') . '</h3>';
         echo '<div class="event-o-single-organizer">' . esc_html($organizerData['name']) . '</div>';
 
         if (!empty($organizerData['phone'])) {
@@ -177,27 +193,43 @@ while (have_posts()) {
     echo '<article class="event-o-single-main">';
 
     // Header
-    echo '<header class="event-o-single-header eo-anim">';
-    echo '<h1 class="event-o-single-title">' . esc_html($title);
-    if ($categoryName !== '') {
-        $titleCatStyle = $categoryColor !== '' ? ' style="color:' . esc_attr($categoryColor) . '"' : '';
-        echo ' <span class="event-o-category-hint"' . $titleCatStyle . '>(' . esc_html($categoryName) . ')</span>';
+    if ($showContentTitle || $statusLabel !== '') {
+        echo '<header class="event-o-single-header eo-anim">';
+        if ($showContentTitle) {
+            echo '<h1 class="event-o-single-title">' . esc_html($title);
+            echo '</h1>';
+            if (!empty($categoryTerms)) {
+                echo '<div class="event-o-single-title-cats">';
+                foreach ($categoryTerms as $categoryTerm) {
+                    $titleCatStyle = '';
+                    if ($useCategoryColor) {
+                        $termColor = (string) get_term_meta($categoryTerm->term_id, 'event_o_category_color', true);
+                        if ($termColor !== '') {
+                            $titleCatStyle = ' style="color:' . esc_attr($termColor) . '"';
+                        }
+                    }
+                    echo '<span class="event-o-category-hint"' . $titleCatStyle . '>(' . esc_html($categoryTerm->name) . ')</span>';
+                }
+                echo '</div>';
+            }
+        }
+
+        if ($statusLabel !== '') {
+            echo '<span class="event-o-status event-o-status-' . esc_attr($status) . '">' . esc_html($statusLabel) . '</span>';
+        }
+        echo '</header>';
     }
-    echo '</h1>';
-    
-    // Status badge
-    if ($status !== '' && $status !== 'scheduled') {
-        $statusLabels = [
-            'cancelled' => __('Abgesagt', 'event-o'),
-            'postponed' => __('Verschoben', 'event-o'),
-            'sold-out' => __('Ausverkauft', 'event-o'),
-        ];
-        $statusLabel = isset($statusLabels[$status]) ? $statusLabels[$status] : $status;
-        echo '<span class="event-o-status event-o-status-' . esc_attr($status) . '">' . esc_html($statusLabel) . '</span>';
-    }
-    echo '</header>';
 
     // Content
+    if ($showSingleTags) {
+        $singleTagMarkup = event_o_render_event_tag_links($postId, [
+            'wrapper_class' => 'event-o-tag-list event-o-single-tags eo-anim',
+        ]);
+        if ($singleTagMarkup !== '') {
+            echo $singleTagMarkup;
+        }
+    }
+
     echo '<div class="event-o-content eo-anim">';
     the_content();
     echo '</div>';

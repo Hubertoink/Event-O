@@ -346,6 +346,11 @@ function event_o_get_dashboard_data(): array
                 'url' => admin_url('edit-tags.php?taxonomy=event_o_organizer&post_type=event_o_event'),
             ],
             [
+                'title' => __('Schlagwörter', 'event-o'),
+                'copy' => __('Normale WordPress-Tags für Events verwalten.', 'event-o'),
+                'url' => admin_url('edit-tags.php?taxonomy=post_tag&post_type=event_o_event'),
+            ],
+            [
                 'title' => __('Einstellungen', 'event-o'),
                 'copy' => __('Design, Anzeige und Wizard-Modus anpassen.', 'event-o'),
                 'url' => admin_url('edit.php?post_type=event_o_event&page=event-o-settings'),

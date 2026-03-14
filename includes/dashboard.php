@@ -386,16 +386,28 @@ function event_o_build_dashboard_event_item(WP_Post $post): array
     $timezone = wp_timezone();
     $nextUpcomingTs = 0;
     $firstSlotTs = 0;
+    $hasCurrentOrUpcomingSlot = false;
 
     foreach ($slots as $slot) {
         $startTs = (int) $slot['start_ts'];
+        $endTs = isset($slot['end_ts']) ? (int) $slot['end_ts'] : 0;
         if ($startTs <= 0) {
             continue;
         }
         if ($firstSlotTs === 0 || $startTs < $firstSlotTs) {
             $firstSlotTs = $startTs;
         }
+
+        if (event_o_dashboard_slot_is_current_or_upcoming($slot, $nowTs)) {
+            $hasCurrentOrUpcomingSlot = true;
+        }
+
         if ($startTs >= $nowTs && ($nextUpcomingTs === 0 || $startTs < $nextUpcomingTs)) {
+            $nextUpcomingTs = $startTs;
+            continue;
+        }
+
+        if ($nextUpcomingTs === 0 && event_o_dashboard_slot_is_current($slot, $nowTs)) {
             $nextUpcomingTs = $startTs;
         }
     }
@@ -449,7 +461,7 @@ function event_o_build_dashboard_event_item(WP_Post $post): array
         $attentionReasons[] = __('Beschreibung fehlt', 'event-o');
         $severity += 2;
     }
-    if ($firstSlotTs > 0 && $nextUpcomingTs === 0 && $post->post_status === 'publish') {
+    if ($firstSlotTs > 0 && !$hasCurrentOrUpcomingSlot && $post->post_status === 'publish') {
         $attentionReasons[] = __('Nur vergangene Termine', 'event-o');
         $severity += 1;
     }
@@ -495,34 +507,51 @@ function event_o_build_dashboard_event_item(WP_Post $post): array
 
 function event_o_dashboard_get_slots(int $postId): array
 {
-    $slotKeys = [
-        [EVENT_O_META_START_TS, EVENT_O_META_END_TS, EVENT_O_META_BEGIN_TIME],
-        [EVENT_O_META_START_TS_2, EVENT_O_META_END_TS_2, EVENT_O_META_BEGIN_TIME_2],
-        [EVENT_O_META_START_TS_3, EVENT_O_META_END_TS_3, EVENT_O_META_BEGIN_TIME_3],
-    ];
+    return event_o_get_all_date_slots($postId);
+}
 
-    $slots = [];
-    foreach ($slotKeys as $keys) {
-        $startTs = (int) get_post_meta($postId, $keys[0], true);
-        $endTs = (int) get_post_meta($postId, $keys[1], true);
-        $beginTime = (string) get_post_meta($postId, $keys[2], true);
-        if ($startTs <= 0) {
-            continue;
-        }
-        $slots[] = [
-            'start_ts' => $startTs,
-            'end_ts' => $endTs,
-            'begin_time' => $beginTime,
-        ];
+function event_o_dashboard_slot_is_current(array $slot, int $nowTs): bool
+{
+    $startTs = isset($slot['start_ts']) ? (int) $slot['start_ts'] : 0;
+    $endTs = isset($slot['end_ts']) ? (int) $slot['end_ts'] : 0;
+
+    if ($startTs <= 0 || $startTs > $nowTs) {
+        return false;
     }
 
-    return $slots;
+    if ($endTs > 0) {
+        return $endTs >= $nowTs;
+    }
+
+    return wp_date('Y-m-d', $startTs, wp_timezone()) === wp_date('Y-m-d', $nowTs, wp_timezone());
+}
+
+function event_o_dashboard_slot_is_current_or_upcoming(array $slot, int $nowTs): bool
+{
+    $startTs = isset($slot['start_ts']) ? (int) $slot['start_ts'] : 0;
+    if ($startTs >= $nowTs) {
+        return true;
+    }
+
+    return event_o_dashboard_slot_is_current($slot, $nowTs);
 }
 
 function event_o_dashboard_has_slot_in_range(array $slots, int $rangeStart, int $rangeEnd): bool
 {
     foreach ($slots as $slot) {
         $startTs = isset($slot['start_ts']) ? (int) $slot['start_ts'] : 0;
+        $endTs = isset($slot['end_ts']) ? (int) $slot['end_ts'] : 0;
+        if ($startTs <= 0) {
+            continue;
+        }
+
+        if ($endTs > 0) {
+            if ($startTs < $rangeEnd && $endTs >= $rangeStart) {
+                return true;
+            }
+            continue;
+        }
+
         if ($startTs >= $rangeStart && $startTs < $rangeEnd) {
             return true;
         }

@@ -287,7 +287,7 @@ function event_o_register_settings(): void
                 echo '<option value="' . esc_attr((string) $i) . '"' . $selected . '>' . esc_html($label) . '</option>';
             }
             echo '</select>';
-            echo '<p class="description">' . esc_html__('Wie viele Tage nach dem Eventbeginn soll ein Event noch in den Blöcken angezeigt werden. Events werden immer mindestens bis Mitternacht des Starttages angezeigt.', 'event-o') . '</p>';
+            echo '<p class="description">' . esc_html__('Wie viele Tage nach dem Eventbeginn soll ein Event noch in den Blöcken angezeigt werden. Events werden immer mindestens bis Mitternacht des Starttages angezeigt. Mehrtägige oder mehrterminige Events bleiben sichtbar, bis der letzte noch laufende Termin vorbei ist.', 'event-o') . '</p>';
         },
         'event_o_settings',
         'event_o_settings_behavior'
@@ -425,29 +425,496 @@ function event_o_register_settings_page(): void
     );
 }
 
+function event_o_enqueue_settings_assets(string $hookSuffix): void
+{
+    $page = isset($_GET['page']) ? sanitize_key((string) $_GET['page']) : '';
+    $postType = isset($_GET['post_type']) ? sanitize_key((string) $_GET['post_type']) : '';
+
+    if ($hookSuffix !== 'event-o_page_event-o-settings' && ($page !== 'event-o-settings' || $postType !== 'event_o_event')) {
+        return;
+    }
+
+    wp_enqueue_style('wp-color-picker');
+
+    wp_enqueue_style(
+        'event-o-admin-settings',
+        EVENT_O_PLUGIN_URL . 'assets/admin-settings.css',
+        ['wp-color-picker'],
+        function_exists('event_o_asset_version') ? event_o_asset_version('assets/admin-settings.css') : EVENT_O_VERSION
+    );
+
+    wp_enqueue_script(
+        'event-o-admin-settings',
+        EVENT_O_PLUGIN_URL . 'assets/admin-settings.js',
+        ['jquery', 'wp-color-picker'],
+        function_exists('event_o_asset_version') ? event_o_asset_version('assets/admin-settings.js') : EVENT_O_VERSION,
+        true
+    );
+}
+add_action('admin_enqueue_scripts', 'event_o_enqueue_settings_assets');
+
 function event_o_render_settings_page(): void
 {
     if (!current_user_can('manage_options')) {
         return;
     }
 
-    // Enqueue WordPress color picker
-    wp_enqueue_style('wp-color-picker');
-    wp_enqueue_script('wp-color-picker');
+    $tokens = event_o_get_design_tokens();
+    $sections = event_o_get_settings_sections();
+    $summary = event_o_get_settings_summary();
+    $wrapperStyle = sprintf(
+        '--event-o-settings-primary:%1$s;--event-o-settings-accent:%2$s;--event-o-settings-text:%3$s;--event-o-settings-muted:%4$s;',
+        esc_attr($tokens['primary']),
+        esc_attr($tokens['accent']),
+        esc_attr($tokens['text']),
+        esc_attr($tokens['muted'])
+    );
 
-    echo '<div class="wrap">';
-    echo '<h1>' . esc_html__('Event_O Settings', 'event-o') . '</h1>';
-    echo '<form method="post" action="options.php">';
-
-    settings_fields('event_o_settings');
-    do_settings_sections('event_o_settings');
-    submit_button();
-
-    echo '</form>';
+    echo '<div class="wrap event-o-settings-page" style="' . $wrapperStyle . '">';
+    echo '<div class="event-o-settings-hero">';
+    echo '<div class="event-o-settings-hero-copy">';
+    echo '<p class="event-o-settings-eyebrow">' . esc_html__('Event-O Workspace', 'event-o') . '</p>';
+    echo '<h1>' . esc_html__('Einstellungen', 'event-o') . '</h1>';
+    echo '<p class="event-o-settings-subtitle">' . esc_html__('Konfiguriere Gestaltung, Single-Event-Erlebnis, Redaktionsworkflow und Theme-Verhalten an einem Ort.', 'event-o') . '</p>';
+    echo '</div>';
+    echo '<div class="event-o-settings-hero-status">';
+    foreach ($summary['badges'] as $badge) {
+        echo '<span class="event-o-settings-pill ' . esc_attr($badge['class']) . '">' . esc_html($badge['label']) . '</span>';
+    }
+    echo '</div>';
     echo '</div>';
 
-    // Initialize color pickers
-    echo '<script>jQuery(document).ready(function($){ $(".event-o-color-picker").wpColorPicker(); });</script>';
+    echo '<div class="event-o-settings-shell">';
+    echo '<aside class="event-o-settings-sidebar">';
+    echo '<section class="event-o-settings-panel event-o-settings-panel-nav">';
+    echo '<h2>' . esc_html__('Bereiche', 'event-o') . '</h2>';
+    echo '<nav class="event-o-settings-nav" aria-label="' . esc_attr__('Settings sections', 'event-o') . '">';
+    foreach ($sections as $section) {
+        echo '<a href="#' . esc_attr($section['id']) . '">';
+        echo '<span class="event-o-settings-nav-title">' . esc_html($section['title']) . '</span>';
+        echo '<span class="event-o-settings-nav-copy">' . esc_html($section['short']) . '</span>';
+        echo '</a>';
+    }
+    echo '</nav>';
+    echo '</section>';
+
+    echo '<section class="event-o-settings-panel event-o-settings-panel-summary">';
+    echo '<h2>' . esc_html__('Aktuelle Konfiguration', 'event-o') . '</h2>';
+    echo '<div class="event-o-settings-summary-grid">';
+    foreach ($summary['metrics'] as $metric) {
+        echo '<div class="event-o-settings-metric">';
+        echo '<span class="event-o-settings-metric-label">' . esc_html($metric['label']) . '</span>';
+        echo '<strong class="event-o-settings-metric-value">' . esc_html($metric['value']) . '</strong>';
+        echo '<span class="event-o-settings-metric-help">' . esc_html($metric['help']) . '</span>';
+        echo '</div>';
+    }
+    echo '</div>';
+    echo '<div class="event-o-settings-preview">';
+    echo '<h3>' . esc_html__('Design-Vorschau', 'event-o') . '</h3>';
+    echo '<div class="event-o-settings-swatches">';
+    foreach ($summary['swatches'] as $swatch) {
+        echo '<div class="event-o-settings-swatch">';
+        echo '<span class="event-o-settings-swatch-color" style="background:' . esc_attr($swatch['value']) . '"></span>';
+        echo '<span class="event-o-settings-swatch-label">' . esc_html($swatch['label']) . '</span>';
+        echo '<code>' . esc_html(strtoupper($swatch['value'])) . '</code>';
+        echo '</div>';
+    }
+    echo '</div>';
+    echo '</div>';
+    echo '</section>';
+
+    echo '<section class="event-o-settings-panel event-o-settings-panel-help">';
+    echo '<h2>' . esc_html__('Hinweise', 'event-o') . '</h2>';
+    echo '<ul class="event-o-settings-help-list">';
+    echo '<li>' . esc_html__('Farben und Theme-Selektoren wirken sich direkt auf Frontend-Blöcke und Single-Templates aus.', 'event-o') . '</li>';
+    echo '<li>' . esc_html__('Workflow-Optionen betreffen die Event-Erstellung und Sichtbarkeit in Listen.', 'event-o') . '</li>';
+    echo '<li>' . esc_html__('Die Einstellungen werden siteweit gespeichert und gelten sofort nach dem Speichern.', 'event-o') . '</li>';
+    echo '</ul>';
+    echo '</section>';
+    echo '</aside>';
+
+    echo '<form method="post" action="options.php" class="event-o-settings-form">';
+    settings_fields('event_o_settings');
+
+    foreach ($sections as $section) {
+        echo '<section id="' . esc_attr($section['id']) . '" class="event-o-settings-section-card">';
+        echo '<div class="event-o-settings-section-head">';
+        echo '<div>';
+        echo '<p class="event-o-settings-section-kicker">' . esc_html($section['kicker']) . '</p>';
+        echo '<h2>' . esc_html($section['title']) . '</h2>';
+        echo '</div>';
+        echo '<p>' . esc_html($section['description']) . '</p>';
+        echo '</div>';
+        echo '<div class="event-o-settings-fields">';
+        foreach ($section['fields'] as $field) {
+            event_o_render_settings_field($field);
+        }
+        echo '</div>';
+        echo '</section>';
+    }
+
+    echo '<div class="event-o-settings-submit">';
+    submit_button(__('Einstellungen speichern', 'event-o'), 'primary', 'submit', false, ['class' => 'button button-primary button-large']);
+    echo '<span class="event-o-settings-submit-note">' . esc_html__('Nach dem Speichern sind die Änderungen sofort aktiv.', 'event-o') . '</span>';
+    echo '</div>';
+    echo '</form>';
+    echo '</div>';
+    echo '</div>';
+}
+
+function event_o_get_settings_sections(): array
+{
+    return [
+        [
+            'id' => 'event-o-settings-design',
+            'kicker' => __('Look & Feel', 'event-o'),
+            'title' => __('Design', 'event-o'),
+            'short' => __('Farben und Lesbarkeit', 'event-o'),
+            'description' => __('Definiere die Grundfarben des Plugins und optimiere die Lesbarkeit für helle und dunkle Themes.', 'event-o'),
+            'fields' => [
+                [
+                    'name' => EVENT_O_OPTION_PRIMARY,
+                    'label' => __('Primary color', 'event-o'),
+                    'type' => 'color',
+                    'description' => __('Prägt Akzente, Buttons und markante Hervorhebungen.', 'event-o'),
+                    'default' => '#4f6b3a',
+                ],
+                [
+                    'name' => EVENT_O_OPTION_ACCENT,
+                    'label' => __('Accent color', 'event-o'),
+                    'type' => 'color',
+                    'description' => __('Zweite Markenfarbe für Kontraste und besondere UI-Elemente.', 'event-o'),
+                    'default' => '#2d3a22',
+                ],
+                [
+                    'name' => EVENT_O_OPTION_TEXT,
+                    'label' => __('Text color', 'event-o'),
+                    'type' => 'color',
+                    'description' => __('Standardfarbe für Text auf hellen Flächen.', 'event-o'),
+                    'default' => '#141414',
+                ],
+                [
+                    'name' => EVENT_O_OPTION_MUTED,
+                    'label' => __('Muted color', 'event-o'),
+                    'type' => 'color',
+                    'description' => __('Wird für Meta-Infos, Hilfetexte und sekundäre Inhalte genutzt.', 'event-o'),
+                    'default' => '#6a6a6a',
+                ],
+                [
+                    'name' => EVENT_O_OPTION_HIGH_CONTRAST,
+                    'label' => __('Hoher Kontrast', 'event-o'),
+                    'type' => 'toggle',
+                    'description' => __('Ersetzt gedämpfte Farben durch volle Textfarbe für maximale Lesbarkeit.', 'event-o'),
+                    'default' => false,
+                ],
+            ],
+        ],
+        [
+            'id' => 'event-o-settings-single',
+            'kicker' => __('Frontend Experience', 'event-o'),
+            'title' => __('Single Event', 'event-o'),
+            'short' => __('Template, Inhalte und Sharing', 'event-o'),
+            'description' => __('Steuere das Verhalten der Event-Einzelseite, Animationen, verwandte Inhalte und Sharing-Optionen.', 'event-o'),
+            'fields' => [
+                [
+                    'name' => EVENT_O_OPTION_ENABLE_SINGLE,
+                    'label' => __('Single-Template aktivieren', 'event-o'),
+                    'type' => 'toggle',
+                    'description' => __('Verwendet das Event-O-Template für Einzelseiten von Event-O-Events.', 'event-o'),
+                    'default' => true,
+                ],
+                [
+                    'name' => EVENT_O_OPTION_SINGLE_ANIMATION,
+                    'label' => __('Seitenanimation', 'event-o'),
+                    'type' => 'select',
+                    'description' => __('Sanfte Einblendung für Inhalte auf der Event-Einzelseite.', 'event-o'),
+                    'default' => 'none',
+                    'options' => [
+                        'none' => __('Keine', 'event-o'),
+                        'fade-up' => __('Fade Up', 'event-o'),
+                        'fade-in' => __('Fade In', 'event-o'),
+                        'slide-left' => __('Slide Left', 'event-o'),
+                        'scale-up' => __('Scale Up', 'event-o'),
+                    ],
+                ],
+                [
+                    'name' => EVENT_O_OPTION_HERO_PARALLAX,
+                    'label' => __('Parallax Hero-Bild', 'event-o'),
+                    'type' => 'toggle',
+                    'description' => __('Aktiviert einen Parallax-Effekt auf dem Hero-Bild. Wird bei reduzierter Bewegung automatisch deaktiviert.', 'event-o'),
+                    'default' => false,
+                ],
+                [
+                    'name' => EVENT_O_OPTION_SINGLE_TITLE_LAYOUT,
+                    'label' => __('Titel-Position', 'event-o'),
+                    'type' => 'select',
+                    'description' => __('Bestimmt, wo der Event-Titel innerhalb der Einzelseite erscheint.', 'event-o'),
+                    'default' => 'both',
+                    'options' => [
+                        'both' => __('Im Hero und im Inhalt', 'event-o'),
+                        'hero' => __('Nur im Hero', 'event-o'),
+                        'content' => __('Nur im Inhalt', 'event-o'),
+                    ],
+                ],
+                [
+                    'name' => EVENT_O_OPTION_SINGLE_CATEGORY_COLOR,
+                    'label' => __('Kategorie-Farben nutzen', 'event-o'),
+                    'type' => 'toggle',
+                    'description' => __('Zeigt Kategorien auf der Einzelseite in ihrer zugewiesenen Farbe an.', 'event-o'),
+                    'default' => true,
+                ],
+                [
+                    'name' => EVENT_O_OPTION_SINGLE_SHOW_TAGS,
+                    'label' => __('Schlagwörter anzeigen', 'event-o'),
+                    'type' => 'toggle',
+                    'description' => __('Blendet Schlagwörter auf der Event-Einzelseite ein.', 'event-o'),
+                    'default' => false,
+                ],
+                [
+                    'name' => EVENT_O_OPTION_RELATED_CATEGORY_ONLY,
+                    'label' => __('Weitere Events nur aus gleicher Kategorie', 'event-o'),
+                    'type' => 'toggle',
+                    'description' => __('Filtert den Bereich mit weiteren Veranstaltungen auf passende Kategorien.', 'event-o'),
+                    'default' => false,
+                ],
+                [
+                    'name' => EVENT_O_OPTION_SHARE_OPTIONS,
+                    'label' => __('Share-Buttons', 'event-o'),
+                    'type' => 'checkbox-group',
+                    'description' => __('Wähle, welche Aktionen Besucherinnen und Besuchern auf Einzelseiten sehen.', 'event-o'),
+                    'default' => ['facebook', 'twitter', 'whatsapp', 'linkedin', 'email', 'instagram', 'calendar', 'copy'],
+                    'options' => [
+                        'facebook' => 'Facebook',
+                        'twitter' => 'X (Twitter)',
+                        'whatsapp' => 'WhatsApp',
+                        'linkedin' => 'LinkedIn',
+                        'email' => __('E-Mail', 'event-o'),
+                        'instagram' => 'Instagram',
+                        'calendar' => __('Zum Kalender hinzufügen', 'event-o'),
+                        'copy' => __('URL kopieren', 'event-o'),
+                    ],
+                ],
+            ],
+        ],
+        [
+            'id' => 'event-o-settings-workflow',
+            'kicker' => __('Editorial Flow', 'event-o'),
+            'title' => __('Redaktionsworkflow', 'event-o'),
+            'short' => __('Erstellung und Sichtbarkeit', 'event-o'),
+            'description' => __('Lege fest, wie Redakteure Events anlegen und wie lange vergangene Termine in Blöcken sichtbar bleiben.', 'event-o'),
+            'fields' => [
+                [
+                    'name' => EVENT_O_OPTION_WIZARD_MODE,
+                    'label' => __('Geführte Event-Eingabe', 'event-o'),
+                    'type' => 'toggle',
+                    'description' => __('Aktiviert eine schrittweise Eingabemaske. Der klassische Editor bleibt erreichbar.', 'event-o'),
+                    'default' => false,
+                ],
+                [
+                    'name' => EVENT_O_OPTION_PAST_GRACE_DAYS,
+                    'label' => __('Vergangene Events in Blöcken zeigen', 'event-o'),
+                    'type' => 'select',
+                    'description' => __('Mehrtägige oder mehrterminige Events bleiben sichtbar, bis der letzte laufende Termin vorbei ist.', 'event-o'),
+                    'default' => 3,
+                    'options' => [
+                        '0' => __('0 Tage, nur zukünftige Events', 'event-o'),
+                        '1' => __('1 Tag', 'event-o'),
+                        '2' => __('2 Tage', 'event-o'),
+                        '3' => __('3 Tage', 'event-o'),
+                        '4' => __('4 Tage', 'event-o'),
+                        '5' => __('5 Tage', 'event-o'),
+                        '6' => __('6 Tage', 'event-o'),
+                        '7' => __('7 Tage', 'event-o'),
+                    ],
+                ],
+            ],
+        ],
+        [
+            'id' => 'event-o-settings-theme',
+            'kicker' => __('Theme Integration', 'event-o'),
+            'title' => __('Theme-Kompatibilität', 'event-o'),
+            'short' => __('Dark und Light Mode', 'event-o'),
+            'description' => __('Bestimme, wie Event-O den Farbmodus deines Themes erkennt und welche Selektoren dafür genutzt werden.', 'event-o'),
+            'fields' => [
+                [
+                    'name' => EVENT_O_OPTION_DARK_MODE,
+                    'label' => __('Farbmodus', 'event-o'),
+                    'type' => 'select',
+                    'description' => __('Automatisch nutzt Theme-Selektoren. Light oder Dark überschreibt die Theme-Erkennung.', 'event-o'),
+                    'default' => 'auto',
+                    'options' => [
+                        'auto' => __('Automatisch', 'event-o'),
+                        'light' => __('Immer Light Mode', 'event-o'),
+                        'dark' => __('Immer Dark Mode', 'event-o'),
+                    ],
+                ],
+                [
+                    'name' => EVENT_O_OPTION_DARK_SELECTOR,
+                    'label' => __('Dark-Mode-Selektor', 'event-o'),
+                    'type' => 'text',
+                    'description' => __('Beispiel: html[data-neve-theme="dark"], body.dark-mode oder html.dark', 'event-o'),
+                    'default' => 'html[data-neve-theme="dark"]',
+                    'placeholder' => 'html[data-neve-theme="dark"]',
+                    'input_class' => 'event-o-settings-code-input',
+                    'conditions' => [
+                        'field' => EVENT_O_OPTION_DARK_MODE,
+                        'value' => 'auto',
+                    ],
+                ],
+                [
+                    'name' => EVENT_O_OPTION_LIGHT_SELECTOR,
+                    'label' => __('Light-Mode-Selektor', 'event-o'),
+                    'type' => 'text',
+                    'description' => __('Hilft im Auto-Modus dabei, Dark Mode sauber von Light Mode zu trennen.', 'event-o'),
+                    'default' => 'html[data-neve-theme="light"]',
+                    'placeholder' => 'html[data-neve-theme="light"]',
+                    'input_class' => 'event-o-settings-code-input',
+                    'conditions' => [
+                        'field' => EVENT_O_OPTION_DARK_MODE,
+                        'value' => 'auto',
+                    ],
+                ],
+            ],
+        ],
+    ];
+}
+
+function event_o_get_settings_summary(): array
+{
+    $tokens = event_o_get_design_tokens();
+    $darkMode = (string) get_option(EVENT_O_OPTION_DARK_MODE, 'auto');
+    $shareOptions = get_option(EVENT_O_OPTION_SHARE_OPTIONS, ['facebook', 'twitter', 'whatsapp', 'linkedin', 'email', 'instagram', 'calendar', 'copy']);
+    if (!is_array($shareOptions)) {
+        $shareOptions = [];
+    }
+
+    $darkModeLabels = [
+        'auto' => __('Auto', 'event-o'),
+        'light' => __('Light', 'event-o'),
+        'dark' => __('Dark', 'event-o'),
+    ];
+
+    return [
+        'badges' => [
+            [
+                'label' => (bool) get_option(EVENT_O_OPTION_ENABLE_SINGLE, true) ? __('Single aktiv', 'event-o') : __('Single aus', 'event-o'),
+                'class' => (bool) get_option(EVENT_O_OPTION_ENABLE_SINGLE, true) ? 'is-good' : 'is-muted',
+            ],
+            [
+                'label' => (bool) get_option(EVENT_O_OPTION_WIZARD_MODE, false) ? __('Wizard aktiv', 'event-o') : __('Wizard aus', 'event-o'),
+                'class' => (bool) get_option(EVENT_O_OPTION_WIZARD_MODE, false) ? 'is-good' : 'is-muted',
+            ],
+            [
+                'label' => sprintf(__('Farbmodus: %s', 'event-o'), $darkModeLabels[$darkMode] ?? $darkMode),
+                'class' => $darkMode === 'dark' ? 'is-warning' : 'is-muted',
+            ],
+        ],
+        'metrics' => [
+            [
+                'label' => __('Share-Buttons', 'event-o'),
+                'value' => (string) count($shareOptions),
+                'help' => __('Aktiv auf der Einzelseite', 'event-o'),
+            ],
+            [
+                'label' => __('Vergangene Events', 'event-o'),
+                'value' => sprintf(__('%s Tage', 'event-o'), (string) get_option(EVENT_O_OPTION_PAST_GRACE_DAYS, 3)),
+                'help' => __('Sichtbarkeit in Blöcken', 'event-o'),
+            ],
+            [
+                'label' => __('Animation', 'event-o'),
+                'value' => (string) get_option(EVENT_O_OPTION_SINGLE_ANIMATION, 'none'),
+                'help' => __('Single Event Übergang', 'event-o'),
+            ],
+            [
+                'label' => __('Kontrast', 'event-o'),
+                'value' => (bool) get_option(EVENT_O_OPTION_HIGH_CONTRAST, false) ? __('Hoch', 'event-o') : __('Standard', 'event-o'),
+                'help' => __('Lesbarkeit der UI', 'event-o'),
+            ],
+        ],
+        'swatches' => [
+            ['label' => __('Primary', 'event-o'), 'value' => $tokens['primary']],
+            ['label' => __('Accent', 'event-o'), 'value' => $tokens['accent']],
+            ['label' => __('Text', 'event-o'), 'value' => $tokens['text']],
+            ['label' => __('Muted', 'event-o'), 'value' => $tokens['muted']],
+        ],
+    ];
+}
+
+function event_o_render_settings_field(array $field): void
+{
+    $name = (string) $field['name'];
+    $type = (string) $field['type'];
+    $label = (string) $field['label'];
+    $description = (string) ($field['description'] ?? '');
+    $default = $field['default'] ?? '';
+    $value = get_option($name, $default);
+    $classes = ['event-o-settings-field', 'is-' . sanitize_html_class($type)];
+    $attributes = '';
+
+    if (!empty($field['conditions']) && is_array($field['conditions'])) {
+        $conditionField = isset($field['conditions']['field']) ? (string) $field['conditions']['field'] : '';
+        $conditionValue = isset($field['conditions']['value']) ? (string) $field['conditions']['value'] : '';
+        if ($conditionField !== '') {
+            $attributes .= ' data-conditional-field="' . esc_attr($conditionField) . '"';
+            $attributes .= ' data-conditional-value="' . esc_attr($conditionValue) . '"';
+        }
+    }
+
+    echo '<article class="' . esc_attr(implode(' ', $classes)) . '"' . $attributes . '>';
+    echo '<div class="event-o-settings-field-head">';
+    echo '<div>';
+    echo '<h3>' . esc_html($label) . '</h3>';
+    if ($description !== '') {
+        echo '<p>' . esc_html($description) . '</p>';
+    }
+    echo '</div>';
+
+    if ($type === 'toggle') {
+        echo '<div class="event-o-settings-field-control event-o-settings-field-control-toggle">';
+        echo '<input type="hidden" name="' . esc_attr($name) . '" value="0" />';
+        echo '<label class="event-o-settings-switch">';
+        echo '<input type="checkbox" name="' . esc_attr($name) . '" value="1" ' . checked((bool) $value, true, false) . ' />';
+        echo '<span class="event-o-settings-switch-ui" aria-hidden="true"></span>';
+        echo '<span class="screen-reader-text">' . esc_html($label) . '</span>';
+        echo '</label>';
+        echo '</div>';
+        echo '</div>';
+        echo '</article>';
+        return;
+    }
+
+    echo '</div>';
+    echo '<div class="event-o-settings-field-control">';
+
+    if ($type === 'color') {
+        $defaultColor = isset($field['default']) ? (string) $field['default'] : '#4f6b3a';
+        echo '<input type="text" class="event-o-color-picker" name="' . esc_attr($name) . '" value="' . esc_attr((string) $value) . '" data-default-color="' . esc_attr($defaultColor) . '" />';
+    } elseif ($type === 'select') {
+        echo '<select name="' . esc_attr($name) . '" class="event-o-settings-select">';
+        foreach ((array) ($field['options'] ?? []) as $optionValue => $optionLabel) {
+            echo '<option value="' . esc_attr((string) $optionValue) . '"' . selected((string) $value, (string) $optionValue, false) . '>' . esc_html((string) $optionLabel) . '</option>';
+        }
+        echo '</select>';
+    } elseif ($type === 'text') {
+        $inputClass = isset($field['input_class']) ? (string) $field['input_class'] : '';
+        $placeholder = isset($field['placeholder']) ? (string) $field['placeholder'] : '';
+        echo '<input type="text" name="' . esc_attr($name) . '" value="' . esc_attr((string) $value) . '" placeholder="' . esc_attr($placeholder) . '" class="event-o-settings-text ' . esc_attr($inputClass) . '" />';
+    } elseif ($type === 'checkbox-group') {
+        $currentValues = is_array($value) ? array_values(array_filter(array_map('strval', $value))) : [];
+        echo '<input type="hidden" name="' . esc_attr($name) . '[]" value="" />';
+        echo '<div class="event-o-settings-checkbox-grid">';
+        foreach ((array) ($field['options'] ?? []) as $optionValue => $optionLabel) {
+            $isChecked = in_array((string) $optionValue, $currentValues, true);
+            echo '<label class="event-o-settings-checkbox-card">';
+            echo '<input type="checkbox" name="' . esc_attr($name) . '[]" value="' . esc_attr((string) $optionValue) . '" ' . checked($isChecked, true, false) . ' />';
+            echo '<span>' . esc_html((string) $optionLabel) . '</span>';
+            echo '</label>';
+        }
+        echo '</div>';
+    }
+
+    echo '</div>';
+    echo '</article>';
 }
 
 function event_o_maybe_migrate_legacy_options(): void

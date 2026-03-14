@@ -149,6 +149,7 @@ function event_o_register_blocks(): void
         'render_callback' => 'event_o_render_event_calendar_block',
         'attributes' => [
             'theme' => ['type' => 'string', 'default' => 'light'],
+            'desktopPopupMatrix' => ['type' => 'string', 'default' => '3x3'],
             'accentColor' => ['type' => 'string', 'default' => '#4f6b3a'],
             'calendarBgLight' => ['type' => 'string', 'default' => '#f3f5f7'],
             'calendarBgDark' => ['type' => 'string', 'default' => '#10141a'],

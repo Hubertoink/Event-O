@@ -225,6 +225,48 @@
     gap: 10px;
 }
 
+.eo-wizard-tag-search-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.eo-wizard-tag-search-row .eo-wizard-input {
+    flex: 1;
+}
+
+.eo-wizard-tag-create-btn,
+.eo-wizard-tag-create-inline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 14px;
+    border: 1px solid #4f6b3a;
+    border-radius: 8px;
+    background: #4f6b3a;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+
+.eo-wizard-tag-create-btn:hover,
+.eo-wizard-tag-create-inline:hover {
+    background: #3d5530;
+    border-color: #3d5530;
+}
+
+.eo-wizard-tag-create-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.eo-wizard-tag-create-inline {
+    margin-top: 8px;
+}
+
 .eo-wizard-tag-selected,
 .eo-wizard-tag-quick,
 .eo-wizard-tag-search-list {
@@ -289,6 +331,12 @@
     font-size: 12px;
     color: #757575;
     padding: 2px 0;
+}
+
+@media (max-width: 640px) {
+    .eo-wizard-tag-search-row {
+        flex-direction: column;
+    }
 }
 
 /* --- Image upload --- */

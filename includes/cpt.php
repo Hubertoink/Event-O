@@ -60,6 +60,11 @@ function event_o_add_events_to_search_query(\WP_Query $query): void
 
     $postTypes = $query->get('post_type');
     if (empty($postTypes) || $postTypes === 'any') {
+        $postTypes = array_values(array_unique(array_merge(
+            get_post_types(['exclude_from_search' => false]),
+            ['event_o_event']
+        )));
+        $query->set('post_type', $postTypes);
         return;
     }
 

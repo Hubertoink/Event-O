@@ -15,6 +15,7 @@
     var tags       = D.tags || [];
     var isNew      = D.isNew === '1';
     var canPublish = D.canPublish === '1';
+    var canCreateTags = D.canCreateTags === '1';
     var texts      = D.texts || {};
 
     /* ── Gutenberg detection ── */
@@ -351,20 +352,33 @@
             html += '</div></div>';
         }
 
-        if (tags.length) {
-            html += '<div class="eo-wizard-field">';
-            html += '<label class="eo-wizard-label">Schlagwörter</label>';
-            html += '<div class="eo-wizard-tag-picker">';
+        html += '<div class="eo-wizard-field">';
+        html += '<label class="eo-wizard-label">Schlagwörter</label>';
+        html += '<div class="eo-wizard-tag-picker">';
+        html += '<input type="hidden" id="eo_wiz_tag_ids" value="' + escAttr((wizardState.tags || []).join(',')) + '">';
+
+        if (tags.length || canCreateTags) {
+            html += '<div class="eo-wizard-tag-search-row">';
             html += '<input type="text" id="eo_wiz_tag_search" class="eo-wizard-input" value="" placeholder="Schlagwort suchen…">';
-            html += '<input type="hidden" id="eo_wiz_tag_ids" value="' + escAttr((wizardState.tags || []).join(',')) + '">';
+            if (canCreateTags) {
+                html += '<button type="button" class="eo-wizard-tag-create-btn" id="eo_wiz_tag_create">' + esc(texts.createTag || 'Schlagwort anlegen') + '</button>';
+            }
+            html += '</div>';
             html += '<div class="eo-wizard-tag-selected" id="eo_wiz_tag_selected"></div>';
             html += '<div class="eo-wizard-tag-quick-wrap">';
             html += '<span class="eo-wizard-hint eo-wizard-tag-hint">Häufigste Schlagwörter</span>';
             html += '<div class="eo-wizard-tag-quick" id="eo_wiz_tag_quick"></div>';
             html += '</div>';
             html += '<div class="eo-wizard-tag-results" id="eo_wiz_tag_results"></div>';
-            html += '</div></div>';
+            if (canCreateTags) {
+                html += '<span class="eo-wizard-hint">' + esc(texts.createTagHint || 'Neues Schlagwort direkt hier anlegen.') + '</span>';
+            }
+        } else {
+            html += '<div class="eo-wizard-tag-empty">Noch keine Schlagwörter vorhanden.</div>';
+            html += '<span class="eo-wizard-hint">Sobald WordPress-Tags vorhanden sind, kannst du sie hier wieder direkt im Wizard auswählen.</span>';
         }
+
+        html += '</div></div>';
 
         // Description
         html += '<div class="eo-wizard-field">';
@@ -374,7 +388,7 @@
 
         $body.html(html);
 
-        if (tags.length) {
+        if (tags.length || canCreateTags) {
             initTagPicker($body);
         }
 
@@ -974,20 +988,13 @@
 
         $body.on('keydown', '#eo_wiz_tag_search', function (e) {
             if (e.key !== 'Enter') return;
-
-            var tagId = getFirstSelectableTagId($body);
-            if (!tagId) return;
-
             e.preventDefault();
 
-            var selectedIds = getSelectedTagIds($body);
-            if (selectedIds.indexOf(tagId) === -1) {
-                selectedIds.push(tagId);
-                setSelectedTagIds($body, selectedIds);
-            }
+            handleTagSubmit($body);
+        });
 
-            $(this).val('');
-            renderTagPicker($body);
+        $body.on('click', '#eo_wiz_tag_create', function () {
+            handleTagSubmit($body);
         });
 
         $body.on('click', '.eo-wizard-tag-option', function () {
@@ -1025,17 +1032,24 @@
         var query = ($body.find('#eo_wiz_tag_search').val() || '').trim().toLowerCase();
         var quickTags = getTopTags(6);
         var resultTags = query ? getMatchingTags(query, selectedIds, 8) : [];
+        var exactTag = query ? findTagByName(query) : null;
 
         $body.find('#eo_wiz_tag_selected').html(buildSelectedTagMarkup(selectedIds));
         $body.find('#eo_wiz_tag_quick').html(buildTagOptionMarkup(quickTags, selectedIds));
 
         if (!query) {
             $body.find('#eo_wiz_tag_results').html('');
+            updateCreateTagButton($body, null);
             return;
         }
 
         if (!resultTags.length) {
-            $body.find('#eo_wiz_tag_results').html('<div class="eo-wizard-tag-empty">Keine passenden Schlagwörter gefunden.</div>');
+            var emptyHtml = '<div class="eo-wizard-tag-empty">Keine passenden Schlagwörter gefunden.</div>';
+            if (canCreateTags && !exactTag) {
+                emptyHtml += '<button type="button" class="eo-wizard-tag-create-inline" data-tag-name="' + escAttr($body.find('#eo_wiz_tag_search').val().trim()) + '">' + esc(texts.createTag || 'Schlagwort anlegen') + '</button>';
+            }
+            $body.find('#eo_wiz_tag_results').html(emptyHtml);
+            updateCreateTagButton($body, exactTag);
             return;
         }
 
@@ -1043,6 +1057,105 @@
             '<span class="eo-wizard-hint eo-wizard-tag-hint">Suchergebnisse</span>' +
             '<div class="eo-wizard-tag-search-list">' + buildTagOptionMarkup(resultTags, selectedIds) + '</div>'
         );
+        updateCreateTagButton($body, exactTag);
+    }
+
+    function handleTagSubmit($body) {
+        var queryRaw = ($body.find('#eo_wiz_tag_search').val() || '').trim();
+        if (!queryRaw) {
+            return;
+        }
+
+        var normalizedQuery = queryRaw.toLowerCase();
+        var exactTag = findTagByName(normalizedQuery);
+        if (exactTag) {
+            addSelectedTagId($body, exactTag.id);
+            $body.find('#eo_wiz_tag_search').val('');
+            renderTagPicker($body);
+            return;
+        }
+
+        var tagId = getFirstSelectableTagId($body);
+        if (tagId) {
+            addSelectedTagId($body, tagId);
+            $body.find('#eo_wiz_tag_search').val('');
+            renderTagPicker($body);
+            return;
+        }
+
+        if (!canCreateTags) {
+            return;
+        }
+
+        createTagFromQuery($body, queryRaw);
+    }
+
+    function addSelectedTagId($body, tagId) {
+        var selectedIds = getSelectedTagIds($body);
+        if (selectedIds.indexOf(tagId) === -1) {
+            selectedIds.push(tagId);
+            setSelectedTagIds($body, selectedIds);
+        }
+    }
+
+    function findTagByName(query) {
+        var normalized = String(query || '').trim().toLowerCase();
+        if (!normalized) {
+            return null;
+        }
+
+        for (var i = 0; i < tags.length; i++) {
+            if (String(tags[i].name || '').trim().toLowerCase() === normalized) {
+                return tags[i];
+            }
+        }
+
+        return null;
+    }
+
+    function updateCreateTagButton($body, exactTag) {
+        var $button = $body.find('#eo_wiz_tag_create');
+        if (!$button.length) {
+            return;
+        }
+
+        var queryRaw = ($body.find('#eo_wiz_tag_search').val() || '').trim();
+        var disabled = !queryRaw || !!exactTag || $button.data('isCreating') === true;
+        $button.prop('disabled', disabled);
+    }
+
+    function createTagFromQuery($body, tagName) {
+        if (!canCreateTags || !tagName || !window.wp || !wp.apiFetch) {
+            return;
+        }
+
+        var $button = $body.find('#eo_wiz_tag_create');
+        $button.data('isCreating', true).prop('disabled', true).text(texts.creatingTag || 'Schlagwort wird angelegt…');
+
+        wp.apiFetch({
+            path: '/wp/v2/tags',
+            method: 'POST',
+            data: { name: tagName }
+        }).then(function (createdTag) {
+            if (!createdTag || !createdTag.id) {
+                throw new Error('invalid_tag_response');
+            }
+
+            tags.push({
+                id: createdTag.id,
+                name: createdTag.name || tagName,
+                count: typeof createdTag.count !== 'undefined' ? createdTag.count : 0
+            });
+
+            addSelectedTagId($body, createdTag.id);
+            $body.find('#eo_wiz_tag_search').val('');
+            renderTagPicker($body);
+        }).catch(function () {
+            window.alert(texts.createTagError || 'Schlagwort konnte nicht angelegt werden.');
+        }).finally(function () {
+            $button.data('isCreating', false).text(texts.createTag || 'Schlagwort anlegen');
+            updateCreateTagButton($body, null);
+        });
     }
 
     function getSelectedTagIds($body) {
@@ -1123,6 +1236,12 @@
             return '<button type="button" class="eo-wizard-tag-option' + active + '" data-tag-id="' + tag.id + '">' + esc(tag.name) + '</button>';
         }).join('');
     }
+
+    $(document).on('click', '.eo-wizard-tag-create-inline', function () {
+        var $body = $(this).closest('.eo-wizard-body');
+        var tagName = ($(this).attr('data-tag-name') || '').trim();
+        createTagFromQuery($body, tagName);
+    });
 
     function setTaxCheckboxes(checklistId, ids) {
         var $list = $('#' + checklistId);

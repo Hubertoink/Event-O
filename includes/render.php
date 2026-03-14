@@ -206,6 +206,185 @@ function event_o_get_filter_data_attrs(int $postId): string
          . ' data-organizers="' . esc_attr(implode(',', $orgSlugs)) . '"';
 }
 
+function event_o_get_past_grace_days(): int
+{
+    return max(0, (int) get_option(EVENT_O_OPTION_PAST_GRACE_DAYS, 3));
+}
+
+function event_o_get_slot_visibility_until(int $startTs, int $endTs = 0, ?int $graceDays = null): int
+{
+    if ($startTs <= 0) {
+        return max(0, $endTs);
+    }
+
+    $graceDays = $graceDays ?? event_o_get_past_grace_days();
+    $start = (new DateTimeImmutable('@' . $startTs))->setTimezone(wp_timezone());
+    $visibleUntil = $start
+        ->setTime(23, 59, 59)
+        ->modify('+' . max(0, $graceDays) . ' days')
+        ->getTimestamp();
+
+    if ($endTs > $visibleUntil) {
+        $visibleUntil = $endTs;
+    }
+
+    return $visibleUntil;
+}
+
+function event_o_get_visibility_threshold_start(?int $graceDays = null): int
+{
+    $graceDays = $graceDays ?? event_o_get_past_grace_days();
+    return (new DateTimeImmutable('now', wp_timezone()))
+        ->setTime(0, 0, 0)
+        ->modify('-' . max(0, $graceDays) . ' days')
+        ->getTimestamp();
+}
+
+function event_o_get_upcoming_meta_query(?int $graceDays = null): array
+{
+    $graceDays = $graceDays ?? event_o_get_past_grace_days();
+    $thresholdStart = event_o_get_visibility_threshold_start($graceDays);
+    $now = time();
+    $metaQuery = ['relation' => 'OR'];
+
+    foreach ([EVENT_O_META_START_TS, EVENT_O_META_START_TS_2, EVENT_O_META_START_TS_3, EVENT_O_LEGACY_META_START_TS] as $startKey) {
+        $metaQuery[] = [
+            'key' => $startKey,
+            'value' => $thresholdStart,
+            'compare' => '>=',
+            'type' => 'NUMERIC',
+        ];
+    }
+
+    foreach ([EVENT_O_META_END_TS, EVENT_O_META_END_TS_2, EVENT_O_META_END_TS_3, EVENT_O_LEGACY_META_END_TS] as $endKey) {
+        $metaQuery[] = [
+            'key' => $endKey,
+            'value' => $now,
+            'compare' => '>=',
+            'type' => 'NUMERIC',
+        ];
+    }
+
+    return $metaQuery;
+}
+
+function event_o_is_event_visible(int $postId, ?int $now = null, ?int $graceDays = null): bool
+{
+    $slots = event_o_get_all_date_slots($postId);
+    if (empty($slots)) {
+        return false;
+    }
+
+    $now = $now ?? time();
+    $graceDays = $graceDays ?? event_o_get_past_grace_days();
+
+    foreach ($slots as $slot) {
+        $startTs = isset($slot['start_ts']) ? (int) $slot['start_ts'] : 0;
+        $endTs = isset($slot['end_ts']) ? (int) $slot['end_ts'] : 0;
+
+        if (event_o_get_slot_visibility_until($startTs, $endTs, $graceDays) >= $now) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function event_o_filter_event_posts(array $posts, array $attrs, ?int $postsPerPage = null): array
+{
+    $showPast = !empty($attrs['showPast']);
+
+    if (!$showPast) {
+        $now = time();
+        $graceDays = event_o_get_past_grace_days();
+        $posts = array_values(array_filter($posts, static function ($post) use ($now, $graceDays): bool {
+            return $post instanceof WP_Post && event_o_is_event_visible((int) $post->ID, $now, $graceDays);
+        }));
+    }
+
+    $limit = $postsPerPage !== null ? $postsPerPage : (isset($attrs['perPage']) ? max(1, (int) $attrs['perPage']) : 10);
+    if ($limit > -1) {
+        $posts = array_slice($posts, 0, $limit);
+    }
+
+    return $posts;
+}
+
+function event_o_get_event_sort_timestamp(int $postId, string $order = 'ASC', bool $showPast = false, ?int $now = null, ?int $graceDays = null): int
+{
+    $slots = event_o_get_all_date_slots($postId);
+    if (!$slots) {
+        return $order === 'DESC' ? PHP_INT_MIN : PHP_INT_MAX;
+    }
+
+    $timestamps = [];
+    $now = $now ?? time();
+    $graceDays = $graceDays ?? event_o_get_past_grace_days();
+
+    foreach ($slots as $slot) {
+        $startTs = isset($slot['start_ts']) ? (int) $slot['start_ts'] : 0;
+        $endTs = isset($slot['end_ts']) ? (int) $slot['end_ts'] : 0;
+        if ($startTs <= 0) {
+            continue;
+        }
+
+        if (!$showPast && event_o_get_slot_visibility_until($startTs, $endTs, $graceDays) < $now) {
+            continue;
+        }
+
+        $timestamps[] = $startTs;
+    }
+
+    if (!$timestamps) {
+        foreach ($slots as $slot) {
+            $startTs = isset($slot['start_ts']) ? (int) $slot['start_ts'] : 0;
+            if ($startTs > 0) {
+                $timestamps[] = $startTs;
+            }
+        }
+    }
+
+    if (!$timestamps) {
+        return $order === 'DESC' ? PHP_INT_MIN : PHP_INT_MAX;
+    }
+
+    return $order === 'DESC' ? max($timestamps) : min($timestamps);
+}
+
+function event_o_sort_event_posts(array $posts, array $attrs): array
+{
+    $order = 'ASC';
+    if (isset($attrs['sortOrder'])) {
+        $candidate = strtoupper((string) $attrs['sortOrder']);
+        if (in_array($candidate, ['ASC', 'DESC'], true)) {
+            $order = $candidate;
+        }
+    } elseif (!empty($attrs['showPast'])) {
+        $order = 'DESC';
+    }
+
+    $showPast = !empty($attrs['showPast']);
+    $now = time();
+    $graceDays = event_o_get_past_grace_days();
+
+    usort($posts, static function ($left, $right) use ($order, $showPast, $now, $graceDays): int {
+        if (!$left instanceof WP_Post || !$right instanceof WP_Post) {
+            return 0;
+        }
+
+        $leftTs = event_o_get_event_sort_timestamp((int) $left->ID, $order, $showPast, $now, $graceDays);
+        $rightTs = event_o_get_event_sort_timestamp((int) $right->ID, $order, $showPast, $now, $graceDays);
+
+        if ($leftTs === $rightTs) {
+            return strcasecmp($left->post_title, $right->post_title);
+        }
+
+        return $order === 'DESC' ? ($rightTs <=> $leftTs) : ($leftTs <=> $rightTs);
+    });
+
+    return $posts;
+}
+
 function event_o_get_event_query_args(array $attrs, ?int $postsPerPage = null): array
 {
     $perPage = isset($attrs['perPage']) ? max(1, (int) $attrs['perPage']) : 10;
@@ -217,16 +396,6 @@ function event_o_get_event_query_args(array $attrs, ?int $postsPerPage = null): 
         if (in_array($candidate, ['ASC', 'DESC'], true)) {
             $order = $candidate;
         }
-    }
-
-    $metaQuery = [];
-    if (!$showPast) {
-        $metaQuery[] = [
-            'key' => EVENT_O_META_START_TS,
-            'value' => time(),
-            'compare' => '>=',
-            'type' => 'NUMERIC',
-        ];
     }
 
     $taxQuery = ['relation' => 'AND'];
@@ -267,8 +436,8 @@ function event_o_get_event_query_args(array $attrs, ?int $postsPerPage = null): 
         'order' => $order,
     ];
 
-    if ($metaQuery) {
-        $args['meta_query'] = $metaQuery;
+    if (!$showPast) {
+        $args['meta_query'] = event_o_get_upcoming_meta_query();
     }
 
     if (count($taxQuery) > 1) {
@@ -280,7 +449,19 @@ function event_o_get_event_query_args(array $attrs, ?int $postsPerPage = null): 
 
 function event_o_event_query(array $attrs): WP_Query
 {
-    return new WP_Query(event_o_get_event_query_args($attrs));
+    $query = new WP_Query(event_o_get_event_query_args($attrs, -1));
+    $filteredPosts = event_o_filter_event_posts($query->posts, $attrs, -1);
+    $filteredPosts = event_o_sort_event_posts($filteredPosts, $attrs);
+
+    $limit = isset($attrs['perPage']) ? max(1, (int) $attrs['perPage']) : 10;
+    $filteredPosts = array_slice($filteredPosts, 0, $limit);
+
+    $query->posts = $filteredPosts;
+    $query->post_count = count($filteredPosts);
+    $query->found_posts = $query->post_count;
+    $query->max_num_pages = $query->post_count > 0 ? 1 : 0;
+
+    return $query;
 }
 
 function event_o_is_event_highlight_active(int $postId): bool
@@ -304,7 +485,8 @@ function event_o_get_hero_display_posts(array $attrs): array
     $onePerCategory = !empty($attrs['onePerCategory']);
     $preferHighlights = !array_key_exists('preferHighlights', $attrs) || !empty($attrs['preferHighlights']);
     $query = new WP_Query(event_o_get_event_query_args($attrs, -1));
-    $orderedPosts = $query->posts;
+    $orderedPosts = event_o_filter_event_posts($query->posts, $attrs, -1);
+    $orderedPosts = event_o_sort_event_posts($orderedPosts, $attrs);
 
     if ($preferHighlights && count($orderedPosts) > 1) {
         $highlightedPosts = [];
@@ -1769,10 +1951,21 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
             $out .= '<div class="event-o-program-weekday">' . esc_html($weekdayNames[$wdIndex]) . '</div>';
         }
 
-        // Date + Time (all slots)
+        // Date + Time (all slots – date and time rendered separately for styling)
         $out .= '<div class="event-o-program-when">';
         foreach ($dateSlots as $slot) {
-            $out .= '<span class="event-o-date-slot">' . esc_html($slot['formatted']) . '</span>';
+            $slotStart = (new DateTimeImmutable('@' . (int) $slot['start_ts']))->setTimezone($tz);
+            $slotDateStr = $slotStart->format('j') . '. ' . event_o_get_german_month((int) $slotStart->format('n')) . ' ' . $slotStart->format('Y');
+            $slotTimeStr = $slotStart->format('H:i');
+            if (!empty($slot['end_ts']) && $slot['end_ts'] > 0) {
+                $slotEnd = (new DateTimeImmutable('@' . (int) $slot['end_ts']))->setTimezone($tz);
+                $slotTimeStr .= ' – ' . $slotEnd->format('H:i');
+            }
+            $slotTimeStr .= ' Uhr';
+            $out .= '<div class="event-o-date-slot">';
+            $out .= '<span class="event-o-date-slot-date">' . esc_html($slotDateStr) . '</span>';
+            $out .= '<span class="event-o-date-slot-time">' . esc_html($slotTimeStr) . '</span>';
+            $out .= '</div>';
         }
         $out .= '</div>';
 
@@ -1955,6 +2148,10 @@ function event_o_render_event_calendar_block(array $attrs, string $content = '',
     event_o_ensure_frontend_assets();
 
     $theme = isset($attrs['theme']) ? (string) $attrs['theme'] : 'auto';
+    $desktopPopupMatrix = isset($attrs['desktopPopupMatrix']) ? (string) $attrs['desktopPopupMatrix'] : '3x3';
+    if (!in_array($desktopPopupMatrix, ['3x3', '3x2'], true)) {
+        $desktopPopupMatrix = '3x3';
+    }
     $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? (string) $attrs['accentColor'] : '#4f6b3a';
     $calBgLight = isset($attrs['calendarBgLight']) ? (string) $attrs['calendarBgLight'] : '#f3f5f7';
     $calBgDark = isset($attrs['calendarBgDark']) ? (string) $attrs['calendarBgDark'] : '#10141a';
@@ -2088,6 +2285,7 @@ function event_o_render_event_calendar_block(array $attrs, string $content = '',
         . 'data-events="' . esc_attr(wp_json_encode($eventsData)) . '" '
         . 'data-week-start="' . $weekStart . '" '
         . 'data-popup-blur="' . $popupBlur . '" '
+        . 'data-desktop-popup-matrix="' . esc_attr($desktopPopupMatrix) . '" '
         . ($showSubscribe ? 'data-subscribe-url="' . esc_attr($subscribeUrl) . '" ' : '')
         . $styleAttr
         . '></div>';
@@ -2269,14 +2467,7 @@ function event_o_get_related_events(int $excludeId, int $limit = 4, int $categor
         'meta_key' => EVENT_O_META_START_TS,
         'orderby' => 'meta_value_num',
         'order' => 'ASC',
-        'meta_query' => [
-            [
-                'key' => EVENT_O_META_START_TS,
-                'value' => time(),
-                'compare' => '>=',
-                'type' => 'NUMERIC',
-            ],
-        ],
+        'meta_query' => event_o_get_upcoming_meta_query(),
     ];
 
     if ($categoryTermId > 0) {
@@ -2290,24 +2481,24 @@ function event_o_get_related_events(int $excludeId, int $limit = 4, int $categor
     }
 
     $q = new WP_Query($args);
+    $posts = event_o_filter_event_posts($q->posts, ['showPast' => false], $limit);
     $events = [];
 
-    while ($q->have_posts()) {
-        $q->the_post();
-        $postId = get_the_ID();
+    foreach ($posts as $post) {
+        $postId = $post->ID;
         $dateSlots = event_o_get_all_date_slots($postId);
 
-        $excerpt = get_the_excerpt();
+        $excerpt = isset($post->post_excerpt) ? (string) $post->post_excerpt : '';
         if (empty($excerpt)) {
-            $excerpt = wp_trim_words(get_the_content(), 35, '...');
+            $excerpt = wp_trim_words($post->post_content, 35, '...');
         } else {
             $excerpt = wp_trim_words($excerpt, 35, '...');
         }
 
         $events[] = [
             'id' => $postId,
-            'title' => get_the_title(),
-            'permalink' => get_permalink(),
+            'title' => get_the_title($postId),
+            'permalink' => get_permalink($postId),
             'date' => !empty($dateSlots) ? $dateSlots[0]['formatted'] : '',
             'dateSlots' => $dateSlots,
             'thumbnail' => has_post_thumbnail($postId) ? get_the_post_thumbnail_url($postId, 'medium') : '',
@@ -2316,8 +2507,6 @@ function event_o_get_related_events(int $excludeId, int $limit = 4, int $categor
             'category' => event_o_get_first_term_name($postId, 'event_o_category'),
         ];
     }
-
-    wp_reset_postdata();
 
     return $events;
 }

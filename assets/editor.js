@@ -913,6 +913,7 @@
         description: __('Displays events in an interactive monthly calendar view.', 'event-o'),
         attributes: {
             theme: { type: 'string', default: 'light' },
+            desktopPopupMatrix: { type: 'string', default: '3x3' },
             accentColor: { type: 'string', default: '#4f6b3a' },
             calendarBgLight: { type: 'string', default: '#f3f5f7' },
             calendarBgDark: { type: 'string', default: '#10141a' },
@@ -967,6 +968,15 @@
                                 { label: __('Sunday', 'event-o'), value: 'sunday' }
                             ],
                             onChange: function (v) { setAttributes({ weekStartsMonday: v === 'monday' }); }
+                        }),
+                        el(SelectControl, {
+                            label: __('Desktop popup matrix', 'event-o'),
+                            value: a.desktopPopupMatrix || '3x3',
+                            options: [
+                                { label: __('3 x 3 (default)', 'event-o'), value: '3x3' },
+                                { label: __('3 x 2', 'event-o'), value: '3x2' }
+                            ],
+                            onChange: function (v) { setAttributes({ desktopPopupMatrix: v || '3x3' }); }
                         }),
                         el(ToggleControl, {
                             label: __('Popup Image Blur', 'event-o'),

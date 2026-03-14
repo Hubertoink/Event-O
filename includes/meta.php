@@ -357,7 +357,7 @@ function event_o_event_admin_scripts($hook): void
         $wizJsVer = file_exists($wizardJsPath) ? (string) filemtime($wizardJsPath) : (defined('EVENT_O_VERSION') ? EVENT_O_VERSION : '1.0.0');
 
         wp_enqueue_style('event-o-wizard', EVENT_O_PLUGIN_URL . 'assets/wizard.css', [], $wizCssVer);
-        wp_enqueue_script('event-o-wizard', EVENT_O_PLUGIN_URL . 'assets/wizard.js', ['jquery', 'media-editor', 'wp-data', 'wp-blocks', 'wp-block-editor'], $wizJsVer, true);
+        wp_enqueue_script('event-o-wizard', EVENT_O_PLUGIN_URL . 'assets/wizard.js', ['jquery', 'media-editor', 'wp-data', 'wp-blocks', 'wp-block-editor', 'wp-api-fetch'], $wizJsVer, true);
 
         // Per-user term restrictions (empty = all allowed)
         $currentUserId = get_current_user_id();
@@ -427,6 +427,7 @@ function event_o_event_admin_scripts($hook): void
             'venues'           => $wizVenues,
             'organizers'       => $wizOrgs,
             'tags'             => $wizTags,
+            'canCreateTags'    => current_user_can('manage_categories') ? '1' : '0',
             'preselectCats'    => count($wizCats) === 1 ? '1' : '0',
             'preselectVenues'  => count($wizVenues) === 1 ? '1' : '0',
             'preselectOrgs'    => count($wizOrgs) === 1 ? '1' : '0',
@@ -439,6 +440,10 @@ function event_o_event_admin_scripts($hook): void
                 'next'          => __('Weiter', 'event-o'),
                 'publish'       => current_user_can('publish_posts') ? __('Veröffentlichen', 'event-o') : __('Zur Überprüfung einreichen', 'event-o'),
                 'saveDraft'     => __('Entwurf speichern', 'event-o'),
+                'createTag'     => __('Schlagwort anlegen', 'event-o'),
+                'creatingTag'   => __('Schlagwort wird angelegt…', 'event-o'),
+                'createTagHint' => __('Neues Schlagwort direkt hier anlegen.', 'event-o'),
+                'createTagError'=> __('Schlagwort konnte nicht angelegt werden.', 'event-o'),
             ],
         ]);
     }

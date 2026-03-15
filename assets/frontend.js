@@ -782,8 +782,10 @@
             // Drag state
             var isDragging = false;
             var startX = 0;
+            var startY = 0;
             var scrollStart = 0;
             var dragDelta = 0;
+            var touchAxis = '';
 
             // --- Infinite scroll: clone first and last slides ---
             var cloneLast = realSlides[slideCount - 1].cloneNode(true);
@@ -947,24 +949,62 @@
             viewport.addEventListener('touchstart', function (e) {
                 if (isAnimating) return;
                 startX = e.touches[0].pageX;
+                startY = e.touches[0].pageY;
                 scrollStart = viewport.scrollLeft;
                 dragDelta = 0;
                 isDragging = true;
-                viewport.classList.add('is-dragging');
-                stopAutoPlay();
+                touchAxis = '';
             }, { passive: true });
 
             viewport.addEventListener('touchmove', function (e) {
                 if (!isDragging) return;
-                e.preventDefault();
+
                 var dx = e.touches[0].pageX - startX;
+                var dy = e.touches[0].pageY - startY;
+
+                if (!touchAxis) {
+                    if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+                        return;
+                    }
+
+                    if (Math.abs(dy) > Math.abs(dx)) {
+                        touchAxis = 'vertical';
+                        isDragging = false;
+                        viewport.classList.remove('is-dragging');
+                        startAutoPlay();
+                        return;
+                    }
+
+                    touchAxis = 'horizontal';
+                    startX = e.touches[0].pageX;
+                    startY = e.touches[0].pageY;
+                    scrollStart = viewport.scrollLeft;
+                    dragDelta = 0;
+                    viewport.classList.add('is-dragging');
+                    stopAutoPlay();
+                    return;
+                }
+
+                if (touchAxis !== 'horizontal') {
+                    return;
+                }
+
+                e.preventDefault();
                 dragDelta = dx;
                 viewport.scrollLeft = scrollStart - dx;
             }, { passive: false });
 
             viewport.addEventListener('touchend', function () {
-                if (!isDragging) return;
+                if (touchAxis !== 'horizontal' || !isDragging) {
+                    isDragging = false;
+                    touchAxis = '';
+                    startAutoPlay();
+                    return;
+                }
+
                 isDragging = false;
+                touchAxis = '';
+                viewport.classList.remove('is-dragging');
 
                 var minDrag = 30;
                 if (dragDelta < -minDrag) {
@@ -974,6 +1014,13 @@
                 } else {
                     scrollToSlide(currentIndex);
                 }
+                startAutoPlay();
+            }, { passive: true });
+
+            viewport.addEventListener('touchcancel', function () {
+                isDragging = false;
+                touchAxis = '';
+                viewport.classList.remove('is-dragging');
                 startAutoPlay();
             }, { passive: true });
 

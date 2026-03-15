@@ -11,7 +11,10 @@
     var TextControl = wp.components.TextControl;
     var ColorPicker = wp.components.ColorPicker;
     var Button = wp.components.Button;
+    var Dropdown = wp.components.Dropdown;
     var SelectControl = wp.components.SelectControl;
+    var TabPanel = wp.components.TabPanel;
+    var GradientPicker = wp.components.GradientPicker || wp.components.__experimentalGradientPicker;
     var ServerSideRender = wp.serverSideRender;
 
     function TaxHelp(label) {
@@ -36,6 +39,138 @@
                 onClick: function () { onChange(''); },
                 style: { marginTop: '8px' }
             }, __('Reset to default', 'event-o'))
+        );
+    }
+
+    function HighlightBadgePanel(a, setAttributes, options) {
+        var showToggle = !options || options.showToggle !== false;
+        var showPriority = !!(options && options.showPriority);
+        var infoText = options && options.infoText ? options.infoText : '';
+        var previewValue = (a.highlightGradient || '').trim() || (a.highlightColor || '').trim() || '#e8364f';
+        var isGradient = previewValue.indexOf('gradient') !== -1;
+        var gradientPresets = [
+            { name: __('Sunset', 'event-o'), gradient: 'linear-gradient(135deg, #ff4d6d 0%, #ff8a5b 100%)' },
+            { name: __('Gold Rush', 'event-o'), gradient: 'linear-gradient(135deg, #f7b733 0%, #fc4a1a 100%)' },
+            { name: __('Neon Pop', 'event-o'), gradient: 'linear-gradient(135deg, #ff4ecd 0%, #7bff00 100%)' },
+            { name: __('Hot Pink', 'event-o'), gradient: 'linear-gradient(135deg, #ff3d77 0%, #ff7b7b 100%)' }
+        ];
+
+        function renderPreviewChip() {
+            return el('span', {
+                style: {
+                    display: 'inline-flex',
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '999px',
+                    marginRight: '10px',
+                    border: '1px solid rgba(0,0,0,0.12)',
+                    background: isGradient ? previewValue : 'none',
+                    backgroundColor: isGradient ? 'transparent' : previewValue,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.14)'
+                }
+            });
+        }
+
+        return el(PanelBody, { title: __('Highlight Badge', 'event-o'), initialOpen: false },
+            infoText ? el('p', { style: { color: '#666', fontSize: '12px', marginBottom: '12px' } }, infoText) : null,
+            showToggle ? el(ToggleControl, {
+                label: __('Show highlight badge', 'event-o'),
+                help: __('Displays a "Highlight" badge on events marked as highlights.', 'event-o'),
+                checked: !!a.showHighlightBadge,
+                onChange: function (v) { setAttributes({ showHighlightBadge: v }); }
+            }) : null,
+            (!showToggle || a.showHighlightBadge) ? el('div', { style: { marginBottom: '16px' } },
+                el('label', { style: { display: 'block', marginBottom: '8px', fontWeight: '500' } }, __('Badge look', 'event-o')),
+                el(Dropdown, {
+                    contentClassName: 'event-o-editor-highlight-dropdown',
+                    renderToggle: function (toggleProps) {
+                        return el(Button, {
+                            variant: 'secondary',
+                            onClick: toggleProps.onToggle,
+                            style: {
+                                width: '100%',
+                                justifyContent: 'flex-start',
+                                padding: '8px 12px',
+                                borderRadius: '10px'
+                            }
+                        },
+                            renderPreviewChip(),
+                            el('span', null, isGradient ? __('Gradient selected', 'event-o') : __('Color selected', 'event-o'))
+                        );
+                    },
+                    renderContent: function () {
+                        return el('div', { style: { width: '280px', padding: '12px' } },
+                            el(TabPanel, {
+                                className: 'event-o-highlight-tabs',
+                                activeClass: 'is-active',
+                                tabs: [
+                                    { name: 'color', title: __('Color', 'event-o') },
+                                    { name: 'gradient', title: __('Gradient', 'event-o') }
+                                ]
+                            }, function (tab) {
+                                if (tab.name === 'color') {
+                                    return el('div', null,
+                                        el(ColorPicker, {
+                                            color: a.highlightColor || '#e8364f',
+                                            onChangeComplete: function (c) { setAttributes({ highlightColor: c.hex, highlightGradient: '' }); },
+                                            disableAlpha: true
+                                        })
+                                    );
+                                }
+
+                                if (GradientPicker) {
+                                    return el('div', null,
+                                        el(GradientPicker, {
+                                            value: a.highlightGradient || gradientPresets[0].gradient,
+                                            gradients: gradientPresets,
+                                            disableCustomGradients: false,
+                                            clearable: true,
+                                            onChange: function (value) { setAttributes({ highlightGradient: value || '' }); }
+                                        })
+                                    );
+                                }
+
+                                return el(TextControl, {
+                                    label: __('Gradient override', 'event-o'),
+                                    help: __('Optional CSS gradient, e.g. linear-gradient(45deg, #e8364f, #f5a623).', 'event-o'),
+                                    value: a.highlightGradient || '',
+                                    onChange: function (v) { setAttributes({ highlightGradient: v }); }
+                                });
+                            }),
+                            el('div', { style: { marginTop: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' } },
+                                el(Button, {
+                                    isSmall: true,
+                                    variant: 'tertiary',
+                                    onClick: function () { setAttributes({ highlightColor: '#e8364f', highlightGradient: '' }); }
+                                }, __('Reset to default', 'event-o')),
+                                el(Button, {
+                                    isSmall: true,
+                                    variant: 'tertiary',
+                                    onClick: function () { setAttributes({ highlightGradient: '' }); }
+                                }, __('Remove gradient', 'event-o'))
+                            )
+                        );
+                    }
+                })
+            ) : null,
+            showPriority ? el(ToggleControl, {
+                label: __('Show highlighted events first', 'event-o'),
+                help: __('Moves active highlight events to the beginning of the block.', 'event-o'),
+                checked: a.preferHighlights !== false,
+                onChange: function (v) { setAttributes({ preferHighlights: v }); }
+            }) : null,
+            ((!showToggle || a.showHighlightBadge) || showPriority) ? el('div', {
+                style: {
+                    marginTop: '8px',
+                    padding: '6px 12px',
+                    fontFamily: 'Satisfy, cursive',
+                    fontSize: '1.4rem',
+                    color: isGradient ? 'transparent' : previewValue,
+                    background: isGradient ? previewValue : 'none',
+                    WebkitBackgroundClip: isGradient ? 'text' : 'unset',
+                    WebkitTextFillColor: isGradient ? 'transparent' : 'unset'
+                }
+            }, 'Highlight') : null
         );
     }
 
@@ -65,6 +200,10 @@
             filterByOrganizer: { type: 'boolean', default: true },
             filterStyle: { type: 'string', default: 'dropdown' },
             filterCategoryColors: { type: 'boolean', default: false },
+            showHighlightBadge: { type: 'boolean', default: false },
+            highlightColor: { type: 'string', default: '' },
+            highlightGradient: { type: 'string', default: '' },
+            preferHighlights: { type: 'boolean', default: true },
             animation: { type: 'string', default: 'none' }
         },
         edit: function (props) {
@@ -213,7 +352,8 @@
                             ],
                             onChange: function (v) { setAttributes({ animation: v }); }
                         })
-                    )
+                    ),
+                    HighlightBadgePanel(a, setAttributes, { showToggle: true, showPriority: true })
                 ),
                 el('div', { key: 'preview', className: props.className },
                     el(ServerSideRender, {
@@ -235,6 +375,7 @@
         attributes: {
             perPage: { type: 'number', default: 8 },
             showPast: { type: 'boolean', default: false },
+            sortOrder: { type: 'string', default: 'asc' },
             categories: { type: 'string', default: '' },
             venues: { type: 'string', default: '' },
             organizers: { type: 'string', default: '' },
@@ -247,6 +388,10 @@
             filterByCategory: { type: 'boolean', default: true },
             filterByVenue: { type: 'boolean', default: true },
             filterByOrganizer: { type: 'boolean', default: true },
+            showHighlightBadge: { type: 'boolean', default: false },
+            highlightColor: { type: 'string', default: '' },
+            highlightGradient: { type: 'string', default: '' },
+            preferHighlights: { type: 'boolean', default: true },
             autoPlay: { type: 'boolean', default: false },
             autoPlayInterval: { type: 'number', default: 5 }
         },
@@ -268,6 +413,12 @@
                             label: __('Show past events', 'event-o'),
                             checked: a.showPast,
                             onChange: function (v) { setAttributes({ showPast: v }); }
+                        }),
+                        el(ToggleControl, {
+                            label: __('Sort by date descending', 'event-o'),
+                            help: __('Enabled: newest first. Disabled: soonest first.', 'event-o'),
+                            checked: (a.sortOrder || 'asc') === 'desc',
+                            onChange: function (v) { setAttributes({ sortOrder: v ? 'desc' : 'asc' }); }
                         }),
                         el(RangeControl, {
                             label: __('Slides to show', 'event-o'),
@@ -356,7 +507,8 @@
                             max: 30,
                             onChange: function (v) { setAttributes({ autoPlayInterval: v }); }
                         })
-                    )
+                    ),
+                    HighlightBadgePanel(a, setAttributes, { showToggle: true, showPriority: true })
                 ),
                 el('div', { key: 'preview', className: props.className },
                     el(ServerSideRender, {
@@ -392,7 +544,11 @@
             showFilters: { type: 'boolean', default: false },
             filterByCategory: { type: 'boolean', default: true },
             filterByVenue: { type: 'boolean', default: true },
-            filterByOrganizer: { type: 'boolean', default: true }
+            filterByOrganizer: { type: 'boolean', default: true },
+            showHighlightBadge: { type: 'boolean', default: false },
+            highlightColor: { type: 'string', default: '' },
+            highlightGradient: { type: 'string', default: '' },
+            preferHighlights: { type: 'boolean', default: true }
         },
         edit: function (props) {
             var a = props.attributes;
@@ -501,7 +657,8 @@
                             value: a.accentColor,
                             onChange: function (v) { setAttributes({ accentColor: v }); }
                         })
-                    )
+                    ),
+                    HighlightBadgePanel(a, setAttributes, { showToggle: true, showPriority: true })
                 ),
                 el('div', { key: 'preview', className: props.className },
                     el(ServerSideRender, {
@@ -547,7 +704,9 @@
             filterByOrganizer: { type: 'boolean', default: true },
             filterStyle: { type: 'string', default: 'dropdown' },
             onePerCategory: { type: 'boolean', default: false },
-            preferHighlights: { type: 'boolean', default: true }
+            preferHighlights: { type: 'boolean', default: true },
+            highlightColor: { type: 'string', default: '' },
+            highlightGradient: { type: 'string', default: '' }
         },
         edit: function (props) {
             var a = props.attributes;
@@ -725,7 +884,12 @@
                                 }, __('White', 'event-o'))
                             )
                         )
-                    )
+                    ),
+                    HighlightBadgePanel(a, setAttributes, {
+                        showToggle: false,
+                        showPriority: false,
+                        infoText: __('The badge is shown when "Prefer highlighted events" is enabled above and an event is marked as highlight.', 'event-o')
+                    })
                 ),
                 el('div', { key: 'preview', className: props.className },
                     el(ServerSideRender, {
@@ -765,7 +929,11 @@
             filterByVenue: { type: 'boolean', default: true },
             filterByOrganizer: { type: 'boolean', default: true },
             filterStyle: { type: 'string', default: 'dropdown' },
-            filterCategoryColors: { type: 'boolean', default: false }
+            filterCategoryColors: { type: 'boolean', default: false },
+            showHighlightBadge: { type: 'boolean', default: false },
+            highlightColor: { type: 'string', default: '' },
+            highlightGradient: { type: 'string', default: '' },
+            preferHighlights: { type: 'boolean', default: true }
         },
         edit: function (props) {
             var a = props.attributes;
@@ -908,7 +1076,8 @@
                             ],
                             onChange: function (v) { setAttributes({ animation: v }); }
                         })
-                    )
+                    ),
+                    HighlightBadgePanel(a, setAttributes, { showToggle: true, showPriority: true })
                 ),
                 el('div', { key: 'preview', className: props.className },
                     el(ServerSideRender, {

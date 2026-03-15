@@ -708,10 +708,15 @@ function event_o_admin_add_event_date_column(array $columns): array
 
     foreach ($columns as $key => $label) {
         if ($key === 'date') {
+            $updated['event_o_event_highlight'] = __('Highlight', 'event-o');
             $updated['event_o_event_date'] = __('Eventdatum', 'event-o');
         }
 
         $updated[$key] = $label;
+    }
+
+    if (!isset($updated['event_o_event_highlight'])) {
+        $updated['event_o_event_highlight'] = __('Highlight', 'event-o');
     }
 
     if (!isset($updated['event_o_event_date'])) {
@@ -724,6 +729,32 @@ add_filter('manage_event_o_event_posts_columns', 'event_o_admin_add_event_date_c
 
 function event_o_admin_render_event_date_column(string $column, int $postId): void
 {
+    if ($column === 'event_o_event_highlight') {
+        $isHighlight = (bool) get_post_meta($postId, EVENT_O_META_HIGHLIGHT, true);
+        $highlightUntilTs = (int) get_post_meta($postId, EVENT_O_META_HIGHLIGHT_UNTIL, true);
+
+        if (!$isHighlight) {
+            echo '&mdash;';
+            return;
+        }
+
+        $isExpired = $highlightUntilTs > 0 && $highlightUntilTs < time();
+        $label = $isExpired ? __('Abgelaufen', 'event-o') : __('Aktiv', 'event-o');
+        $color = $isExpired ? '#9a6700' : '#0a7d32';
+        $background = $isExpired ? 'rgba(255, 191, 71, 0.18)' : 'rgba(46, 160, 67, 0.12)';
+
+        echo '<span style="display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:600;color:' . esc_attr($color) . ';background:' . esc_attr($background) . ';">' . esc_html($label) . '</span>';
+
+        if ($highlightUntilTs > 0) {
+            echo '<div style="margin-top:6px;color:#646970;font-size:12px;">' . sprintf(
+                esc_html__('bis %s', 'event-o'),
+                esc_html(wp_date('d.m.Y H:i', $highlightUntilTs, wp_timezone()))
+            ) . '</div>';
+        }
+
+        return;
+    }
+
     if ($column !== 'event_o_event_date') {
         return;
     }

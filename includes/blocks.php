@@ -31,6 +31,10 @@ function event_o_register_blocks(): void
             'filterByOrganizer' => ['type' => 'boolean', 'default' => true],
             'filterStyle' => ['type' => 'string', 'default' => 'dropdown'],
             'filterCategoryColors' => ['type' => 'boolean', 'default' => false],
+            'showHighlightBadge' => ['type' => 'boolean', 'default' => false],
+            'highlightColor' => ['type' => 'string', 'default' => ''],
+                'highlightGradient' => ['type' => 'string', 'default' => ''],
+                'preferHighlights' => ['type' => 'boolean', 'default' => true],
             'animation' => ['type' => 'string', 'default' => 'none'],
         ],
     ]);
@@ -41,6 +45,7 @@ function event_o_register_blocks(): void
         'attributes' => [
             'perPage' => ['type' => 'number', 'default' => 8],
             'showPast' => ['type' => 'boolean', 'default' => false],
+            'sortOrder' => ['type' => 'string', 'default' => 'asc'],
             'categories' => ['type' => 'string', 'default' => ''],
             'venues' => ['type' => 'string', 'default' => ''],
             'organizers' => ['type' => 'string', 'default' => ''],
@@ -54,6 +59,10 @@ function event_o_register_blocks(): void
             'filterByVenue' => ['type' => 'boolean', 'default' => true],
             'filterByOrganizer' => ['type' => 'boolean', 'default' => true],
             'filterStyle' => ['type' => 'string', 'default' => 'dropdown'],
+            'showHighlightBadge' => ['type' => 'boolean', 'default' => false],
+            'highlightColor' => ['type' => 'string', 'default' => ''],
+            'highlightGradient' => ['type' => 'string', 'default' => ''],
+            'preferHighlights' => ['type' => 'boolean', 'default' => true],
             'autoPlay' => ['type' => 'boolean', 'default' => false],
             'autoPlayInterval' => ['type' => 'number', 'default' => 5],
         ],
@@ -81,6 +90,10 @@ function event_o_register_blocks(): void
             'filterByVenue' => ['type' => 'boolean', 'default' => true],
             'filterByOrganizer' => ['type' => 'boolean', 'default' => true],
             'filterStyle' => ['type' => 'string', 'default' => 'dropdown'],
+            'showHighlightBadge' => ['type' => 'boolean', 'default' => false],
+            'highlightColor' => ['type' => 'string', 'default' => ''],
+            'highlightGradient' => ['type' => 'string', 'default' => ''],
+            'preferHighlights' => ['type' => 'boolean', 'default' => true],
         ],
     ]);
 
@@ -115,6 +128,8 @@ function event_o_register_blocks(): void
             'filterStyle' => ['type' => 'string', 'default' => 'dropdown'],
             'onePerCategory' => ['type' => 'boolean', 'default' => false],
             'preferHighlights' => ['type' => 'boolean', 'default' => true],
+            'highlightColor' => ['type' => 'string', 'default' => ''],
+            'highlightGradient' => ['type' => 'string', 'default' => ''],
         ],
     ]);
 
@@ -143,6 +158,10 @@ function event_o_register_blocks(): void
             'filterByOrganizer' => ['type' => 'boolean', 'default' => true],
             'filterStyle' => ['type' => 'string', 'default' => 'dropdown'],
             'filterCategoryColors' => ['type' => 'boolean', 'default' => false],
+            'showHighlightBadge' => ['type' => 'boolean', 'default' => false],
+            'highlightColor' => ['type' => 'string', 'default' => ''],
+            'highlightGradient' => ['type' => 'string', 'default' => ''],
+            'preferHighlights' => ['type' => 'boolean', 'default' => true],
         ],
     ]);
 

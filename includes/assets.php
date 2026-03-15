@@ -41,11 +41,67 @@ function event_o_register_frontend_assets(): void
         );
     }
 
+    if (!wp_script_is('event-o-frontend-runtime', 'registered')) {
+        wp_register_script(
+            'event-o-frontend-runtime',
+            EVENT_O_PLUGIN_URL . 'assets/frontend-runtime.js',
+            [],
+            event_o_asset_version('assets/frontend-runtime.js'),
+            true
+        );
+    }
+
+    if (!wp_script_is('event-o-frontend-carousel', 'registered')) {
+        wp_register_script(
+            'event-o-frontend-carousel',
+            EVENT_O_PLUGIN_URL . 'assets/frontend-carousel.js',
+            ['event-o-frontend-runtime'],
+            event_o_asset_version('assets/frontend-carousel.js'),
+            true
+        );
+    }
+
+    if (!wp_script_is('event-o-frontend-core', 'registered')) {
+        wp_register_script(
+            'event-o-frontend-core',
+            EVENT_O_PLUGIN_URL . 'assets/frontend-core.js',
+            ['event-o-frontend-runtime'],
+            event_o_asset_version('assets/frontend-core.js'),
+            true
+        );
+    }
+
+    if (!wp_script_is('event-o-frontend-hero', 'registered')) {
+        wp_register_script(
+            'event-o-frontend-hero',
+            EVENT_O_PLUGIN_URL . 'assets/frontend-hero.js',
+            ['event-o-frontend-runtime'],
+            event_o_asset_version('assets/frontend-hero.js'),
+            true
+        );
+    }
+
+    if (!wp_script_is('event-o-frontend-calendar', 'registered')) {
+        wp_register_script(
+            'event-o-frontend-calendar',
+            EVENT_O_PLUGIN_URL . 'assets/frontend-calendar.js',
+            ['event-o-frontend-runtime'],
+            event_o_asset_version('assets/frontend-calendar.js'),
+            true
+        );
+    }
+
     if (!wp_script_is('event-o-frontend', 'registered')) {
         wp_register_script(
             'event-o-frontend',
             EVENT_O_PLUGIN_URL . 'assets/frontend.js',
-            [],
+            [
+                'event-o-frontend-runtime',
+                'event-o-frontend-carousel',
+                'event-o-frontend-core',
+                'event-o-frontend-hero',
+                'event-o-frontend-calendar',
+            ],
             event_o_asset_version('assets/frontend.js'),
             true
         );

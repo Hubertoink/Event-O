@@ -353,8 +353,8 @@ function event_o_event_admin_scripts($hook): void
     if (get_option(EVENT_O_OPTION_WIZARD_MODE, false)) {
         $wizardCssPath = EVENT_O_PLUGIN_DIR . 'assets/wizard.css';
         $wizardJsPath = EVENT_O_PLUGIN_DIR . 'assets/wizard.js';
-        $wizCssVer = file_exists($wizardCssPath) ? (string) filemtime($wizardCssPath) : (defined('EVENT_O_VERSION') ? EVENT_O_VERSION : '1.0.0');
-        $wizJsVer = file_exists($wizardJsPath) ? (string) filemtime($wizardJsPath) : (defined('EVENT_O_VERSION') ? EVENT_O_VERSION : '1.0.0');
+        $wizCssVer = file_exists($wizardCssPath) ? (string) filemtime($wizardCssPath) : (defined('EVENT_O_VERSION') ? EVENT_O_VERSION : '1.1.1');
+        $wizJsVer = file_exists($wizardJsPath) ? (string) filemtime($wizardJsPath) : (defined('EVENT_O_VERSION') ? EVENT_O_VERSION : '1.1.1');
 
         wp_enqueue_style('event-o-wizard', EVENT_O_PLUGIN_URL . 'assets/wizard.css', [], $wizCssVer);
         wp_enqueue_script('event-o-wizard', EVENT_O_PLUGIN_URL . 'assets/wizard.js', ['jquery', 'media-editor', 'wp-data', 'wp-blocks', 'wp-block-editor', 'wp-api-fetch'], $wizJsVer, true);

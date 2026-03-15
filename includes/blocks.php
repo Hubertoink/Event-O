@@ -54,6 +54,8 @@ function event_o_register_blocks(): void
             'filterByVenue' => ['type' => 'boolean', 'default' => true],
             'filterByOrganizer' => ['type' => 'boolean', 'default' => true],
             'filterStyle' => ['type' => 'string', 'default' => 'dropdown'],
+            'autoPlay' => ['type' => 'boolean', 'default' => false],
+            'autoPlayInterval' => ['type' => 'number', 'default' => 5],
         ],
     ]);
 

@@ -246,7 +246,9 @@
             showFilters: { type: 'boolean', default: false },
             filterByCategory: { type: 'boolean', default: true },
             filterByVenue: { type: 'boolean', default: true },
-            filterByOrganizer: { type: 'boolean', default: true }
+            filterByOrganizer: { type: 'boolean', default: true },
+            autoPlay: { type: 'boolean', default: false },
+            autoPlayInterval: { type: 'number', default: 5 }
         },
         edit: function (props) {
             var a = props.attributes;
@@ -338,6 +340,21 @@
                             label: __('Accent Color', 'event-o'),
                             value: a.accentColor,
                             onChange: function (v) { setAttributes({ accentColor: v }); }
+                        })
+                    ),
+                    el(PanelBody, { title: __('Autoplay', 'event-o'), initialOpen: false },
+                        el(ToggleControl, {
+                            label: __('Auto-scroll', 'event-o'),
+                            help: __('Automatically scrolls through events.', 'event-o'),
+                            checked: a.autoPlay,
+                            onChange: function (v) { setAttributes({ autoPlay: v }); }
+                        }),
+                        a.autoPlay && el(RangeControl, {
+                            label: __('Interval (seconds)', 'event-o'),
+                            value: a.autoPlayInterval,
+                            min: 1,
+                            max: 30,
+                            onChange: function (v) { setAttributes({ autoPlayInterval: v }); }
                         })
                     )
                 ),

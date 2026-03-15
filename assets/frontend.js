@@ -1,7 +1,19 @@
 (function () {
     function initCarousel(root) {
         var viewport = root.querySelector('.event-o-carousel-viewport');
-        if (!viewport) return;
+        var track = root.querySelector('.event-o-carousel-track');
+        if (!viewport || !track) return;
+
+        var resizeFrame = null;
+        var autoPlayHandle = null;
+        var autoPlayLastTs = 0;
+        var autoPlayPaused = false;
+        var settleTimeout = null;
+        var loopEnabled = false;
+        var loopSegmentWidth = 0;
+        var loopStartCard = null;
+        var loopAfterCard = null;
+        var autoPlay = root.getAttribute('data-autoplay') === '1';
 
         function baseSlides() {
             var raw = parseInt(root.getAttribute('data-slides') || '3', 10);
@@ -20,17 +32,184 @@
             root.style.setProperty('--event-o-slides', String(effectiveSlides()));
         }
 
-        applySlides();
-        window.addEventListener('resize', applySlides, { passive: true });
+        function getBaseCard() {
+            return track.querySelector('.event-o-card:not(.event-o-card--clone)') || track.querySelector('.event-o-card');
+        }
+
+        function getCardStep() {
+            var card = getBaseCard();
+            if (!card) return 0;
+
+            return card.getBoundingClientRect().width + 20;
+        }
+
+        function normalizeLoopPosition() {
+            if (!loopEnabled || loopSegmentWidth <= 0) return;
+
+            while (viewport.scrollLeft < loopSegmentWidth) {
+                viewport.scrollLeft += loopSegmentWidth;
+            }
+
+            while (viewport.scrollLeft >= loopSegmentWidth * 2) {
+                viewport.scrollLeft -= loopSegmentWidth;
+            }
+        }
+
+        function measureLoop() {
+            if (!loopEnabled || !loopStartCard || !loopAfterCard) return;
+
+            loopSegmentWidth = loopAfterCard.offsetLeft - loopStartCard.offsetLeft;
+            if (loopSegmentWidth > 0 && viewport.scrollLeft <= 0) {
+                viewport.scrollLeft = loopSegmentWidth;
+            }
+        }
+
+        function markClone(card, segment) {
+            card.classList.add('event-o-card--clone');
+            card.setAttribute('aria-hidden', 'true');
+            card.setAttribute('data-loop-segment', segment);
+
+            card.querySelectorAll('a, button, input, select, textarea, [tabindex]').forEach(function (node) {
+                node.setAttribute('tabindex', '-1');
+            });
+        }
+
+        function setupInfiniteLoop() {
+            if (!autoPlay || track.getAttribute('data-loop-ready') === '1') return;
+
+            var originals = Array.prototype.slice.call(track.children);
+            if (originals.length < 2) return;
+
+            var groupCopies = Math.max(2, Math.ceil((baseSlides() + 1) / originals.length) + 1);
+
+            var beforeFragment = document.createDocumentFragment();
+            var middleFragment = document.createDocumentFragment();
+            var afterFragment = document.createDocumentFragment();
+            var afterClones = [];
+
+            for (var beforeIndex = 0; beforeIndex < groupCopies; beforeIndex++) {
+                originals.forEach(function (card) {
+                    var clone = card.cloneNode(true);
+                    markClone(clone, 'before');
+                    beforeFragment.appendChild(clone);
+                });
+            }
+
+            for (var middleIndex = 1; middleIndex < groupCopies; middleIndex++) {
+                originals.forEach(function (card) {
+                    middleFragment.appendChild(card.cloneNode(true));
+                });
+            }
+
+            for (var afterIndex = 0; afterIndex < groupCopies; afterIndex++) {
+                originals.forEach(function (card) {
+                    var clone = card.cloneNode(true);
+                    markClone(clone, 'after');
+                    afterClones.push(clone);
+                    afterFragment.appendChild(clone);
+                });
+            }
+
+            track.insertBefore(beforeFragment, track.firstChild);
+            track.appendChild(middleFragment);
+            track.appendChild(afterFragment);
+            track.setAttribute('data-loop-ready', '1');
+
+            loopEnabled = true;
+            loopStartCard = originals[0];
+            loopAfterCard = afterClones[0];
+        }
+
+        function refreshLayout() {
+            applySlides();
+            measureLoop();
+
+            window.requestAnimationFrame(function () {
+                applySlides();
+                measureLoop();
+
+                if (loopEnabled) {
+                    normalizeLoopPosition();
+                    return;
+                }
+
+                var maxScroll = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+                if (viewport.scrollLeft > maxScroll) {
+                    viewport.scrollLeft = maxScroll;
+                }
+            });
+        }
+
+        function scheduleLayoutRefresh() {
+            if (resizeFrame) {
+                window.cancelAnimationFrame(resizeFrame);
+            }
+
+            resizeFrame = window.requestAnimationFrame(function () {
+                refreshLayout();
+                resizeFrame = null;
+            });
+        }
+
+        function smoothSettleToCard() {
+            var step = getCardStep();
+            if (step <= 0) return;
+
+            var baseOffset = loopEnabled ? loopSegmentWidth : 0;
+            var relative = viewport.scrollLeft - baseOffset;
+
+            if (loopEnabled && loopSegmentWidth > 0) {
+                while (relative < 0) {
+                    relative += loopSegmentWidth;
+                }
+                while (relative >= loopSegmentWidth) {
+                    relative -= loopSegmentWidth;
+                }
+            }
+
+            var target = Math.round(relative / step) * step + baseOffset;
+            viewport.style.scrollBehavior = 'smooth';
+            viewport.scrollTo({ left: target, behavior: 'smooth' });
+
+            window.clearTimeout(settleTimeout);
+            settleTimeout = window.setTimeout(function () {
+                viewport.style.scrollBehavior = '';
+                if (loopEnabled) {
+                    normalizeLoopPosition();
+                }
+                if (autoPlayPaused) {
+                    viewport.classList.remove('is-autoplaying');
+                }
+            }, 260);
+        }
 
         function scrollByCard(dir) {
-            var card = root.querySelector('.event-o-card');
-            if (!card) return;
+            var step = getCardStep();
+            if (step <= 0) return;
 
-            var cardWidth = card.getBoundingClientRect().width;
-            var gap = 16;
-            var delta = (cardWidth + gap) * dir;
-            viewport.scrollBy({ left: delta, behavior: 'smooth' });
+            viewport.scrollBy({ left: step * dir, behavior: 'smooth' });
+        }
+
+        setupInfiniteLoop();
+        refreshLayout();
+
+        window.addEventListener('resize', scheduleLayoutRefresh, { passive: true });
+
+        if (typeof ResizeObserver !== 'undefined') {
+            var resizeObserver = new ResizeObserver(function () {
+                scheduleLayoutRefresh();
+            });
+            resizeObserver.observe(root);
+            resizeObserver.observe(viewport);
+            resizeObserver.observe(track);
+        }
+
+        if (loopEnabled) {
+            viewport.addEventListener('scroll', function () {
+                if (!autoPlayPaused) {
+                    normalizeLoopPosition();
+                }
+            }, { passive: true });
         }
 
         root.addEventListener('click', function (e) {
@@ -45,6 +224,81 @@
             if (e.key === 'ArrowLeft') scrollByCard(-1);
             if (e.key === 'ArrowRight') scrollByCard(1);
         });
+
+        if (autoPlay) {
+            var interval = Math.max(1, parseInt(root.getAttribute('data-autoplay-interval') || '5', 10));
+
+            function autoPlaySpeed() {
+                var step = getCardStep();
+                if (step <= 0) return 0;
+
+                return step / interval;
+            }
+
+            function stepAutoPlay(timestamp) {
+                if (!autoPlayHandle) {
+                    return;
+                }
+
+                if (autoPlayPaused) {
+                    autoPlayLastTs = timestamp;
+                    autoPlayHandle = window.requestAnimationFrame(stepAutoPlay);
+                    return;
+                }
+
+                if (!autoPlayLastTs) {
+                    autoPlayLastTs = timestamp;
+                }
+
+                var delta = timestamp - autoPlayLastTs;
+                autoPlayLastTs = timestamp;
+                viewport.scrollLeft += autoPlaySpeed() * (delta / 1000);
+
+                if (loopEnabled) {
+                    normalizeLoopPosition();
+                } else {
+                    var maxScroll = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+                    if (viewport.scrollLeft >= maxScroll - 1) {
+                        viewport.scrollLeft = 0;
+                    }
+                }
+
+                autoPlayHandle = window.requestAnimationFrame(stepAutoPlay);
+            }
+
+            function startAutoPlay() {
+                autoPlayPaused = false;
+                window.clearTimeout(settleTimeout);
+                viewport.style.scrollBehavior = '';
+                viewport.classList.add('is-autoplaying');
+
+                if (loopEnabled) {
+                    measureLoop();
+                    normalizeLoopPosition();
+                }
+
+                if (!autoPlayHandle) {
+                    autoPlayLastTs = 0;
+                    autoPlayHandle = window.requestAnimationFrame(stepAutoPlay);
+                }
+            }
+
+            function stopAutoPlay() {
+                autoPlayPaused = true;
+                smoothSettleToCard();
+            }
+
+            root.addEventListener('mouseenter', stopAutoPlay);
+            root.addEventListener('mouseleave', startAutoPlay);
+            root.addEventListener('touchstart', stopAutoPlay, { passive: true });
+            root.addEventListener('touchend', function () {
+                window.setTimeout(startAutoPlay, 2000);
+            });
+            root.addEventListener('focusin', stopAutoPlay);
+            root.addEventListener('focusout', startAutoPlay);
+
+            startAutoPlay();
+        }
     }
 
     function initCopyButtons() {
@@ -992,6 +1246,41 @@
         return window.matchMedia('(max-width: 768px)').matches;
     }
 
+    function calGetCategoryColors(item) {
+        if (!item || !Array.isArray(item.categories)) return [];
+
+        return item.categories
+            .map(function (category) {
+                return category && category.color ? String(category.color).trim() : '';
+            })
+            .filter(function (color, index, colors) {
+                return color !== '' && colors.indexOf(color) === index;
+            });
+    }
+
+    function calBuildCategoryGradient(item) {
+        var colors = calGetCategoryColors(item);
+        if (!colors.length) return item && item.categoryColor ? item.categoryColor : '';
+        if (colors.length === 1) return colors[0];
+
+        return 'linear-gradient(135deg, ' + colors.map(function (color, index) {
+            var position = Math.round((index / (colors.length - 1)) * 100);
+            return color + ' ' + position + '%';
+        }).join(', ') + ')';
+    }
+
+    function calRenderCategoryLabels(item, itemClass, separatorClass) {
+        if (!item || !Array.isArray(item.categories) || !item.categories.length) return '';
+
+        return item.categories.map(function (category, index) {
+            if (!category || !category.name) return '';
+
+            var label = '<span class="' + itemClass + '"' + (category.color ? ' style="color:' + calEscAttr(category.color) + '"' : '') + '>' + calEscHtml(category.name) + '</span>';
+            if (index === 0) return label;
+            return '<span class="' + separatorClass + '"> / </span>' + label;
+        }).join('');
+    }
+
     function initEventCalendars() {
         var wrappers = document.querySelectorAll('.event-o-cal-wrap');
         for (var i = 0; i < wrappers.length; i++) {
@@ -1025,6 +1314,7 @@
             subscribeUrl: wrap.getAttribute('data-subscribe-url') || '',
             eventsMap: eventsMap,
             popupTimer: null,
+            hideAnimationTimer: null,
             activeEl: null
         };
 
@@ -1032,11 +1322,19 @@
     }
 
     function calRender(wrap, state) {
+        if (wrap._bodyPopup && wrap._bodyPopup.parentNode) {
+            wrap._bodyPopup.parentNode.removeChild(wrap._bodyPopup);
+            wrap._bodyPopup = null;
+        }
+
         wrap.innerHTML = '';
 
         /* Header: ‹ Month Year › */
         var header = document.createElement('div');
         header.className = 'event-o-cal-header';
+
+        var titleNav = document.createElement('div');
+        titleNav.className = 'event-o-cal-title-nav';
 
         var prevBtn = document.createElement('button');
         prevBtn.className = 'event-o-cal-nav prev';
@@ -1062,8 +1360,10 @@
         label.className = 'event-o-cal-month-label';
         label.textContent = CAL_MONTHS_DE[state.month] + ' ' + state.year;
 
-        header.appendChild(prevBtn);
-        header.appendChild(label);
+        titleNav.appendChild(prevBtn);
+        titleNav.appendChild(label);
+        titleNav.appendChild(nextBtn);
+        header.appendChild(titleNav);
 
         /* Subscribe button (optional) */
         if (state.subscribeUrl) {
@@ -1116,7 +1416,6 @@
             header.appendChild(subWrap);
         }
 
-        header.appendChild(nextBtn);
         wrap.appendChild(header);
 
         /* Grid */
@@ -1171,17 +1470,36 @@
 
             var dayEvents = state.eventsMap[dateStr];
             if (dayEvents && dayEvents.length) {
+                var maxVisibleDayEvents = 2;
+                var visibleDayEvents = dayEvents.slice(0, maxVisibleDayEvents);
+                var hiddenDayEventsCount = Math.max(0, dayEvents.length - visibleDayEvents.length);
+
                 cell.classList.add('has-events');
                 if (dayEvents.length === 2) cell.classList.add('event-count-2');
                 if (dayEvents.length >= 3) cell.classList.add('event-count-3plus');
                 cell._dayEvents = dayEvents;
 
-                dayEvents.forEach(function(ev) {
+                var dots = document.createElement('div');
+                dots.className = 'event-o-cal-day-dots';
+                dayEvents.forEach(function (ev) {
+                    var dot = document.createElement('span');
+                    dot.className = 'event-o-cal-day-dot';
+                    var dotGradient = calBuildCategoryGradient(ev);
+                    if (dotGradient) dot.style.background = dotGradient;
+                    dots.appendChild(dot);
+                });
+                cell.appendChild(dots);
+
+                var eventsWrap = document.createElement('div');
+                eventsWrap.className = 'event-o-cal-day-events';
+
+                visibleDayEvents.forEach(function (ev) {
                     var el = document.createElement('div');
                     el.className = 'event-o-cal-event';
                     if (ev.cancelled) el.classList.add('is-cancelled');
                     if (ev.soldOut) el.classList.add('is-sold-out');
-                    if (ev.categoryColor) el.style.setProperty('--ev-cat-color', ev.categoryColor);
+                    var eventGradient = calBuildCategoryGradient(ev);
+                    if (eventGradient) el.style.background = eventGradient;
                     el.dataset.eventId = ev.id;
 
                     var html = '';
@@ -1193,8 +1511,18 @@
 
                     el._eventData = ev;
                     el._dayEvents = dayEvents;
-                    cell.appendChild(el);
+                    eventsWrap.appendChild(el);
                 });
+
+                if (hiddenDayEventsCount > 0) {
+                    var moreEl = document.createElement('div');
+                    moreEl.className = 'event-o-cal-more';
+                    moreEl.textContent = '+' + hiddenDayEventsCount;
+                    moreEl.title = hiddenDayEventsCount + ' weitere Events';
+                    eventsWrap.appendChild(moreEl);
+                }
+
+                cell.appendChild(eventsWrap);
             }
 
             grid.appendChild(cell);
@@ -1216,6 +1544,7 @@
         var popup = document.createElement('div');
         popup.className = 'event-o-cal-popup';
         popup.style.display = 'none';
+        popup._ownerWrap = wrap;
         grid.appendChild(popup);
 
         wrap.appendChild(grid);
@@ -1230,9 +1559,26 @@
     function calAttachListeners(wrap, grid, popup, state) {
         var mobile = calIsMobile();
 
+        if (wrap._calHandlers) {
+            if (wrap._calHandlers.wrapClick) {
+                wrap.removeEventListener('click', wrap._calHandlers.wrapClick);
+            }
+            if (wrap._calHandlers.documentClick) {
+                document.removeEventListener('click', wrap._calHandlers.documentClick);
+            }
+            if (wrap._calHandlers.windowScroll) {
+                window.removeEventListener('scroll', wrap._calHandlers.windowScroll);
+            }
+            if (wrap._calHandlers.documentKeydown) {
+                document.removeEventListener('keydown', wrap._calHandlers.documentKeydown);
+            }
+        }
+
+        wrap._calHandlers = {};
+
         if (mobile) {
             /* Mobile: Tap → show popup, tap popup link → navigate */
-            wrap.addEventListener('click', function(e) {
+            var handleWrapClick = function(e) {
                 var dayEl = e.target.closest('.event-o-cal-day.has-events');
                 var popupLink = e.target.closest('.event-o-cal-popup-link');
                 var popupItem = e.target.closest('.event-o-cal-popup-item');
@@ -1240,20 +1586,38 @@
                 if (dayEl && !e.target.closest('.event-o-cal-popup')) {
                     e.preventDefault();
                     e.stopPropagation();
-                    calShowPopup(grid, popup, dayEl, dayEl._dayEvents || [], true);
+
+                    if (state.activeEl === dayEl && popup.style.display !== 'none') {
+                        calHidePopup(popup, state);
+                        return;
+                    }
+
+                    calShowPopup(grid, popup, dayEl, dayEl._dayEvents || [], true, null, state);
                     state.activeEl = dayEl;
                     return;
                 }
                 if (popupLink || popupItem) return;
 
                 calHidePopup(popup, state);
-            });
+            };
+            wrap.addEventListener('click', handleWrapClick);
+            wrap._calHandlers.wrapClick = handleWrapClick;
 
-            document.addEventListener('click', function(e) {
+            var handleDocumentClick = function(e) {
                 if (!e.target.closest('.event-o-cal-wrap')) {
                     calHidePopup(popup, state);
                 }
-            });
+            };
+            document.addEventListener('click', handleDocumentClick);
+            wrap._calHandlers.documentClick = handleDocumentClick;
+
+            var handleWindowScroll = function() {
+                if (popup.style.display !== 'none') {
+                    calHidePopup(popup, state);
+                }
+            };
+            window.addEventListener('scroll', handleWindowScroll, { passive: true });
+            wrap._calHandlers.windowScroll = handleWindowScroll;
         } else {
             /* Desktop: Hover → popup on neighbor cells.
                Use day-cell level tracking for stability. */
@@ -1273,7 +1637,7 @@
                             return; // already showing for this cell
                         }
                         state.showTimer = setTimeout(function() {
-                            calShowPopup(grid, popup, cell, dayEvts, false);
+                            calShowPopup(grid, popup, cell, dayEvts, false, null, state);
                             state.activeCell = cell;
                         }, 120);
                     });
@@ -1284,6 +1648,15 @@
                             calHidePopup(popup, state);
                             state.activeCell = null;
                         }, HOVER_DELAY);
+                    });
+
+                    cell.addEventListener('focusin', function() {
+                        clearTimeout(state.popupTimer);
+                        clearTimeout(state.showTimer);
+                        var dayEvts = cell._dayEvents || [];
+                        if (!dayEvts.length) return;
+                        calShowPopup(grid, popup, cell, dayEvts, false, null, state);
+                        state.activeCell = cell;
                     });
                 })(dayCells[ci]);
             }
@@ -1299,7 +1672,7 @@
                         var dayEvts = eventEl._dayEvents || [eventEl._eventData];
                         var activeId = eventEl._eventData && eventEl._eventData.id ? eventEl._eventData.id : null;
                         var cell = eventEl.closest('.event-o-cal-day');
-                        calShowPopup(grid, popup, cell || eventEl, dayEvts, false, activeId);
+                        calShowPopup(grid, popup, cell || eventEl, dayEvts, false, activeId, state);
                         state.activeCell = cell;
                     });
                     eventEl.addEventListener('click', function() {
@@ -1325,13 +1698,22 @@
         }
 
         // Escape closes popup
-        document.addEventListener('keydown', function(e) {
+        var handleDocumentKeydown = function(e) {
             if (e.key === 'Escape') calHidePopup(popup, state);
-        });
+        };
+        document.addEventListener('keydown', handleDocumentKeydown);
+        wrap._calHandlers.documentKeydown = handleDocumentKeydown;
     }
 
-    function calShowPopup(grid, popup, sourceEl, dayEvents, mobile, activeEventId) {
+    function calShowPopup(grid, popup, sourceEl, dayEvents, mobile, activeEventId, state) {
         if (!dayEvents || !dayEvents.length) return;
+
+        if (popup._hideAnimationTimer) {
+            clearTimeout(popup._hideAnimationTimer);
+            popup._hideAnimationTimer = null;
+        }
+
+        popup.style.display = 'none';
 
         var cell = sourceEl.classList && sourceEl.classList.contains('event-o-cal-day')
             ? sourceEl
@@ -1351,6 +1733,12 @@
 
         // Build time string
         function buildTimeStr(item) {
+            var parts = [];
+            if (item.beginTime) {
+                if (item.time) parts.push('Einlass ' + item.time + ' Uhr');
+                parts.push('Beginn ' + item.beginTime + ' Uhr');
+                return parts.join(' · ');
+            }
             if (item.time && item.timeEnd) return item.time + ' – ' + item.timeEnd + ' Uhr';
             if (item.time) return 'ab ' + item.time + ' Uhr';
             if (item.timeEnd) return 'bis ' + item.timeEnd + ' Uhr';
@@ -1361,22 +1749,22 @@
         // Status badge
         var statusHtml = '';
         if (ev.cancelled) {
-            statusHtml = '<span class="event-o-cal-popup-badge cancelled">Abgesagt</span>';
+            statusHtml = '<span class="event-o-cal-popup-badge cancelled">' + calEscHtml(ev.statusLabel || 'Abgesagt') + '</span>';
         } else if (ev.soldOut) {
-            statusHtml = '<span class="event-o-cal-popup-badge sold-out">Ausgebucht</span>';
+            statusHtml = '<span class="event-o-cal-popup-badge sold-out">' + calEscHtml(ev.statusLabel || 'Ausverkauft') + '</span>';
         }
 
         // Category badge
         var categoryHtml = '';
         if (ev.category) {
-            var catStyle = ev.categoryColor ? ' style="--cat-color:' + calEscAttr(ev.categoryColor) + '"' : '';
-            categoryHtml = '<div class="event-o-cal-popup-category"' + catStyle + '>' + calEscHtml(ev.category) + '</div>';
+            var categoryLabels = calRenderCategoryLabels(ev, 'event-o-cal-popup-category-item', 'event-o-cal-popup-category-sep');
+            categoryHtml = '<div class="event-o-cal-popup-category">' + (categoryLabels || calEscHtml(ev.category)) + '</div>';
         }
 
         // Venue
         var venueHtml = '';
         if (ev.venue) {
-            venueHtml = '<div class="event-o-cal-popup-venue"><span>📍</span> ' + calEscHtml(ev.venue) + '</div>';
+            venueHtml = '<div class="event-o-cal-popup-venue"><svg class="event-o-icon" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg> ' + calEscHtml(ev.venue) + '</div>';
         }
 
         // Background image (blur controlled by setting)
@@ -1401,20 +1789,20 @@
                 var itemTime = buildTimeStr(item);
                 var itemStatus = '';
                 if (item.cancelled) {
-                    itemStatus = '<span class="event-o-cal-popup-badge cancelled">Abgesagt</span>';
+                    itemStatus = '<span class="event-o-cal-popup-badge cancelled">' + calEscHtml(item.statusLabel || 'Abgesagt') + '</span>';
                 } else if (item.soldOut) {
-                    itemStatus = '<span class="event-o-cal-popup-badge sold-out">Ausgebucht</span>';
+                    itemStatus = '<span class="event-o-cal-popup-badge sold-out">' + calEscHtml(item.statusLabel || 'Ausverkauft') + '</span>';
                 }
                 var itemCat = '';
                 if (item.category) {
-                    var iCatStyle = item.categoryColor ? ' style="--cat-color:' + calEscAttr(item.categoryColor) + '"' : '';
-                    itemCat = '<span class="event-o-cal-popup-item-cat"' + iCatStyle + '>' + calEscHtml(item.category) + '</span>';
+                    var itemCategoryLabels = calRenderCategoryLabels(item, 'event-o-cal-popup-item-cat-part', 'event-o-cal-popup-item-cat-sep');
+                    itemCat = '<span class="event-o-cal-popup-item-cat">' + (itemCategoryLabels || calEscHtml(item.category)) + '</span>';
                 }
                 return '<a href="' + calEscAttr(item.url || '#') + '" class="event-o-cal-popup-item">'
+                    + itemStatus
                     + '<div class="event-o-cal-popup-item-title">' + calEscHtml(item.title) + ' <span class="event-o-cal-popup-arrow">→</span></div>'
                     + (itemTime ? '<div class="event-o-cal-popup-item-time">' + calEscHtml(itemTime) + '</div>' : '')
                     + itemCat
-                    + itemStatus
                     + '</a>';
             }).join('');
 
@@ -1427,6 +1815,7 @@
             popup.innerHTML =
                 bgHtml +
                 '<a href="' + calEscAttr(ev.url || '#') + '" class="event-o-cal-popup-link">' +
+                    statusHtml +
                     '<div class="event-o-cal-popup-title">' +
                         calEscHtml(ev.title) +
                         ' <span class="event-o-cal-popup-arrow">→</span>' +
@@ -1435,52 +1824,62 @@
                     categoryHtml +
                     venueHtml +
                     excerptHtml +
-                    statusHtml +
                 '</a>';
         }
 
         /* Positioning */
         if (mobile) {
+            if (popup.parentNode !== document.body) {
+                document.body.appendChild(popup);
+                if (popup._ownerWrap) {
+                    popup._ownerWrap._bodyPopup = popup;
+                }
+            }
+
             popup.classList.add('is-mobile');
             popup.classList.remove('is-desktop');
 
-            var cellW = cell.offsetWidth;
-            var cellH = cell.offsetHeight;
-            var gridGapM = parseFloat(window.getComputedStyle(grid).columnGap || window.getComputedStyle(grid).gap || '0') || 0;
-            var pw = 3 * cellW + 2 * gridGapM;
-            var ph = 2 * cellH + gridGapM;
-            var topPos = cell.offsetTop + cellH + gridGapM;
-            var leftPos = cell.offsetLeft + cellW / 2 - pw / 2;
+            var viewportWidth = window.innerWidth || document.documentElement.clientWidth || 360;
+            var viewportHeight = window.innerHeight || document.documentElement.clientHeight || 640;
+            var popupWidth = Math.min(460, Math.max(320, viewportWidth - 24));
+            var popupMaxHeight = Math.max(280, viewportHeight - 32);
 
-            if (leftPos < 4) leftPos = 4;
-            if (leftPos + pw > grid.offsetWidth - 4) leftPos = grid.offsetWidth - pw - 4;
-            if (topPos + ph > grid.offsetHeight) {
-                topPos = Math.max(0, cell.offsetTop - ph - gridGapM);
+            popup.style.removeProperty('--arrow-left');
+            popup.style.left = '50%';
+            popup.style.top = '50%';
+            popup.style.width = popupWidth + 'px';
+            popup.style.height = 'auto';
+            popup.style.maxHeight = popupMaxHeight + 'px';
+        } else {
+            if (popup.parentNode !== grid) {
+                grid.appendChild(popup);
+                if (popup._ownerWrap) {
+                    popup._ownerWrap._bodyPopup = null;
+                }
             }
 
-            var arrowLeft = (cell.offsetLeft + cellW / 2) - leftPos;
-            popup.style.setProperty('--arrow-left', arrowLeft + 'px');
-
-            popup.style.left = leftPos + 'px';
-            popup.style.top = topPos + 'px';
-            popup.style.width = pw + 'px';
-            popup.style.height = ph + 'px';
-        } else {
             popup.classList.add('is-desktop');
             popup.classList.remove('is-mobile');
 
             var cw = cell.offsetWidth;
             var ch = cell.offsetHeight;
             var gridGap = parseFloat(window.getComputedStyle(grid).columnGap || window.getComputedStyle(grid).gap || '0') || 0;
-            var matrix = state.desktopPopupMatrix === '3x2' ? { cols: 3, rows: 2 } : { cols: 3, rows: 3 };
+            var matrix = state && state.desktopPopupMatrix === '3x2' ? { cols: 3, rows: 2 } : { cols: 3, rows: 3 };
             var spanW = matrix.cols * cw + Math.max(0, matrix.cols - 1) * gridGap;
             var spanH = matrix.rows * ch + Math.max(0, matrix.rows - 1) * gridGap;
             var left;
+            var rightSideLeft = cell.offsetLeft + cw + gridGap;
+            var leftSideLeft = cell.offsetLeft - spanW - gridGap;
+            var centeredLeft = cell.offsetLeft - ((spanW - cw) / 2);
+            var fitsRight = rightSideLeft + spanW <= grid.offsetWidth;
+            var fitsLeft = leftSideLeft >= 0;
 
-            if (col <= (6 - matrix.cols)) {
-                left = cell.offsetLeft + cw + gridGap;
+            if (fitsRight) {
+                left = rightSideLeft;
+            } else if (fitsLeft) {
+                left = leftSideLeft;
             } else {
-                left = cell.offsetLeft - spanW - gridGap;
+                left = centeredLeft;
             }
             if (left < 0) left = 0;
             if (left + spanW > grid.offsetWidth) left = grid.offsetWidth - spanW;
@@ -1494,6 +1893,7 @@
             popup.style.top = topPosDesktop + 'px';
             popup.style.width = spanW + 'px';
             popup.style.height = spanH + 'px';
+            popup.style.maxHeight = '';
         }
 
         popup.style.display = 'flex';
@@ -1504,10 +1904,19 @@
 
     function calHidePopup(popup, state) {
         popup.classList.remove('is-visible');
-        setTimeout(function() {
+
+        if (state.hideAnimationTimer) {
+            clearTimeout(state.hideAnimationTimer);
+        }
+
+        state.hideAnimationTimer = setTimeout(function() {
             popup.style.display = 'none';
             popup.classList.remove('is-mobile', 'is-desktop');
+            popup.style.maxHeight = '';
+            state.hideAnimationTimer = null;
+            popup._hideAnimationTimer = null;
         }, 200);
+        popup._hideAnimationTimer = state.hideAnimationTimer;
         state.activeEl = null;
         state.activeCell = null;
     }

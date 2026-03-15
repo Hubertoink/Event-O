@@ -425,12 +425,30 @@ function event_o_register_settings_page(): void
     );
 }
 
+function event_o_register_block_guide_page(): void
+{
+    add_submenu_page(
+        'edit.php?post_type=event_o_event',
+        __('Block Guide', 'event-o'),
+        __('Block Guide', 'event-o'),
+        'edit_posts',
+        'event-o-block-guide',
+        'event_o_render_block_guide_page'
+    );
+}
+
 function event_o_enqueue_settings_assets(string $hookSuffix): void
 {
     $page = isset($_GET['page']) ? sanitize_key((string) $_GET['page']) : '';
     $postType = isset($_GET['post_type']) ? sanitize_key((string) $_GET['post_type']) : '';
 
-    if ($hookSuffix !== 'event-o_page_event-o-settings' && ($page !== 'event-o-settings' || $postType !== 'event_o_event')) {
+    $allowedPages = ['event-o-settings', 'event-o-block-guide'];
+
+    if (
+        $hookSuffix !== 'event-o_page_event-o-settings'
+        && $hookSuffix !== 'event-o_page_event-o-block-guide'
+        && (!in_array($page, $allowedPages, true) || $postType !== 'event_o_event')
+    ) {
         return;
     }
 
@@ -560,6 +578,363 @@ function event_o_render_settings_page(): void
     echo '</form>';
     echo '</div>';
     echo '</div>';
+}
+
+function event_o_render_block_guide_page(): void
+{
+    if (!current_user_can('edit_posts')) {
+        return;
+    }
+
+    $tokens = event_o_get_design_tokens();
+    $guide = event_o_get_block_guide_content();
+    $wrapperStyle = sprintf(
+        '--event-o-settings-primary:%1$s;--event-o-settings-accent:%2$s;--event-o-settings-text:%3$s;--event-o-settings-muted:%4$s;',
+        esc_attr($tokens['primary']),
+        esc_attr($tokens['accent']),
+        esc_attr($tokens['text']),
+        esc_attr($tokens['muted'])
+    );
+
+    echo '<div class="wrap event-o-settings-page event-o-guide-page" style="' . $wrapperStyle . '">';
+    echo '<div class="event-o-settings-hero event-o-guide-hero">';
+    echo '<div class="event-o-settings-hero-copy">';
+    echo '<p class="event-o-settings-eyebrow">' . esc_html__('Event-O Block Library', 'event-o') . '</p>';
+    echo '<h1>' . esc_html__('Gutenberg-Block Guide', 'event-o') . '</h1>';
+    echo '<p class="event-o-settings-subtitle">' . esc_html__('Eine kompakte Übersicht für Redaktion und Layout: welcher Block wofür gedacht ist, welche Einstellungen wirklich zählen und wie du mehrere Blöcke sinnvoll kombinierst.', 'event-o') . '</p>';
+    echo '</div>';
+    echo '<div class="event-o-guide-hero-aside">';
+    foreach ($guide['hero_stats'] as $stat) {
+        echo '<div class="event-o-guide-stat">';
+        echo '<span class="event-o-guide-stat-label">' . esc_html($stat['label']) . '</span>';
+        echo '<strong class="event-o-guide-stat-value">' . esc_html($stat['value']) . '</strong>';
+        echo '<span class="event-o-guide-stat-help">' . esc_html($stat['help']) . '</span>';
+        echo '</div>';
+    }
+    echo '</div>';
+    echo '</div>';
+
+    echo '<div class="event-o-settings-shell event-o-guide-shell">';
+    echo '<aside class="event-o-settings-sidebar event-o-guide-sidebar">';
+
+    echo '<section class="event-o-settings-panel event-o-settings-panel-nav">';
+    echo '<h2>' . esc_html__('Blöcke', 'event-o') . '</h2>';
+    echo '<nav class="event-o-settings-nav" aria-label="' . esc_attr__('Block guide navigation', 'event-o') . '">';
+    foreach ($guide['blocks'] as $block) {
+        echo '<a href="#' . esc_attr($block['slug']) . '">';
+        echo '<span class="event-o-settings-nav-title">' . esc_html($block['title']) . '</span>';
+        echo '<span class="event-o-settings-nav-copy">' . esc_html($block['summary']) . '</span>';
+        echo '</a>';
+    }
+    echo '</nav>';
+    echo '</section>';
+
+    echo '<section class="event-o-settings-panel event-o-guide-panel">';
+    echo '<h2>' . esc_html__('Schnellstart', 'event-o') . '</h2>';
+    echo '<ol class="event-o-guide-ordered-list">';
+    foreach ($guide['quick_start'] as $step) {
+        echo '<li>' . esc_html($step) . '</li>';
+    }
+    echo '</ol>';
+    echo '</section>';
+
+    echo '<section class="event-o-settings-panel event-o-guide-panel">';
+    echo '<h2>' . esc_html__('Redaktions-Tipps', 'event-o') . '</h2>';
+    echo '<ul class="event-o-settings-help-list">';
+    foreach ($guide['editorial_tips'] as $tip) {
+        echo '<li>' . esc_html($tip) . '</li>';
+    }
+    echo '</ul>';
+    echo '</section>';
+
+    echo '<section class="event-o-settings-panel event-o-guide-panel event-o-guide-panel-links">';
+    echo '<h2>' . esc_html__('Direkt weiter', 'event-o') . '</h2>';
+    echo '<div class="event-o-guide-link-stack">';
+    echo '<a class="event-o-guide-link" href="' . esc_url(admin_url('edit.php?post_type=event_o_event&page=event-o-settings')) . '">';
+    echo '<span>' . esc_html__('Zu den Event-O Einstellungen', 'event-o') . '</span>';
+    echo '<small>' . esc_html__('Farben, Workflow und Theme-Verhalten anpassen', 'event-o') . '</small>';
+    echo '</a>';
+    echo '<a class="event-o-guide-link" href="' . esc_url(admin_url('post-new.php?post_type=page')) . '">';
+    echo '<span>' . esc_html__('Neue Seite mit Blöcken anlegen', 'event-o') . '</span>';
+    echo '<small>' . esc_html__('Direkt im Gutenberg-Editor testen', 'event-o') . '</small>';
+    echo '</a>';
+    echo '</div>';
+    echo '</section>';
+
+    echo '</aside>';
+
+    echo '<main class="event-o-guide-content">';
+
+    echo '<section class="event-o-settings-section-card event-o-guide-overview">';
+    echo '<div class="event-o-settings-section-head">';
+    echo '<div>';
+    echo '<p class="event-o-settings-section-kicker">' . esc_html__('Was Event-O liefert', 'event-o') . '</p>';
+    echo '<h2>' . esc_html__('Welche Blocktypen es gibt', 'event-o') . '</h2>';
+    echo '</div>';
+    echo '<p>' . esc_html__('Event-O deckt Listen, visuelle Einstiege, Kalenderansichten und redaktionell kuratierte Highlights ab. Nutze die Übersicht unten, um pro Seitentyp schnell zum passenden Block zu greifen.', 'event-o') . '</p>';
+    echo '</div>';
+    echo '<div class="event-o-guide-pill-grid">';
+    foreach ($guide['use_cases'] as $useCase) {
+        echo '<div class="event-o-guide-use-case">';
+        echo '<strong>' . esc_html($useCase['title']) . '</strong>';
+        echo '<span>' . esc_html($useCase['copy']) . '</span>';
+        echo '</div>';
+    }
+    echo '</div>';
+    echo '</section>';
+
+    echo '<section class="event-o-guide-grid">';
+    foreach ($guide['blocks'] as $block) {
+        echo '<article id="' . esc_attr($block['slug']) . '" class="event-o-settings-section-card event-o-guide-card">';
+        echo '<div class="event-o-guide-card-head">';
+        echo '<div class="event-o-guide-icon">' . esc_html($block['icon']) . '</div>';
+        echo '<div>';
+        echo '<p class="event-o-settings-section-kicker">' . esc_html($block['kicker']) . '</p>';
+        echo '<h2>' . esc_html($block['title']) . '</h2>';
+        echo '</div>';
+        echo '</div>';
+
+        echo '<p class="event-o-guide-card-summary">' . esc_html($block['summary']) . '</p>';
+
+        echo '<div class="event-o-guide-badges">';
+        foreach ($block['badges'] as $badge) {
+            echo '<span class="event-o-settings-pill is-muted">' . esc_html($badge) . '</span>';
+        }
+        echo '</div>';
+
+        echo '<div class="event-o-guide-card-grid">';
+        echo '<div class="event-o-guide-card-section">';
+        echo '<h3>' . esc_html__('Ideal für', 'event-o') . '</h3>';
+        echo '<ul class="event-o-settings-help-list">';
+        foreach ($block['ideal_for'] as $item) {
+            echo '<li>' . esc_html($item) . '</li>';
+        }
+        echo '</ul>';
+        echo '</div>';
+
+        echo '<div class="event-o-guide-card-section">';
+        echo '<h3>' . esc_html__('Wichtige Einstellungen', 'event-o') . '</h3>';
+        echo '<ul class="event-o-settings-help-list">';
+        foreach ($block['key_settings'] as $item) {
+            echo '<li>' . esc_html($item) . '</li>';
+        }
+        echo '</ul>';
+        echo '</div>';
+
+        echo '<div class="event-o-guide-card-section">';
+        echo '<h3>' . esc_html__('Kombinieren mit', 'event-o') . '</h3>';
+        echo '<ul class="event-o-settings-help-list">';
+        foreach ($block['combine_with'] as $item) {
+            echo '<li>' . esc_html($item) . '</li>';
+        }
+        echo '</ul>';
+        echo '</div>';
+        echo '</div>';
+
+        echo '<div class="event-o-guide-card-footer">';
+        echo '<span class="event-o-guide-inline-label">' . esc_html__('Im Editor suchen nach', 'event-o') . '</span>';
+        echo '<code>' . esc_html($block['search_term']) . '</code>';
+        echo '</div>';
+        echo '</article>';
+    }
+    echo '</section>';
+
+    echo '</main>';
+    echo '</div>';
+    echo '</div>';
+}
+
+function event_o_get_block_guide_content(): array
+{
+    return [
+        'hero_stats' => [
+            [
+                'label' => __('Blöcke', 'event-o'),
+                'value' => '6',
+                'help' => __('für Listing, Highlights und Kalender', 'event-o'),
+            ],
+            [
+                'label' => __('Ideal für', 'event-o'),
+                'value' => __('Startseiten', 'event-o'),
+                'help' => __('Landingpages, Programmseiten und Archiv-Ansichten', 'event-o'),
+            ],
+            [
+                'label' => __('Fokus', 'event-o'),
+                'value' => __('schnell wählen', 'event-o'),
+                'help' => __('welcher Block für welchen redaktionellen Zweck passt', 'event-o'),
+            ],
+        ],
+        'quick_start' => [
+            __('Neue Seite oder Beitrag im Block-Editor öffnen.', 'event-o'),
+            __('Nach "Event" oder direkt nach dem Blocknamen suchen.', 'event-o'),
+            __('Zuerst den passenden Darstellungsblock wählen, danach Filter und Design einstellen.', 'event-o'),
+            __('Mit Kategorien, Orten oder Veranstaltern gezielt auf Teilprogramme einschränken.', 'event-o'),
+        ],
+        'editorial_tips' => [
+            __('Für starke Startseiten zuerst Hero oder Carousel einsetzen und darunter Grid oder Liste zur Vertiefung ergänzen.', 'event-o'),
+            __('Wenn Besucher schnell vergleichen sollen, ist Grid oder Program meist besser als ein Carousel.', 'event-o'),
+            __('Kalender eignet sich für Monatsübersichten, ersetzt aber keine ausführliche Programmseite mit Filtern.', 'event-o'),
+            __('Filter nur aktivieren, wenn wirklich mehrere Kategorien, Orte oder Veranstalter auswählbar sein sollen.', 'event-o'),
+        ],
+        'use_cases' => [
+            [
+                'title' => __('Startseite', 'event-o'),
+                'copy' => __('Hero oder Carousel für Aufmerksamkeit, darunter Grid oder Liste für Details.', 'event-o'),
+            ],
+            [
+                'title' => __('Programmseite', 'event-o'),
+                'copy' => __('Program oder Liste für viele Termine mit klarer Leseführung.', 'event-o'),
+            ],
+            [
+                'title' => __('Monatsübersicht', 'event-o'),
+                'copy' => __('Calendar für Orientierung, ergänzt durch Grid oder Liste für ausführliche Infos.', 'event-o'),
+            ],
+            [
+                'title' => __('Themen-Landingpage', 'event-o'),
+                'copy' => __('Mit Kategorien filtern und pro Seite eine kuratierte Auswahl zeigen.', 'event-o'),
+            ],
+        ],
+        'blocks' => [
+            [
+                'slug' => 'event-o-guide-list',
+                'icon' => '01',
+                'kicker' => __('Klassisch und flexibel', 'event-o'),
+                'title' => __('Event List', 'event-o'),
+                'summary' => __('Die vielseitigste Übersicht für viele Termine mit klarer Lesbarkeit, optionalen Filtern und viel Meta-Information.', 'event-o'),
+                'badges' => [__('viele Termine', 'event-o'), __('Filter möglich', 'event-o'), __('editorial sicher', 'event-o')],
+                'ideal_for' => [
+                    __('Programmseiten mit vielen Events oder Kategorien.', 'event-o'),
+                    __('Archiv- oder Unterseiten, auf denen Informationen wichtiger sind als große Bilder.', 'event-o'),
+                    __('Redaktionelle Seiten, die schnell gepflegt und zuverlässig lesbar bleiben sollen.', 'event-o'),
+                ],
+                'key_settings' => [
+                    __('perPage bestimmt, wie dicht oder luftig die Seite wirkt.', 'event-o'),
+                    __('groupByMonth ordnet lange Listen verständlicher nach Monaten.', 'event-o'),
+                    __('showFilters und filterStyle helfen bei größeren Programmen.', 'event-o'),
+                ],
+                'combine_with' => [
+                    __('Mit Hero über der Liste für einen starken Einstieg.', 'event-o'),
+                    __('Mit Calendar daneben oder darunter für Monatsnavigation.', 'event-o'),
+                ],
+                'search_term' => 'Event List',
+            ],
+            [
+                'slug' => 'event-o-guide-carousel',
+                'icon' => '02',
+                'kicker' => __('Dynamischer Einstieg', 'event-o'),
+                'title' => __('Event Carousel', 'event-o'),
+                'summary' => __('Ein kompakter Slider für Highlights, Teaser und Startseitenbereiche mit wenig Platz in der Höhe.', 'event-o'),
+                'badges' => [__('teasertauglich', 'event-o'), __('visuell', 'event-o'), __('für Highlights', 'event-o')],
+                'ideal_for' => [
+                    __('Startseiten oder Magazineinstiege mit kuratierter Auswahl.', 'event-o'),
+                    __('Abschnitte, die nur wenige ausgewählte Events betonen sollen.', 'event-o'),
+                    __('Bereiche, in denen Bildwirkung wichtiger ist als Detailtiefe.', 'event-o'),
+                ],
+                'key_settings' => [
+                    __('slidesToShow steuert, ob der Block eher teaserhaft oder galerieartig wirkt.', 'event-o'),
+                    __('showImage sollte fast immer aktiv bleiben, damit der Slider genug visuelle Substanz hat.', 'event-o'),
+                    __('Mit Kategorien oder Veranstaltern gezielt nur Highlights eines Formats anzeigen.', 'event-o'),
+                ],
+                'combine_with' => [
+                    __('Mit List oder Grid darunter für alle weiteren Termine.', 'event-o'),
+                    __('Mit Hero vermeiden, wenn beide direkt nacheinander zu dominant wirken.', 'event-o'),
+                ],
+                'search_term' => 'Event Carousel',
+            ],
+            [
+                'slug' => 'event-o-guide-grid',
+                'icon' => '03',
+                'kicker' => __('Vergleich auf einen Blick', 'event-o'),
+                'title' => __('Event Grid', 'event-o'),
+                'summary' => __('Kachelansicht für moderne Übersichtsseiten, auf denen mehrere Termine parallel erfassbar sein sollen.', 'event-o'),
+                'badges' => [__('kachelansicht', 'event-o'), __('modern', 'event-o'), __('vergleichbar', 'event-o')],
+                'ideal_for' => [
+                    __('Seiten mit mittlerer Event-Anzahl und starkem Bildanteil.', 'event-o'),
+                    __('Landingpages für Genres, Reihen oder Veranstaltungsorte.', 'event-o'),
+                    __('Layouts, in denen Besucher schnell mehrere Optionen scannen sollen.', 'event-o'),
+                ],
+                'key_settings' => [
+                    __('columns sollte auf Desktop großzügig, aber nicht zu eng gewählt werden.', 'event-o'),
+                    __('showCategory und showOrganizer helfen, Karten kontextreich zu halten.', 'event-o'),
+                    __('sortOrder ist relevant, wenn auch vergangene Termine gezeigt werden.', 'event-o'),
+                ],
+                'combine_with' => [
+                    __('Mit Filteroptionen für Themen- und Archivseiten.', 'event-o'),
+                    __('Mit Calendar als zweite Perspektive auf dieselben Termine.', 'event-o'),
+                ],
+                'search_term' => 'Event Grid',
+            ],
+            [
+                'slug' => 'event-o-guide-hero',
+                'icon' => '04',
+                'kicker' => __('Großer Auftritt', 'event-o'),
+                'title' => __('Event Hero', 'event-o'),
+                'summary' => __('Der aufmerksamkeitsstärkste Block für Bühnenflächen, Header-Bereiche und kuratierte Highlights.', 'event-o'),
+                'badges' => [__('hero', 'event-o'), __('startseite', 'event-o'), __('highlight', 'event-o')],
+                'ideal_for' => [
+                    __('Erste Sichtfläche auf der Startseite oder Kampagnenseiten.', 'event-o'),
+                    __('Besondere Eventreihen, die emotional und bildstark inszeniert werden sollen.', 'event-o'),
+                    __('Kuratiertes Maximum statt vollständiger Übersicht.', 'event-o'),
+                ],
+                'key_settings' => [
+                    __('perPage klein halten, damit der Hero fokussiert bleibt.', 'event-o'),
+                    __('preferHighlights und onePerCategory helfen bei kuratierter Auswahl.', 'event-o'),
+                    __('autoPlay nur verwenden, wenn die Seite visuell ruhig genug bleibt.', 'event-o'),
+                ],
+                'combine_with' => [
+                    __('Fast immer mit List oder Grid darunter kombinieren.', 'event-o'),
+                    __('Mit Program ergänzen, wenn nach dem Hero sofort konkrete Termine folgen sollen.', 'event-o'),
+                ],
+                'search_term' => 'Event Hero',
+            ],
+            [
+                'slug' => 'event-o-guide-program',
+                'icon' => '05',
+                'kicker' => __('Für redaktionelle Programmseiten', 'event-o'),
+                'title' => __('Event Program', 'event-o'),
+                'summary' => __('Eine detailreiche Programmansicht mit Fokus auf Ablauf, Metadaten und redaktionell gut strukturierte Terminlisten.', 'event-o'),
+                'badges' => [__('detailreich', 'event-o'), __('programm', 'event-o'), __('stark für Redaktion', 'event-o')],
+                'ideal_for' => [
+                    __('Festival-, Saison- oder Reihenübersichten.', 'event-o'),
+                    __('Seiten, auf denen Beschreibungen, Spielorte und Zusatzinfos wichtig sind.', 'event-o'),
+                    __('Programme, die weniger magazinartig und mehr serviceorientiert wirken sollen.', 'event-o'),
+                ],
+                'key_settings' => [
+                    __('showDescription, showCalendar und showShare nur aktiv lassen, wenn die Zusatzinfos wirklich helfen.', 'event-o'),
+                    __('animation sparsam einsetzen, damit das Programm ruhig bleibt.', 'event-o'),
+                    __('Filter sind hier besonders nützlich bei vielen Reihen oder Spielorten.', 'event-o'),
+                ],
+                'combine_with' => [
+                    __('Mit Hero als emotionalen Einstieg oberhalb des Programms.', 'event-o'),
+                    __('Mit Calendar als alternative Monatsansicht derselben Inhalte.', 'event-o'),
+                ],
+                'search_term' => 'Event Program',
+            ],
+            [
+                'slug' => 'event-o-guide-calendar',
+                'icon' => '06',
+                'kicker' => __('Monatlich denken', 'event-o'),
+                'title' => __('Event Calendar', 'event-o'),
+                'summary' => __('Die beste Wahl für Monatsüberblicke, Terminfindung und Besucher, die zuerst nach Datum statt nach Thema navigieren.', 'event-o'),
+                'badges' => [__('kalender', 'event-o'), __('monatsblick', 'event-o'), __('interaktiv', 'event-o')],
+                'ideal_for' => [
+                    __('Monatsseiten, Servicebereiche und klassische Veranstaltungskalender.', 'event-o'),
+                    __('Besucher, die nach Datum browsen statt über Kategorien.', 'event-o'),
+                    __('Kombinationen mit einer zweiten, textreicheren Darstellung darunter.', 'event-o'),
+                ],
+                'key_settings' => [
+                    __('theme und Farben an das aktive Website-Design angleichen.', 'event-o'),
+                    __('weekStartsMonday für deutschsprachige Sites in der Regel aktiv lassen.', 'event-o'),
+                    __('desktopPopupMatrix bestimmt, wie viel Raum die Event-Popups auf Desktop bekommen.', 'event-o'),
+                ],
+                'combine_with' => [
+                    __('Mit List oder Program unterhalb des Kalenders für ausführliche Inhalte.', 'event-o'),
+                    __('Mit Grid nur dann kombinieren, wenn die Seite bewusst visuell aufgebaut ist.', 'event-o'),
+                ],
+                'search_term' => 'Event Calendar',
+            ],
+        ],
+    ];
 }
 
 function event_o_get_settings_sections(): array

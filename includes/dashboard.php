@@ -29,7 +29,7 @@ function event_o_enqueue_dashboard_assets(string $hookSuffix): void
         'event-o-admin-dashboard',
         EVENT_O_PLUGIN_URL . 'assets/admin-dashboard.css',
         [],
-        defined('EVENT_O_VERSION') ? EVENT_O_VERSION : '1.1.0'
+        defined('EVENT_O_VERSION') ? EVENT_O_VERSION : '1.1.1'
     );
 }
 add_action('admin_enqueue_scripts', 'event_o_enqueue_dashboard_assets');

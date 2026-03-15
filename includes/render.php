@@ -760,6 +760,10 @@ function event_o_get_all_date_slots(int $postId): array
         }
     }
 
+    usort($slots, static function (array $left, array $right): int {
+        return ((int) ($left['start_ts'] ?? 0)) <=> ((int) ($right['start_ts'] ?? 0));
+    });
+
     return $slots;
 }
 
@@ -1534,9 +1538,12 @@ function event_o_render_event_carousel_block(array $attrs, string $content = '',
         $styleAttr .= '--event-o-block-accent:' . esc_attr($accentColor) . ';';
     }
 
+    $autoPlay = !empty($attrs['autoPlay']);
+    $autoPlayInterval = isset($attrs['autoPlayInterval']) ? max(1, (int) $attrs['autoPlayInterval']) : 5;
+
     $uid = 'event-o-carousel-' . wp_generate_uuid4();
 
-    $out = '<div class="event-o event-o-carousel' . ($showFilters ? ' has-filters' : '') . '" id="' . esc_attr($uid) . '" data-slides="' . esc_attr((string) $slidesToShow) . '" style="' . $styleAttr . '">';
+    $out = '<div class="event-o event-o-carousel' . ($showFilters ? ' has-filters' : '') . '" id="' . esc_attr($uid) . '" data-slides="' . esc_attr((string) $slidesToShow) . '"' . ($autoPlay ? ' data-autoplay="1" data-autoplay-interval="' . esc_attr((string) $autoPlayInterval) . '"' : '') . ' style="' . $styleAttr . '">';
 
     // Render filter bar if enabled.
     if ($showFilters) {
@@ -1545,10 +1552,8 @@ function event_o_render_event_carousel_block(array $attrs, string $content = '',
         $out .= ($filterStyle === 'tabs') ? event_o_render_filter_bar_tabs($filterTerms, $attrs) : event_o_render_filter_bar($filterTerms, $attrs);
     }
 
-    $out .= '<div class="event-o-carousel-header">';
-    $out .= '<button type="button" class="event-o-carousel-nav" data-dir="prev" aria-label="' . esc_attr__('Previous', 'event-o') . '">←</button>';
-    $out .= '<button type="button" class="event-o-carousel-nav" data-dir="next" aria-label="' . esc_attr__('Next', 'event-o') . '">→</button>';
-    $out .= '</div>';
+    $out .= '<button type="button" class="event-o-carousel-nav" data-dir="prev" aria-label="' . esc_attr__('Previous', 'event-o') . '"><span class="event-o-carousel-nav-label" aria-hidden="true">&lt;</span></button>';
+    $out .= '<button type="button" class="event-o-carousel-nav" data-dir="next" aria-label="' . esc_attr__('Next', 'event-o') . '"><span class="event-o-carousel-nav-label" aria-hidden="true">&gt;</span></button>';
 
     $out .= '<div class="event-o-carousel-viewport" tabindex="0">';
     $out .= '<div class="event-o-carousel-track">';
@@ -1574,6 +1579,10 @@ function event_o_render_event_carousel_block(array $attrs, string $content = '',
         $title = get_the_title();
         $permalink = get_permalink();
         $dateSlots = event_o_get_all_date_slots($postId);
+        $categoryMarkup = event_o_render_event_category_labels($postId, [
+            'wrapper_class' => 'event-o-card-cats',
+            'item_class' => 'event-o-card-category',
+        ]);
         $venueName = $showVenue ? event_o_get_first_term_name($postId, 'event_o_venue') : '';
 
         // Filter data attributes for client-side filtering.
@@ -1581,13 +1590,42 @@ function event_o_render_event_carousel_block(array $attrs, string $content = '',
 
         $out .= '<article class="event-o-card"' . $filterDataAttrs . '>';
 
+        // Build compact date badge from first slot.
+        $badgeHtml = '';
+        if (!empty($dateSlots) && isset($dateSlots[0]['start_ts']) && (int) $dateSlots[0]['start_ts'] > 0) {
+            $badgeStart = (new DateTimeImmutable('@' . (int) $dateSlots[0]['start_ts']))->setTimezone(wp_timezone());
+            $shortMonth = mb_strtoupper(mb_substr(event_o_get_german_month((int) $badgeStart->format('n')), 0, 3));
+            $extraSlotCount = max(0, count($dateSlots) - 1);
+            $badgeClass = 'event-o-card-badge';
+            if ($extraSlotCount > 0) {
+                $badgeClass .= ' has-extra-slots';
+            }
+            $badgeHtml = '<span class="' . esc_attr($badgeClass) . '">'
+                . '<span class="event-o-card-badge-day">' . esc_html($badgeStart->format('j')) . '</span>'
+                . '<span class="event-o-card-badge-month">' . esc_html($shortMonth) . '</span>'
+                . ($extraSlotCount > 0 ? '<span class="event-o-card-badge-extra">+' . esc_html((string) $extraSlotCount) . '</span>' : '')
+                . '</span>';
+        }
+
+        $excerpt = wp_strip_all_tags(get_the_excerpt($postId));
+
         if ($showImage) {
             $imageUrls = event_o_get_event_image_urls($postId, 'large');
             if (!empty($imageUrls)) {
+                $out .= '<div class="event-o-card-media-wrap">';
+                $out .= $badgeHtml;
                 $out .= '<a class="event-o-card-media" href="' . esc_url($permalink) . '">';
                 $out .= event_o_render_event_image_crossfade($imageUrls, 'event-o-card-media-inner', '', $title);
                 $out .= '</a>';
+                if ($excerpt !== '') {
+                    $out .= '<div class="event-o-card-overlay"><p class="event-o-card-excerpt">' . esc_html($excerpt) . '</p></div>';
+                }
+                $out .= '</div>';
+            } else {
+                $out .= '<div class="event-o-card-media-wrap event-o-card-media-wrap--empty">' . $badgeHtml . '</div>';
             }
+        } elseif ($badgeHtml !== '') {
+            $out .= '<div class="event-o-card-media-wrap event-o-card-media-wrap--empty">' . $badgeHtml . '</div>';
         }
 
         $out .= '<div class="event-o-card-body">';
@@ -1596,6 +1634,9 @@ function event_o_render_event_carousel_block(array $attrs, string $content = '',
             $out .= '<div class="event-o-date-slot">' . esc_html($slot['formatted']) . '</div>';
         }
         $out .= '</div>';
+        if ($categoryMarkup !== '') {
+            $out .= $categoryMarkup;
+        }
         $out .= '<h3 class="event-o-card-title"><a href="' . esc_url($permalink) . '">' . esc_html($title) . '</a></h3>';
 
         $metaBits = [];

@@ -102,11 +102,7 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
             if (!empty($imageUrls)) {
                 $out .= event_o_render_event_image_crossfade($imageUrls, 'event-o-grid-fade', 'event-o-grid-img', $title);
                 if ($excerpt !== '') {
-                    $overlayClass = 'event-o-grid-overlay';
-                    if ($extraSlotCount > 0) {
-                        $overlayClass .= ' has-extra-slots';
-                    }
-                    $out .= '<div class="' . esc_attr($overlayClass) . '">';
+                    $out .= '<div class="event-o-grid-overlay">';
                     $out .= '<p class="event-o-grid-excerpt">' . esc_html($excerpt) . '</p>';
                     $out .= '</div>';
                 }

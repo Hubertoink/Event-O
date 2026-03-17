@@ -20,6 +20,7 @@ const EVENT_O_META_BANDS = '_event_o_bands';
 const EVENT_O_META_GALLERY_IDS = '_event_o_gallery_ids';
 const EVENT_O_META_HIGHLIGHT = '_event_o_highlight';
 const EVENT_O_META_HIGHLIGHT_UNTIL = '_event_o_highlight_until_ts';
+const EVENT_O_META_RELATED_EVENT_ID = '_event_o_related_event_id';
 
 const EVENT_O_LEGACY_META_START_TS = '_evento_start_ts';
 const EVENT_O_LEGACY_META_END_TS = '_evento_end_ts';
@@ -132,6 +133,16 @@ function event_o_register_meta(): void
     ]);
 
     register_post_meta('event_o_event', EVENT_O_META_HIGHLIGHT_UNTIL, $metaArgs);
+
+    register_post_meta('event_o_event', EVENT_O_META_RELATED_EVENT_ID, [
+        'type' => 'integer',
+        'single' => true,
+        'show_in_rest' => true,
+        'auth_callback' => static function () {
+            return current_user_can('edit_posts');
+        },
+        'sanitize_callback' => 'absint',
+    ]);
 }
 
 function event_o_admin_meta_boxes(): void
@@ -168,6 +179,21 @@ function event_o_render_event_details_metabox(WP_Post $post): void
     $galleryIds = array_slice(array_unique($galleryIds), 0, 2);
     $isHighlight = (bool) get_post_meta($post->ID, EVENT_O_META_HIGHLIGHT, true);
     $highlightUntilTs = (int) get_post_meta($post->ID, EVENT_O_META_HIGHLIGHT_UNTIL, true);
+    $relatedEventId = (int) get_post_meta($post->ID, EVENT_O_META_RELATED_EVENT_ID, true);
+    if ($relatedEventId === $post->ID) {
+        $relatedEventId = 0;
+    }
+
+    $relatedEventOptions = get_posts([
+        'post_type' => 'event_o_event',
+        'post_status' => ['publish', 'future', 'draft', 'pending', 'private'],
+        'posts_per_page' => -1,
+        'post__not_in' => [$post->ID],
+        'meta_key' => EVENT_O_META_START_TS,
+        'orderby' => ['meta_value_num' => 'ASC', 'title' => 'ASC'],
+        'order' => 'ASC',
+        'suppress_filters' => false,
+    ]);
 
     // Backward compat if someone tested earlier builds.
     if ($startTs <= 0) {
@@ -290,6 +316,28 @@ function event_o_render_event_details_metabox(WP_Post $post): void
 
     echo '<p><label for="event_o_price"><strong>' . esc_html__('Price', 'event-o') . '</strong></label></p>';
     echo '<p><input type="text" id="event_o_price" name="event_o_price" value="' . esc_attr($price) . '" placeholder="z.B. Frei / 5 €" style="width:100%" /></p>';
+
+    echo '<p><label for="event_o_related_event_id"><strong>' . esc_html__('Verweist auf Event', 'event-o') . '</strong></label></p>';
+    echo '<p><select id="event_o_related_event_id" name="event_o_related_event_id" style="width:100%">';
+    echo '<option value="0">' . esc_html__('Kein verknüpftes Event', 'event-o') . '</option>';
+    foreach ($relatedEventOptions as $relatedEventOption) {
+        if (!$relatedEventOption instanceof WP_Post) {
+            continue;
+        }
+
+        $optionId = (int) $relatedEventOption->ID;
+        $optionDateSlots = event_o_get_all_date_slots($optionId);
+        $optionDateLabel = !empty($optionDateSlots) ? $optionDateSlots[0]['formatted'] : '';
+        $optionTitle = get_the_title($optionId);
+        $optionLabel = $optionTitle;
+        if ($optionDateLabel !== '') {
+            $optionLabel .= ' | ' . $optionDateLabel;
+        }
+
+        echo '<option value="' . esc_attr((string) $optionId) . '" ' . selected($relatedEventId, $optionId, false) . '>' . esc_html($optionLabel) . '</option>';
+    }
+    echo '</select></p>';
+    echo '<p style="color:#666;font-size:12px;margin-top:2px">' . esc_html__('Zeigt in List, Programm und Single eine kleine Vorschau auf das verlinkte Event an.', 'event-o') . '</p>';
 
     echo '<p><label for="event_o_status"><strong>' . esc_html__('Status', 'event-o') . '</strong></label></p>';
     echo '<p><select id="event_o_status" name="event_o_status" style="width:100%">';
@@ -682,6 +730,13 @@ function event_o_save_event_meta(int $postId): void
         update_post_meta($postId, EVENT_O_META_HIGHLIGHT_UNTIL, $highlightUntilTs);
     } else {
         delete_post_meta($postId, EVENT_O_META_HIGHLIGHT_UNTIL);
+    }
+
+    $relatedEventId = isset($_POST['event_o_related_event_id']) ? absint((string) $_POST['event_o_related_event_id']) : 0;
+    if ($relatedEventId > 0 && $relatedEventId !== $postId && get_post_type($relatedEventId) === 'event_o_event') {
+        update_post_meta($postId, EVENT_O_META_RELATED_EVENT_ID, $relatedEventId);
+    } else {
+        delete_post_meta($postId, EVENT_O_META_RELATED_EVENT_ID);
     }
 
     $bands = isset($_POST['event_o_bands']) ? sanitize_textarea_field((string) $_POST['event_o_bands']) : '';

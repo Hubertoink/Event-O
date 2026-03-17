@@ -1284,6 +1284,76 @@ function event_o_render_share_buttons(string $url, string $title, array $calenda
     return $out;
 }
 
+function event_o_get_referenced_event_data(int $postId): ?array
+{
+    $relatedEventId = (int) get_post_meta($postId, EVENT_O_META_RELATED_EVENT_ID, true);
+    if ($relatedEventId <= 0 || $relatedEventId === $postId) {
+        return null;
+    }
+
+    $relatedPost = get_post($relatedEventId);
+    if (!$relatedPost instanceof WP_Post || $relatedPost->post_type !== 'event_o_event' || $relatedPost->post_status !== 'publish') {
+        return null;
+    }
+
+    $dateSlots = event_o_get_all_date_slots($relatedEventId);
+    $imageUrls = event_o_get_event_image_urls($relatedEventId, 'medium');
+
+    return [
+        'id' => $relatedEventId,
+        'title' => get_the_title($relatedEventId),
+        'permalink' => get_permalink($relatedEventId),
+        'dateSlots' => $dateSlots,
+        'imageUrls' => $imageUrls,
+        'categoryMarkup' => event_o_render_event_category_labels($relatedEventId, [
+            'wrapper_class' => 'event-o-reference-card-cats',
+            'item_class' => 'event-o-reference-card-cat',
+            'uppercase' => true,
+        ]),
+    ];
+}
+
+function event_o_render_referenced_event_card(int $postId, array $args = []): string
+{
+    $reference = event_o_get_referenced_event_data($postId);
+    if (!$reference) {
+        return '';
+    }
+
+    $wrapperClass = isset($args['wrapper_class']) ? (string) $args['wrapper_class'] : 'event-o-reference-card-wrap';
+    $cardClass = isset($args['card_class']) ? (string) $args['card_class'] : 'event-o-reference-card';
+    $label = isset($args['label']) ? (string) $args['label'] : __('Verweist auf', 'event-o');
+    $titleTag = isset($args['title_tag']) ? (string) $args['title_tag'] : 'h4';
+    if (!in_array($titleTag, ['h3', 'h4', 'h5', 'div'], true)) {
+        $titleTag = 'h4';
+    }
+
+    $out = '<div class="' . esc_attr($wrapperClass) . '">';
+    $out .= '<span class="event-o-reference-card-label">' . esc_html($label) . '</span>';
+    $out .= '<a class="' . esc_attr($cardClass) . '" href="' . esc_url($reference['permalink']) . '">';
+
+    if (!empty($reference['imageUrls'])) {
+        $out .= '<div class="event-o-reference-card-image">';
+        $out .= event_o_render_event_image_crossfade($reference['imageUrls'], 'event-o-reference-card-fade', '', $reference['title']);
+        $out .= '</div>';
+    }
+
+    $out .= '<div class="event-o-reference-card-body">';
+    if ($reference['categoryMarkup'] !== '') {
+        $out .= $reference['categoryMarkup'];
+    }
+    if (!empty($reference['dateSlots'])) {
+        $out .= '<div class="event-o-reference-card-date">' . event_o_render_date_slots_html($reference['dateSlots'], 'event-o-reference-card-date-slot') . '</div>';
+    }
+    $out .= '<' . $titleTag . ' class="event-o-reference-card-title">' . esc_html($reference['title']) . '</' . $titleTag . '>';
+    $out .= '</div>';
+
+    $out .= '</a>';
+    $out .= '</div>';
+
+    return $out;
+}
+
 require_once EVENT_O_PLUGIN_DIR . 'includes/render/list.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/render/carousel.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/render/grid.php';

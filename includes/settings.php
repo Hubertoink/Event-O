@@ -96,6 +96,12 @@ function event_o_register_settings(): void
         'default' => false,
     ]);
 
+    register_setting('event_o_settings', EVENT_O_OPTION_SINGLE_LIGHTBOX, [
+        'type' => 'boolean',
+        'sanitize_callback' => static fn($v) => (bool) $v,
+        'default' => true,
+    ]);
+
     register_setting('event_o_settings', EVENT_O_OPTION_SINGLE_CATEGORY_COLOR, [
         'type' => 'boolean',
         'sanitize_callback' => static fn($v) => (bool) $v,
@@ -137,6 +143,12 @@ function event_o_register_settings(): void
         'sanitize_callback' => static function ($value) {
             return (bool) $value;
         },
+        'default' => false,
+    ]);
+
+    register_setting('event_o_settings', EVENT_O_OPTION_SHOW_ORG_DESCRIPTION, [
+        'type' => 'boolean',
+        'sanitize_callback' => static fn($v) => (bool) $v,
         'default' => false,
     ]);
 
@@ -209,6 +221,18 @@ function event_o_register_settings(): void
     );
 
     add_settings_field(
+        EVENT_O_OPTION_SINGLE_LIGHTBOX,
+        __('Bild-Vollansicht auf Einzelseite', 'event-o'),
+        static function () {
+            $value = (bool) get_option(EVENT_O_OPTION_SINGLE_LIGHTBOX, true);
+            echo '<label><input type="checkbox" name="' . esc_attr(EVENT_O_OPTION_SINGLE_LIGHTBOX) . '" value="1" ' . checked($value, true, false) . ' /> ' . esc_html__('Hero-Bilder und Inhaltsbilder auf der Event-Einzelseite in einer Vollansicht oeffnen.', 'event-o') . '</label>';
+            echo '<p class="description">' . esc_html__('Aktiviert Klick auf Bilder inklusive Vollbild-Overlay mit Navigation bei mehreren Hero-Bildern.', 'event-o') . '</p>';
+        },
+        'event_o_settings',
+        'event_o_settings_behavior'
+    );
+
+    add_settings_field(
         EVENT_O_OPTION_SINGLE_ANIMATION,
         __('Seitenanimation (Single Event)', 'event-o'),
         static function () {
@@ -270,6 +294,17 @@ function event_o_register_settings(): void
         static function () {
             $value = (bool) get_option(EVENT_O_OPTION_SINGLE_SHOW_TAGS, false);
             echo '<label><input type="checkbox" name="' . esc_attr(EVENT_O_OPTION_SINGLE_SHOW_TAGS) . '" value="1" ' . checked($value, true, false) . ' /> ' . esc_html__('Schlagwörter auf der Event-Einzelseite anzeigen.', 'event-o') . '</label>';
+        },
+        'event_o_settings',
+        'event_o_settings_behavior'
+    );
+
+    add_settings_field(
+        EVENT_O_OPTION_SHOW_ORG_DESCRIPTION,
+        __('Veranstalter-Beschreibung anzeigen', 'event-o'),
+        static function () {
+            $value = (bool) get_option(EVENT_O_OPTION_SHOW_ORG_DESCRIPTION, false);
+            echo '<label><input type="checkbox" name="' . esc_attr(EVENT_O_OPTION_SHOW_ORG_DESCRIPTION) . '" value="1" ' . checked($value, true, false) . ' /> ' . esc_html__('Zeigt die Beschreibung des Veranstalters auf Einzelseiten und in Blöcken an.', 'event-o') . '</label>';
         },
         'event_o_settings',
         'event_o_settings_behavior'
@@ -1020,6 +1055,13 @@ function event_o_get_settings_sections(): array
                     'default' => false,
                 ],
                 [
+                    'name' => EVENT_O_OPTION_SINGLE_LIGHTBOX,
+                    'label' => __('Bild-Vollansicht', 'event-o'),
+                    'type' => 'toggle',
+                    'description' => __('Erlaubt auf der Event-Einzelseite das Oeffnen von Hero- und Inhaltsbildern in einer Vollansicht.', 'event-o'),
+                    'default' => true,
+                ],
+                [
                     'name' => EVENT_O_OPTION_SINGLE_TITLE_LAYOUT,
                     'label' => __('Titel-Position', 'event-o'),
                     'type' => 'select',
@@ -1043,6 +1085,13 @@ function event_o_get_settings_sections(): array
                     'label' => __('Schlagwörter anzeigen', 'event-o'),
                     'type' => 'toggle',
                     'description' => __('Blendet Schlagwörter auf der Event-Einzelseite ein.', 'event-o'),
+                    'default' => false,
+                ],
+                [
+                    'name' => EVENT_O_OPTION_SHOW_ORG_DESCRIPTION,
+                    'label' => __('Veranstalter-Beschreibung', 'event-o'),
+                    'type' => 'toggle',
+                    'description' => __('Zeigt die Beschreibung des Veranstalters auf Einzelseiten und in Blöcken an.', 'event-o'),
                     'default' => false,
                 ],
                 [

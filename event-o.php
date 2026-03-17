@@ -15,6 +15,7 @@ if (!defined('ABSPATH')) {
 }
 
 define('EVENT_O_VERSION', '1.1.1');
+define('EVENT_O_TEXT_DOMAIN', 'event-o');
 define('EVENT_O_PLUGIN_FILE', __FILE__);
 define('EVENT_O_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('EVENT_O_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -32,11 +33,13 @@ define('EVENT_O_OPTION_HIGH_CONTRAST', 'event_o_high_contrast');
 define('EVENT_O_OPTION_SINGLE_ANIMATION', 'event_o_single_animation');
 define('EVENT_O_OPTION_RELATED_CATEGORY_ONLY', 'event_o_related_category_only');
 define('EVENT_O_OPTION_HERO_PARALLAX', 'event_o_hero_parallax');
+define('EVENT_O_OPTION_SINGLE_LIGHTBOX', 'event_o_single_lightbox');
 define('EVENT_O_OPTION_SINGLE_CATEGORY_COLOR', 'event_o_single_category_color');
 define('EVENT_O_OPTION_SINGLE_TITLE_LAYOUT', 'event_o_single_title_layout');
 define('EVENT_O_OPTION_SINGLE_SHOW_TAGS', 'event_o_single_show_tags');
 define('EVENT_O_OPTION_PAST_GRACE_DAYS', 'event_o_past_grace_days');
 define('EVENT_O_OPTION_WIZARD_MODE', 'event_o_wizard_mode');
+define('EVENT_O_OPTION_SHOW_ORG_DESCRIPTION', 'event_o_show_org_description');
 
 require_once EVENT_O_PLUGIN_DIR . 'includes/cpt.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/taxonomies.php';
@@ -51,6 +54,56 @@ require_once EVENT_O_PLUGIN_DIR . 'includes/blocks.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/assets.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/template.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/ical-download.php';
+
+function event_o_load_translations(): void
+{
+    load_plugin_textdomain(
+        EVENT_O_TEXT_DOMAIN,
+        false,
+        dirname(plugin_basename(EVENT_O_PLUGIN_FILE)) . '/languages/'
+    );
+}
+add_action('plugins_loaded', 'event_o_load_translations');
+
+function event_o_filter_auto_translation_updates(bool $update, $item): bool
+{
+    if (!is_object($item)) {
+        return $update;
+    }
+
+    $type = isset($item->type) ? (string) $item->type : '';
+    $slug = isset($item->slug) ? (string) $item->slug : '';
+
+    if ($slug === EVENT_O_TEXT_DOMAIN && ($type === '' || $type === 'plugin')) {
+        return false;
+    }
+
+    return $update;
+}
+add_filter('auto_update_translation', 'event_o_filter_auto_translation_updates', 10, 2);
+
+function event_o_filter_translation_file_path(string $file, string $domain): string
+{
+    if ($domain !== EVENT_O_TEXT_DOMAIN) {
+        return $file;
+    }
+
+    $normalizedFile = wp_normalize_path($file);
+    $globalPluginLanguages = wp_normalize_path(WP_LANG_DIR . '/plugins/');
+
+    if (strpos($normalizedFile, $globalPluginLanguages) !== 0) {
+        return $file;
+    }
+
+    return EVENT_O_PLUGIN_DIR . 'languages/' . basename($file);
+}
+add_filter('load_textdomain_mofile', 'event_o_filter_translation_file_path', 10, 2);
+
+function event_o_filter_translation_file(string $file, string $domain, string $locale): string
+{
+    return event_o_filter_translation_file_path($file, $domain);
+}
+add_filter('load_translation_file', 'event_o_filter_translation_file', 10, 3);
 
 function event_o_init(): void
 {

@@ -41,11 +41,54 @@ function event_o_register_organizer_meta(): void
 add_action('init', 'event_o_register_organizer_meta');
 
 /**
+ * Allow HTML in organizer descriptions (WordPress strips it by default).
+ */
+function event_o_allow_html_organizer_description(): void
+{
+    remove_filter('pre_term_description', 'wp_filter_kses');
+    add_filter('pre_term_description', 'event_o_sanitize_organizer_description', 10, 2);
+}
+add_action('admin_init', 'event_o_allow_html_organizer_description');
+
+function event_o_sanitize_organizer_description(string $description, string $taxonomy): string
+{
+    if ($taxonomy === 'event_o_organizer') {
+        return wp_kses_post($description);
+    }
+    return wp_filter_kses($description);
+}
+
+/**
+ * Shared editor configuration for organizer descriptions.
+ */
+function event_o_get_organizer_description_editor_settings(int $rows = 8): array
+{
+    return [
+        'textarea_name' => 'description',
+        'media_buttons' => true,
+        'textarea_rows' => $rows,
+        'teeny' => false,
+        'quicktags' => true,
+        'tinymce' => [
+            'toolbar1' => 'formatselect,bold,italic,bullist,numlist,blockquote,alignleft,aligncenter,alignright,link,unlink,forecolor,undo,redo',
+            'toolbar2' => 'removeformat,pastetext,charmap,outdent,indent,wp_adv',
+        ],
+    ];
+}
+
+/**
  * Add form fields to "Add New Organizer" screen.
  */
 function event_o_organizer_add_form_fields(): void
 {
     ?>
+    <div class="form-field event-o-org-desc-editor-wrap">
+        <label for="event_o_org_desc_editor"><?php esc_html_e('Beschreibung', 'event-o'); ?></label>
+        <?php
+        wp_editor('', 'event_o_org_desc_editor', event_o_get_organizer_description_editor_settings(8));
+        ?>
+        <p class="description"><?php esc_html_e('Beschreibung des Veranstalters. Unterstützt Formatierungen wie Fettdruck, Links, Listen und Bilder.', 'event-o'); ?></p>
+    </div>
     <div class="form-field">
         <label for="event_o_phone"><?php esc_html_e('Phone', 'event-o'); ?></label>
         <input type="text" name="event_o_phone" id="event_o_phone" value="">
@@ -95,6 +138,19 @@ function event_o_organizer_edit_form_fields($term): void
     $facebook = get_term_meta($term->term_id, EVENT_O_ORG_META_FACEBOOK, true);
     $logo = get_term_meta($term->term_id, EVENT_O_ORG_META_LOGO, true);
     ?>
+    <tr class="form-field event-o-org-desc-editor-row">
+        <th scope="row"><label for="event_o_org_desc_editor"><?php esc_html_e('Beschreibung', 'event-o'); ?></label></th>
+        <td>
+            <?php
+            wp_editor(
+                html_entity_decode($term->description, ENT_QUOTES, 'UTF-8'),
+                'event_o_org_desc_editor',
+                event_o_get_organizer_description_editor_settings(10)
+            );
+            ?>
+            <p class="description"><?php esc_html_e('Beschreibung des Veranstalters. Unterstützt Formatierungen wie Fettdruck, Links, Listen und Bilder.', 'event-o'); ?></p>
+        </td>
+    </tr>
     <tr class="form-field">
         <th scope="row"><label for="event_o_phone"><?php esc_html_e('Phone', 'event-o'); ?></label></th>
         <td>
@@ -183,6 +239,12 @@ function event_o_organizer_admin_scripts($hook): void
     }
 
     wp_enqueue_media();
+
+    // Hide the default WordPress description textarea (replaced by wp_editor)
+    wp_add_inline_style('common', '
+        .taxonomy-event_o_organizer .term-description-wrap { display: none !important; }
+    ');
+
     wp_add_inline_script('media-editor', "
         jQuery(function($){
             var frame;
@@ -226,6 +288,7 @@ function event_o_get_organizer_data(int $post_id): ?array
     $term = array_shift($terms);
     return [
         'name' => $term->name,
+        'description' => $term->description,
         'phone' => get_term_meta($term->term_id, EVENT_O_ORG_META_PHONE, true),
         'email' => get_term_meta($term->term_id, EVENT_O_ORG_META_EMAIL, true),
         'website' => get_term_meta($term->term_id, EVENT_O_ORG_META_WEBSITE, true),

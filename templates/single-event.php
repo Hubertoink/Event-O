@@ -187,6 +187,13 @@ while (have_posts()) {
         echo '</div>';
     }
 
+    echo event_o_render_referenced_event_card($postId, [
+        'wrapper_class' => 'event-o-single-card event-o-reference-card-wrap event-o-reference-card-wrap-single',
+        'card_class' => 'event-o-reference-card event-o-reference-card-single',
+        'label' => __('Passendes Event', 'event-o'),
+        'title_tag' => 'h3',
+    ]);
+
     echo '</aside>';
 
     // Main content
@@ -233,6 +240,19 @@ while (have_posts()) {
     echo '<div class="event-o-content eo-anim">';
     the_content();
     echo '</div>';
+
+    // Organizer description
+    $showOrgDescription = (bool) get_option(EVENT_O_OPTION_SHOW_ORG_DESCRIPTION, false);
+    if ($showOrgDescription && $organizerData && !empty($organizerData['description'])) {
+        echo '<div class="event-o-org-description eo-anim">';
+        echo '<div class="event-o-org-description-inner">';
+        echo '<span class="event-o-org-description-label">' . esc_html($organizerData['name']) . '</span>';
+        $orgDesc = $organizerData['description'];
+        $orgDescHtml = preg_match('/<(p|h[1-6]|ul|ol|div|blockquote)[\s>]/i', $orgDesc) ? $orgDesc : wpautop($orgDesc);
+        echo '<div class="event-o-org-description-text">' . wp_kses_post($orgDescHtml) . '</div>';
+        echo '</div>';
+        echo '</div>';
+    }
 
     // Band links
     echo event_o_render_bands($postId, 'event-o-bands event-o-single-bands eo-anim');

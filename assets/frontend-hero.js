@@ -24,10 +24,10 @@
 
             var isDragging = false;
             var startX = 0;
-            var startY = 0;
             var scrollStart = 0;
             var dragDelta = 0;
-            var touchAxis = '';
+            var isTouchDragging = false;
+            var scrollSettleTimer = 0;
 
             var cloneLast = realSlides[slideCount - 1].cloneNode(true);
             var cloneFirst = realSlides[0].cloneNode(true);
@@ -55,11 +55,64 @@
             }
 
             jumpTo(domIndex(0));
+            updateDots(currentIndex);
 
             function updateDots(index) {
                 dots.forEach(function (dot, i) {
                     dot.classList.toggle('is-active', i === index);
                 });
+            }
+
+            function getNearestDomIndex() {
+                var viewportCenter = viewport.scrollLeft + (viewport.clientWidth / 2);
+                var nearestIndex = 0;
+                var nearestDistance = Infinity;
+
+                allSlides.forEach(function (slide, index) {
+                    var slideCenter = slide.offsetLeft + (slide.offsetWidth / 2);
+                    var distance = Math.abs(slideCenter - viewportCenter);
+                    if (distance < nearestDistance) {
+                        nearestDistance = distance;
+                        nearestIndex = index;
+                    }
+                });
+
+                return nearestIndex;
+            }
+
+            function syncFromViewport(normalizeLoop) {
+                var nearestDomIdx = getNearestDomIndex();
+
+                if (nearestDomIdx === 0) {
+                    currentIndex = slideCount - 1;
+                    updateDots(currentIndex);
+                    if (normalizeLoop) {
+                        jumpTo(domIndex(currentIndex));
+                    }
+                    return;
+                }
+
+                if (nearestDomIdx === slideCount + 1) {
+                    currentIndex = 0;
+                    updateDots(currentIndex);
+                    if (normalizeLoop) {
+                        jumpTo(domIndex(0));
+                    }
+                    return;
+                }
+
+                currentIndex = Math.max(0, Math.min(slideCount - 1, nearestDomIdx - 1));
+                updateDots(currentIndex);
+            }
+
+            function queueScrollSync(normalizeLoop) {
+                if (scrollSettleTimer) {
+                    clearTimeout(scrollSettleTimer);
+                }
+
+                scrollSettleTimer = setTimeout(function () {
+                    syncFromViewport(normalizeLoop);
+                }, 80);
             }
 
             function easeOutCubic(t) {
@@ -177,82 +230,31 @@
                 startAutoPlay();
             });
 
-            viewport.addEventListener('touchstart', function (e) {
+            viewport.addEventListener('touchstart', function () {
                 if (isAnimating) return;
-                startX = e.touches[0].pageX;
-                startY = e.touches[0].pageY;
-                scrollStart = viewport.scrollLeft;
-                dragDelta = 0;
-                isDragging = true;
-                touchAxis = '';
+                isTouchDragging = true;
+                stopAutoPlay();
             }, { passive: true });
 
-            viewport.addEventListener('touchmove', function (e) {
-                if (!isDragging) return;
-
-                var dx = e.touches[0].pageX - startX;
-                var dy = e.touches[0].pageY - startY;
-
-                if (!touchAxis) {
-                    if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
-                        return;
-                    }
-
-                    if (Math.abs(dy) > Math.abs(dx)) {
-                        touchAxis = 'vertical';
-                        isDragging = false;
-                        viewport.classList.remove('is-dragging');
-                        startAutoPlay();
-                        return;
-                    }
-
-                    touchAxis = 'horizontal';
-                    startX = e.touches[0].pageX;
-                    startY = e.touches[0].pageY;
-                    scrollStart = viewport.scrollLeft;
-                    dragDelta = 0;
-                    viewport.classList.add('is-dragging');
-                    stopAutoPlay();
-                    return;
-                }
-
-                if (touchAxis !== 'horizontal') {
-                    return;
-                }
-
-                e.preventDefault();
-                dragDelta = dx;
-                viewport.scrollLeft = scrollStart - dx;
-            }, { passive: false });
-
             viewport.addEventListener('touchend', function () {
-                if (touchAxis !== 'horizontal' || !isDragging) {
-                    isDragging = false;
-                    touchAxis = '';
-                    startAutoPlay();
-                    return;
-                }
-
-                isDragging = false;
-                touchAxis = '';
-                viewport.classList.remove('is-dragging');
-
-                var minDrag = 30;
-                if (dragDelta < -minDrag) {
-                    scrollToSlide(currentIndex + 1);
-                } else if (dragDelta > minDrag) {
-                    scrollToSlide(currentIndex - 1);
-                } else {
-                    scrollToSlide(currentIndex);
-                }
+                if (!isTouchDragging) return;
+                isTouchDragging = false;
+                queueScrollSync(true);
                 startAutoPlay();
             }, { passive: true });
 
             viewport.addEventListener('touchcancel', function () {
-                isDragging = false;
-                touchAxis = '';
-                viewport.classList.remove('is-dragging');
+                isTouchDragging = false;
+                queueScrollSync(true);
                 startAutoPlay();
+            }, { passive: true });
+
+            viewport.addEventListener('scroll', function () {
+                if (isAnimating || isDragging) {
+                    return;
+                }
+
+                queueScrollSync(!isTouchDragging);
             }, { passive: true });
 
             dots.forEach(function (dot) {

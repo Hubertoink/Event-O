@@ -87,7 +87,8 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
         ]);
 
         $venueData = $showVenue ? event_o_get_venue_data($postId) : null;
-        $organizerData = $showOrganizer ? event_o_get_organizer_data($postId) : null;
+        $showOrgDescription = (bool) get_option(EVENT_O_OPTION_SHOW_ORG_DESCRIPTION, false);
+        $organizerData = ($showOrganizer || $showOrgDescription) ? event_o_get_organizer_data($postId) : null;
 
         $openAttr = ($openFirst && $index === 0) ? ' open' : '';
         $filterDataAttrs = $showFilters ? event_o_get_filter_data_attrs($postId) : '';
@@ -234,6 +235,13 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
             $out .= '</div>';
         }
 
+        $out .= event_o_render_referenced_event_card($postId, [
+            'wrapper_class' => 'event-o-reference-card-wrap event-o-reference-card-wrap-sidebar',
+            'card_class' => 'event-o-reference-card event-o-reference-card-sidebar',
+            'label' => __('Passendes Event', 'event-o'),
+            'title_tag' => 'h4',
+        ]);
+
         $out .= '</aside>';
         $out .= '<div class="event-o-main">';
 
@@ -260,9 +268,21 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
         $excerpt = get_the_excerpt();
         $content_text = apply_filters('the_content', get_the_content());
         if ($content_text !== '' && trim(strip_tags($content_text)) !== '') {
-            $out .= '<div class="event-o-content">' . wp_kses_post($content_text) . '</div>';
+            $out .= '<div class="event-o-content">' . $content_text . '</div>';
         } elseif ($excerpt !== '') {
             $out .= '<div class="event-o-excerpt">' . wp_kses_post(wpautop($excerpt)) . '</div>';
+        }
+
+        $showOrgDescription = (bool) get_option(EVENT_O_OPTION_SHOW_ORG_DESCRIPTION, false);
+        if ($showOrgDescription && $organizerData && !empty($organizerData['description'])) {
+            $out .= '<div class="event-o-org-description">';
+            $out .= '<div class="event-o-org-description-inner">';
+            $out .= '<span class="event-o-org-description-label">' . esc_html($organizerData['name']) . '</span>';
+            $orgDesc = $organizerData['description'];
+            $orgDescHtml = preg_match('/<(p|h[1-6]|ul|ol|div|blockquote)[\s>]/i', $orgDesc) ? $orgDesc : wpautop($orgDesc);
+            $out .= '<div class="event-o-org-description-text">' . wp_kses_post($orgDescHtml) . '</div>';
+            $out .= '</div>';
+            $out .= '</div>';
         }
 
         if ($showMoreLink) {

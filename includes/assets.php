@@ -115,6 +115,14 @@ function event_o_enqueue_frontend_assets(): void
 
     event_o_register_frontend_assets();
 
+    wp_add_inline_script(
+        'event-o-frontend-runtime',
+        'window.EventOFrontendSettings = ' . wp_json_encode([
+            'singleLightboxEnabled' => (bool) get_option(EVENT_O_OPTION_SINGLE_LIGHTBOX, true),
+        ]) . ';',
+        'before'
+    );
+
     $styleHandle = 'event-o-style';
     if (!$inlineStyleAttached) {
         wp_add_inline_style($styleHandle, event_o_get_css_vars_inline());

@@ -112,6 +112,8 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
             'uppercase' => true,
         ]) : '';
         $venueData = $showVenue ? event_o_get_venue_data($postId) : null;
+        $showOrgDescription = (bool) get_option(EVENT_O_OPTION_SHOW_ORG_DESCRIPTION, false);
+        $organizerData = $showOrgDescription ? event_o_get_organizer_data($postId) : null;
 
         $bands = [];
         if ($showBands && $bandsRaw !== '') {
@@ -259,6 +261,13 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
             $out .= '</div>';
         }
 
+        $out .= event_o_render_referenced_event_card($postId, [
+            'wrapper_class' => 'event-o-reference-card-wrap event-o-reference-card-wrap-program',
+            'card_class' => 'event-o-reference-card event-o-reference-card-program',
+            'label' => __('Verweist auf Event', 'event-o'),
+            'title_tag' => 'h4',
+        ]);
+
         if ($showDescription && !empty($fullText)) {
             if ($wordCount > 60) {
                 $out .= '<div class="event-o-program-desc event-o-desc-expandable">';
@@ -271,6 +280,17 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
             } else {
                 $out .= '<div class="event-o-program-desc">' . esc_html($fullText) . '</div>';
             }
+        }
+
+        if ($showOrgDescription && $organizerData && !empty($organizerData['description'])) {
+            $out .= '<div class="event-o-org-description">';
+            $out .= '<div class="event-o-org-description-inner">';
+            $out .= '<span class="event-o-org-description-label">' . esc_html($organizerData['name']) . '</span>';
+            $orgDesc = $organizerData['description'];
+            $orgDescHtml = preg_match('/<(p|h[1-6]|ul|ol|div|blockquote)[\s>]/i', $orgDesc) ? $orgDesc : wpautop($orgDesc);
+            $out .= '<div class="event-o-org-description-text">' . wp_kses_post($orgDescHtml) . '</div>';
+            $out .= '</div>';
+            $out .= '</div>';
         }
 
         if (!empty($bands)) {

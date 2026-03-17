@@ -67,9 +67,9 @@
 
 .event-o-accordion-item{
     margin-bottom: 18px;
-    border: 1px solid rgba(20, 20, 20, 0.08);
-    background: #fff;
-    box-shadow: 0 10px 26px rgba(16, 24, 40, 0.06);
+    border: 1px solid var(--event-o-border);
+    background: var(--event-o-bg);
+    box-shadow: 0 10px 26px color-mix(in srgb, var(--event-o-text) 10%, transparent);
 }
 
 .event-o-accordion-summary{
@@ -85,7 +85,7 @@
 }
 
 .event-o-accordion-summary:hover{
-    background: rgba(0,0,0,.02);
+    background: color-mix(in srgb, var(--event-o-text) 3%, var(--event-o-bg));
     transform: translateY(-1px);
 }
 

@@ -24,6 +24,49 @@
             String(d.getMonth()+1).padStart(2,'0') + '-' +
             String(d.getDate()).padStart(2,'0');
     }
+
+    function calGetDesktopPopupMatrix(matrixName, eventCount) {
+        var rows = matrixName === '3x2' ? 2 : 3;
+        var cols = 3;
+
+        if ((eventCount || 0) > 1) {
+            cols += 1;
+        }
+
+        return {
+            cols: Math.min(7, cols),
+            rows: rows
+        };
+    }
+
+    function calGetDesktopPopupLeft(cell, grid, spanCols, cellWidth, gridGap) {
+        var totalCols = 7;
+        var cellCol = parseInt(cell.dataset.col || '0', 10);
+        var maxStart = Math.max(0, totalCols - spanCols);
+        var rightStart = cellCol + 1;
+        var leftStart = cellCol - spanCols;
+        var centeredStart = cellCol - Math.floor((spanCols - 1) / 2);
+        var startCol;
+
+        if (rightStart <= maxStart) {
+            startCol = rightStart;
+        } else if (leftStart >= 0) {
+            startCol = leftStart;
+        } else {
+            startCol = centeredStart;
+        }
+
+        startCol = Math.max(0, Math.min(maxStart, startCol));
+
+        var left = cell.offsetLeft + ((startCol - cellCol) * (cellWidth + gridGap));
+        var maxLeft = Math.max(0, grid.offsetWidth - (spanCols * cellWidth + Math.max(0, spanCols - 1) * gridGap));
+
+        if (left < 0) left = 0;
+        if (left > maxLeft) left = maxLeft;
+
+        return left;
+    }
+
     function calIsMobile() {
         return window.matchMedia('(max-width: 768px)').matches;
     }
@@ -617,25 +660,10 @@
             var cw = cell.offsetWidth;
             var ch = cell.offsetHeight;
             var gridGap = parseFloat(window.getComputedStyle(grid).columnGap || window.getComputedStyle(grid).gap || '0') || 0;
-            var matrix = state && state.desktopPopupMatrix === '3x2' ? { cols: 3, rows: 2 } : { cols: 3, rows: 3 };
+            var matrix = calGetDesktopPopupMatrix(state && state.desktopPopupMatrix, dayEvents.length);
             var spanW = matrix.cols * cw + Math.max(0, matrix.cols - 1) * gridGap;
             var spanH = matrix.rows * ch + Math.max(0, matrix.rows - 1) * gridGap;
-            var left;
-            var rightSideLeft = cell.offsetLeft + cw + gridGap;
-            var leftSideLeft = cell.offsetLeft - spanW - gridGap;
-            var centeredLeft = cell.offsetLeft - ((spanW - cw) / 2);
-            var fitsRight = rightSideLeft + spanW <= grid.offsetWidth;
-            var fitsLeft = leftSideLeft >= 0;
-
-            if (fitsRight) {
-                left = rightSideLeft;
-            } else if (fitsLeft) {
-                left = leftSideLeft;
-            } else {
-                left = centeredLeft;
-            }
-            if (left < 0) left = 0;
-            if (left + spanW > grid.offsetWidth) left = grid.offsetWidth - spanW;
+            var left = calGetDesktopPopupLeft(cell, grid, matrix.cols, cw, gridGap);
 
             var topPosDesktop = cell.offsetTop;
             if (topPosDesktop + spanH > grid.offsetHeight) {

@@ -1413,6 +1413,8 @@ function event_o_get_css_vars_inline(): string
         $darkModeRules .= ".event-o-grid-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.4)}";
         $darkModeRules .= ".event-o-accordion-summary:hover{background:rgba(255,255,255,0.05)}";
         $darkModeRules .= ".event-o-hero-bg::before{background:linear-gradient(to top,var(--event-o-bg) 0,rgba(20,22,26,0.6) 60%,transparent 100%)}";
+        $darkModeRules .= ".event-o-event-list{--eo-list-today-bg:#fff;--eo-list-today-text:#1a1a1a;--eo-list-today-muted:rgba(0,0,0,0.62);--eo-list-today-border:rgba(0,0,0,.14)}";
+        $darkModeRules .= ".event-o-grid{--eo-grid-today-bg:#fff;--eo-grid-today-text:#1a1a1a;--eo-grid-today-muted:rgba(0,0,0,0.62);--eo-grid-today-border:rgba(0,0,0,.14)}";
         // Program block: invert today/normal in dark mode
         $progDarkMuted = $highContrast ? '--eo-prog-muted:#f3f4f6' : '--eo-prog-muted:rgba(243,244,246,.6)';
         $progTodayMuted = $highContrast ? '--eo-prog-today-muted:#1a1a1a' : '--eo-prog-today-muted:rgba(0,0,0,0.55)';
@@ -1425,6 +1427,8 @@ function event_o_get_css_vars_inline(): string
         $darkModeRules .= "{$darkSelector} .event-o-grid-card:hover{box-shadow:0 8px 24px rgba(0,0,0,0.4)}";
         $darkModeRules .= "{$darkSelector} .event-o-accordion-summary:hover{background:rgba(255,255,255,0.05)}";
         $darkModeRules .= "{$darkSelector} .event-o-hero-bg::before{background:linear-gradient(to top,var(--event-o-bg) 0,rgba(20,22,26,0.6) 60%,transparent 100%)}";
+        $darkModeRules .= "{$darkSelector} .event-o-event-list{--eo-list-today-bg:#fff;--eo-list-today-text:#1a1a1a;--eo-list-today-muted:rgba(0,0,0,0.62);--eo-list-today-border:rgba(0,0,0,.14)}";
+        $darkModeRules .= "{$darkSelector} .event-o-grid{--eo-grid-today-bg:#fff;--eo-grid-today-text:#1a1a1a;--eo-grid-today-muted:rgba(0,0,0,0.62);--eo-grid-today-border:rgba(0,0,0,.14)}";
         // Program block: invert today/normal in dark mode
         $progDarkMuted = $highContrast ? '--eo-prog-muted:#f3f4f6' : '--eo-prog-muted:rgba(243,244,246,.6)';
         $progTodayMuted = $highContrast ? '--eo-prog-today-muted:#1a1a1a' : '--eo-prog-today-muted:rgba(0,0,0,0.55)';

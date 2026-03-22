@@ -527,6 +527,34 @@ function event_o_get_highlight_badge_style_value(array $attrs): string
     return isset($attrs['highlightColor']) ? trim((string) $attrs['highlightColor']) : '';
 }
 
+function event_o_is_event_today(int $postId, ?DateTimeZone $timezone = null): bool
+{
+    static $cache = [];
+
+    $timezone = $timezone ?: wp_timezone();
+    $today = new DateTimeImmutable('now', $timezone);
+    $cacheBucket = $timezone->getName() . '|' . $today->format('Y-m-d');
+
+    if (isset($cache[$cacheBucket][$postId])) {
+        return $cache[$cacheBucket][$postId];
+    }
+
+    $todayStart = $today->setTime(0, 0, 0)->getTimestamp();
+    $todayEnd = $today->setTime(23, 59, 59)->getTimestamp();
+    $dateSlots = event_o_get_all_date_slots($postId);
+
+    foreach ($dateSlots as $slot) {
+        $slotStartTs = isset($slot['start_ts']) ? (int) $slot['start_ts'] : 0;
+        if ($slotStartTs >= $todayStart && $slotStartTs <= $todayEnd) {
+            $cache[$cacheBucket][$postId] = true;
+            return true;
+        }
+    }
+
+    $cache[$cacheBucket][$postId] = false;
+    return false;
+}
+
 function event_o_render_highlight_badge(string $highlightColor = ''): string
 {
     $class = 'event-o-highlight-badge';

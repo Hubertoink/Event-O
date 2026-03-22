@@ -39,8 +39,6 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
     $showFilters = !empty($attrs['showFilters']);
 
     $tz = wp_timezone();
-    $todayStart = (new DateTimeImmutable('now', $tz))->setTime(0, 0, 0)->getTimestamp();
-    $todayEnd = (new DateTimeImmutable('now', $tz))->setTime(23, 59, 59)->getTimestamp();
 
     $out = '<div class="event-o event-o-program' . $hcClass . ($showFilters ? ' has-filters' : '') . '"' . $styleAttr . $animAttr . '>';
 
@@ -58,9 +56,13 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
         if ($sts <= 0) {
             $sts = (int) get_post_meta($pid, EVENT_O_LEGACY_META_START_TS, true);
         }
-        $allPosts[] = ['id' => $pid, 'start' => $sts];
+        $allPosts[] = [
+            'id' => $pid,
+            'start' => $sts,
+            'is_today' => event_o_is_event_today($pid, $tz),
+        ];
     }
-    usort($allPosts, function ($a, $b) use ($todayStart, $todayEnd, $preferHighlights) {
+    usort($allPosts, function ($a, $b) use ($preferHighlights) {
         if ($preferHighlights) {
             $aHighlighted = event_o_is_event_highlight_active((int) $a['id']) ? 1 : 0;
             $bHighlighted = event_o_is_event_highlight_active((int) $b['id']) ? 1 : 0;
@@ -69,8 +71,8 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
             }
         }
 
-        $aToday = ($a['start'] >= $todayStart && $a['start'] <= $todayEnd) ? 1 : 0;
-        $bToday = ($b['start'] >= $todayStart && $b['start'] <= $todayEnd) ? 1 : 0;
+        $aToday = !empty($a['is_today']) ? 1 : 0;
+        $bToday = !empty($b['is_today']) ? 1 : 0;
         if ($aToday !== $bToday) {
             return $bToday - $aToday;
         }
@@ -103,7 +105,7 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
         if ($price === '') {
             $price = (string) get_post_meta($postId, EVENT_O_LEGACY_META_PRICE, true);
         }
-        $isToday = ($startTs >= $todayStart && $startTs <= $todayEnd);
+        $isToday = event_o_is_event_today($postId, $tz);
         $dateSlots = event_o_get_all_date_slots($postId);
 
         $categoryMarkup = $showCategory ? event_o_render_event_category_labels($postId, [

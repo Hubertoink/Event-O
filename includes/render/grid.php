@@ -81,6 +81,8 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
 
         $filterDataAttrs = $showFilters ? event_o_get_filter_data_attrs($postId) : '';
         $dateSlots = event_o_get_all_date_slots($postId);
+        $isToday = event_o_is_event_today($postId, $tz);
+        $isHighlighted = $showHighlightBadge && event_o_is_event_highlight_active($postId);
         $dayNum = '';
         $monthName = '';
         $year = '';
@@ -92,9 +94,17 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
             $year = $start->format('Y');
         }
 
-        $out .= '<a href="' . esc_url($permalink) . '" class="event-o-grid-card"' . $filterDataAttrs . '>';
+        $cardClass = 'event-o-grid-card';
+        if ($isToday) {
+            $cardClass .= ' is-today';
+        }
+        if ($isHighlighted) {
+            $cardClass .= ' is-highlighted';
+        }
+
+        $out .= '<a href="' . esc_url($permalink) . '" class="' . esc_attr($cardClass) . '"' . $filterDataAttrs . '>';
         $out .= '<div class="event-o-grid-media">';
-        if ($showHighlightBadge && event_o_is_event_highlight_active($postId)) {
+        if ($isHighlighted) {
             $out .= event_o_render_highlight_badge($highlightColor);
         }
         if ($showImage) {

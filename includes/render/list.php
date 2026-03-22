@@ -95,6 +95,8 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
         $imageUrls = $showImage ? event_o_get_event_image_urls($postId, 'large') : [];
 
         $isHighlighted = $showHighlightBadge && event_o_is_event_highlight_active($postId);
+        $isToday = event_o_is_event_today($postId, $tz);
+        $todayItemClass = $isToday ? ' is-today' : '';
         $highlightItemClass = $isHighlighted ? ' is-highlighted' : '';
         $highlightItemStyle = '';
         if ($isHighlighted && $highlightColor !== '') {
@@ -111,7 +113,7 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
             }
         }
 
-        $out .= '<details class="event-o-accordion-item eo-block-anim' . $highlightItemClass . '"' . $highlightItemStyle . $openAttr . $filterDataAttrs . '>';
+        $out .= '<details class="event-o-accordion-item eo-block-anim' . $todayItemClass . $highlightItemClass . '"' . $highlightItemStyle . $openAttr . $filterDataAttrs . '>';
         $out .= '<summary class="event-o-accordion-summary">';
         $out .= '<div class="event-o-when">';
         if (!empty($dateSlots)) {

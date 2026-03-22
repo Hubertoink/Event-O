@@ -46,6 +46,10 @@
    ========================================================================== */
 .event-o-event-list{
     border-top: none;
+    --eo-list-today-bg: #1a1a1a;
+    --eo-list-today-text: #fff;
+    --eo-list-today-muted: rgba(255,255,255,0.68);
+    --eo-list-today-border: #333;
 }
 
 .event-o-month{
@@ -347,6 +351,67 @@
     background:
         linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.94) 100%),
         var(--eo-list-highlight-gradient);
+}
+
+.event-o-accordion-item.is-today{
+    border-color: var(--eo-list-today-border);
+    box-shadow: 0 18px 36px color-mix(in srgb, var(--eo-list-today-bg) 22%, transparent);
+}
+
+.event-o-accordion-item.is-today > .event-o-accordion-summary{
+    position: relative;
+    background: var(--eo-list-today-bg);
+    color: var(--eo-list-today-text);
+    border-left-width: 0;
+    padding-left: 24px;
+}
+
+.event-o-accordion-item.is-today > .event-o-accordion-summary::before{
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 4px;
+    background: var(--event-o-active-accent);
+}
+
+.event-o-accordion-item.is-today.is-highlighted{
+    border-color: color-mix(in srgb, var(--eo-list-highlight-accent) 32%, var(--eo-list-today-border));
+    box-shadow: 0 18px 38px color-mix(in srgb, var(--eo-list-highlight-accent) 20%, rgba(0,0,0,0.28));
+}
+
+.event-o-accordion-item.is-today.is-highlighted > .event-o-accordion-summary::before{
+    background: color-mix(in srgb, var(--eo-list-highlight-accent) 82%, #fff);
+}
+
+.event-o-accordion-item.is-today.is-highlighted.has-highlight-gradient > .event-o-accordion-summary::before{
+    background: var(--eo-list-highlight-gradient);
+}
+
+.event-o-accordion-item.is-today > .event-o-accordion-summary:hover{
+    background: color-mix(in srgb, var(--eo-list-today-bg) 92%, var(--eo-list-today-text) 8%);
+}
+
+.event-o-accordion-item.is-today > .event-o-accordion-summary .event-o-date,
+.event-o-accordion-item.is-today > .event-o-accordion-summary .event-o-date-slot > .event-o-date,
+.event-o-accordion-item.is-today > .event-o-accordion-summary .event-o-date-slot-legacy,
+.event-o-accordion-item.is-today > .event-o-accordion-summary .event-o-title{
+    color: var(--eo-list-today-text);
+}
+
+.event-o-accordion-item.is-today > .event-o-accordion-summary .event-o-time,
+.event-o-accordion-item.is-today > .event-o-accordion-summary .event-o-date-slot > .event-o-time,
+.event-o-accordion-item.is-today > .event-o-accordion-summary .event-o-category-hint{
+    color: var(--eo-list-today-muted);
+}
+
+.event-o-accordion-item.is-today.is-highlighted > .event-o-accordion-summary .event-o-category-hint{
+    color: color-mix(in srgb, var(--eo-list-highlight-accent) 58%, var(--eo-list-today-text) 42%);
+}
+
+.event-o-accordion-item.is-today > .event-o-accordion-summary .event-o-chevron{
+    border-color: var(--eo-list-today-text);
 }
 
 .event-o-accordion-panel > .event-o-panel-content{
@@ -2208,6 +2273,10 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
    ========================================================================== */
 .event-o-grid{
     --event-o-grid-cols: 4;
+    --eo-grid-today-bg: #1a1a1a;
+    --eo-grid-today-text: #fff;
+    --eo-grid-today-muted: rgba(255,255,255,0.68);
+    --eo-grid-today-border: #333;
     position: relative;
 }
 
@@ -2229,13 +2298,27 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
     overflow: hidden;
     text-decoration: none;
     transition: transform .2s ease, box-shadow .2s ease;
-    border: 1px solid var(--event-o-border);
 }
 
 .event-o-grid-card:hover{
     transform: translateY(-4px);
     box-shadow: 0 8px 24px rgba(0,0,0,0.12);
     text-decoration: none;
+}
+
+.event-o-grid-card.is-today{
+    background: var(--eo-grid-today-bg);
+    border-color: var(--eo-grid-today-border);
+    box-shadow: 0 18px 36px color-mix(in srgb, var(--eo-grid-today-bg) 22%, transparent);
+}
+
+.event-o-grid-card.is-today:hover{
+    box-shadow: 0 22px 42px color-mix(in srgb, var(--eo-grid-today-bg) 28%, transparent);
+}
+
+.event-o-grid-card.is-today.is-highlighted{
+    border-color: color-mix(in srgb, var(--event-o-active-accent) 38%, var(--eo-grid-today-border));
+    box-shadow: 0 22px 44px color-mix(in srgb, var(--event-o-active-accent) 22%, rgba(0,0,0,0.26));
 }
 
 .event-o-grid-media{
@@ -2331,6 +2414,15 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
     opacity: 0.1;
 }
 
+.event-o-grid-card.is-today .event-o-grid-badge{
+    background: color-mix(in srgb, var(--event-o-active-accent) 72%, #fff);
+    color: #111;
+}
+
+.event-o-grid-card.is-today.is-highlighted .event-o-grid-badge{
+    background: color-mix(in srgb, var(--event-o-active-accent) 86%, #fff);
+}
+
 .event-o-grid-badge-day{
     font-size: 32px;
     font-weight: 700;
@@ -2367,6 +2459,10 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
     flex: 1;
 }
 
+.event-o-grid-card.is-today .event-o-grid-body{
+    color: var(--eo-grid-today-text);
+}
+
 .event-o-grid-title{
     font-size: 18px;
     font-weight: 600;
@@ -2375,12 +2471,27 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
     color: var(--event-o-text);
 }
 
+.event-o-grid-card.is-today .event-o-grid-title{
+    color: var(--eo-grid-today-text);
+}
+
 .event-o-grid-venue,
 .event-o-grid-organizer,
 .event-o-grid-category{
     font-size: 14px;
     color: var(--event-o-muted);
     line-height: 1.4;
+}
+
+.event-o-grid-card.is-today .event-o-grid-venue,
+.event-o-grid-card.is-today .event-o-grid-organizer,
+.event-o-grid-card.is-today .event-o-grid-category,
+.event-o-grid-card.is-today .event-o-grid-price{
+    color: var(--eo-grid-today-muted);
+}
+
+.event-o-grid-card.is-today.is-highlighted .event-o-grid-category{
+    color: color-mix(in srgb, var(--event-o-active-accent) 58%, var(--eo-grid-today-text) 42%);
 }
 
 .event-o-grid-cats{
@@ -2421,6 +2532,10 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
 .event-o-grid-price .event-o-icon{
     flex-shrink: 0;
     opacity: .7;
+}
+
+.event-o-grid-card.is-today .event-o-grid-price .event-o-icon{
+    opacity: .9;
 }
 
 /* Grid Responsive */

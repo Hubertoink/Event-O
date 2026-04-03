@@ -8,10 +8,53 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
 {
     event_o_ensure_frontend_assets();
 
-    $q = event_o_event_query($attrs);
-    if (!$q->have_posts()) {
+    $perPage = isset($attrs['perPage']) ? max(1, (int) $attrs['perPage']) : 10;
+    $showPast = !empty($attrs['showPast']);
+    $showPastHeading = $showPast && !empty($attrs['showPastHeading']);
+    $pastEventsFirst = $showPastHeading && !empty($attrs['pastEventsFirst']);
+    $enableLoadMore = !empty($attrs['enableLoadMore']);
+
+    $queryAttrs = $attrs;
+    if ($showPastHeading) {
+        $queryAttrs['sortOrder'] = $pastEventsFirst ? 'DESC' : 'ASC';
+    }
+
+    $q = new WP_Query(event_o_get_event_query_args($queryAttrs, -1));
+    $allPosts = event_o_filter_event_posts($q->posts, $queryAttrs, -1);
+
+    if ($showPastHeading) {
+        $now = time();
+        $graceDays = event_o_get_past_grace_days();
+        $upcomingPosts = [];
+        $pastPosts = [];
+
+        foreach ($allPosts as $candidatePost) {
+            if (!$candidatePost instanceof WP_Post) {
+                continue;
+            }
+
+            if (event_o_is_event_visible((int) $candidatePost->ID, $now, $graceDays)) {
+                $upcomingPosts[] = $candidatePost;
+            } else {
+                $pastPosts[] = $candidatePost;
+            }
+        }
+
+        $upcomingPosts = event_o_sort_event_posts($upcomingPosts, ['showPast' => false, 'sortOrder' => 'ASC']);
+        $pastPosts = event_o_sort_event_posts($pastPosts, ['showPast' => true, 'sortOrder' => 'DESC']);
+        $allPosts = $pastEventsFirst ? array_merge($pastPosts, $upcomingPosts) : array_merge($upcomingPosts, $pastPosts);
+    } else {
+        $allPosts = event_o_sort_event_posts($allPosts, $queryAttrs);
+    }
+
+    if (!$allPosts) {
         return '<div class="event-o event-o-event-list"><p class="event-o-empty">' . esc_html__('No events found.', 'event-o') . '</p></div>';
     }
+
+    $q->posts = $allPosts;
+    $q->post_count = count($allPosts);
+    $q->found_posts = $q->post_count;
+    $q->max_num_pages = $q->post_count > 0 ? 1 : 0;
 
     $groupByMonth = !empty($attrs['groupByMonth']);
     $openFirst = !empty($attrs['openFirst']);
@@ -32,8 +75,10 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
     $singleOpenAttr = ' data-single-open="' . ($singleOpen ? '1' : '0') . '"';
     $animationType = isset($attrs['animation']) ? $attrs['animation'] : 'none';
     $animAttr = $animationType !== 'none' ? ' data-animation="' . esc_attr($animationType) . '"' : '';
+    $loadMoreEnabled = $enableLoadMore && count($allPosts) > $perPage;
+    $loadMoreAttr = $loadMoreEnabled ? ' data-load-more="1" data-load-more-step="' . esc_attr((string) $perPage) . '"' : '';
 
-    $out = '<div class="event-o event-o-event-list' . ($showFilters ? ' has-filters' : '') . '"' . $styleAttr . $singleOpenAttr . $animAttr . '>';
+    $out = '<div class="event-o event-o-event-list' . ($showFilters ? ' has-filters' : '') . '"' . $styleAttr . $singleOpenAttr . $animAttr . $loadMoreAttr . '>';
 
     if ($showFilters) {
         $filterTerms = event_o_collect_filter_terms($q, $attrs);
@@ -42,11 +87,23 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
     }
 
     $tz = wp_timezone();
+    $now = time();
+    $graceDays = event_o_get_past_grace_days();
     $currentMonthKey = null;
     $index = 0;
+    $pastHeadingShown = false;
 
-    while ($q->have_posts()) {
-        $q->the_post();
+    foreach ($allPosts as $postObj) {
+        if (!$postObj instanceof WP_Post) {
+            continue;
+        }
+
+        $eventNumber = $index + 1;
+        if (!$loadMoreEnabled && $eventNumber > $perPage) {
+            break;
+        }
+
+        setup_postdata($GLOBALS['post'] = $postObj);
         $postId = get_the_ID();
 
         $startTs = (int) get_post_meta($postId, EVENT_O_META_START_TS, true);
@@ -63,6 +120,8 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
         if ($price === '') {
             $price = (string) get_post_meta($postId, EVENT_O_LEGACY_META_PRICE, true);
         }
+        $isPastEvent = $showPast && !event_o_is_event_visible($postId, $now, $graceDays);
+        $hiddenClass = ($loadMoreEnabled && $eventNumber > $perPage) ? ' is-hidden' : '';
         $monthKey = '';
         $monthLabel = '';
         if ($startTs > 0) {
@@ -71,9 +130,15 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
             $monthLabel = event_o_get_german_month((int) $start->format('n')) . ' ' . $start->format('Y');
         }
 
+        if ($showPastHeading && $isPastEvent && !$pastHeadingShown) {
+            $pastHeadingShown = true;
+            $currentMonthKey = null;
+            $out .= '<h3 class="event-o-past-heading event-o-list-loadmore-target' . $hiddenClass . '">' . esc_html__('Vergangene Events', 'event-o') . '</h3>';
+        }
+
         if ($groupByMonth && $monthKey && $monthKey !== $currentMonthKey) {
             $currentMonthKey = $monthKey;
-            $out .= '<h3 class="event-o-month">' . esc_html(strtoupper($monthLabel)) . '</h3>';
+            $out .= '<h3 class="event-o-month event-o-list-loadmore-target' . $hiddenClass . '">' . esc_html(strtoupper($monthLabel)) . '</h3>';
         }
 
         $title = get_the_title();
@@ -96,6 +161,7 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
 
         $isHighlighted = $showHighlightBadge && event_o_is_event_highlight_active($postId);
         $isToday = event_o_is_event_today($postId, $tz);
+        $pastItemClass = $isPastEvent ? ' is-past' : '';
         $todayItemClass = $isToday ? ' is-today' : '';
         $highlightItemClass = $isHighlighted ? ' is-highlighted' : '';
         $highlightItemStyle = '';
@@ -113,7 +179,7 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
             }
         }
 
-        $out .= '<details class="event-o-accordion-item eo-block-anim' . $todayItemClass . $highlightItemClass . '"' . $highlightItemStyle . $openAttr . $filterDataAttrs . '>';
+        $out .= '<details class="event-o-accordion-item event-o-list-loadmore-target eo-block-anim' . $pastItemClass . $todayItemClass . $highlightItemClass . $hiddenClass . '"' . $highlightItemStyle . $openAttr . $filterDataAttrs . '>';
         $out .= '<summary class="event-o-accordion-summary">';
         $out .= '<div class="event-o-when">';
         if (!empty($dateSlots)) {
@@ -229,9 +295,8 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
 
         if ($showPrice && $price !== '') {
             $out .= '<div class="event-o-price-card">';
-            $out .= '<h4 class="event-o-sidebar-title">' . esc_html__('EINTRITT', 'event-o') . '</h4>';
+            $out .= '<h4 class="event-o-sidebar-title">' . esc_html__('PREIS', 'event-o') . '</h4>';
             $out .= '<div class="event-o-price-value">';
-            $out .= '<svg class="event-o-icon" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M22 10V6c0-1.1-.9-2-2-2H4c-1.1 0-1.99.9-1.99 2v4c1.1 0 1.99.9 1.99 2s-.89 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2zm-2-1.46c-1.19.69-2 1.99-2 3.46s.81 2.77 2 3.46V18H4v-2.54c1.19-.69 2-1.99 2-3.46 0-1.48-.8-2.77-1.99-3.46L4 6h16v2.54zM11 15h2v2h-2zm0-4h2v2h-2zm0-4h2v2h-2z"/></svg>';
             $out .= '<span>' . esc_html($price) . '</span>';
             $out .= '</div>';
             $out .= '</div>';
@@ -268,7 +333,7 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
         }
 
         $excerpt = get_the_excerpt();
-        $content_text = apply_filters('the_content', get_the_content());
+        $content_text = apply_filters('the_content', get_the_content(null, false, $postObj));
         if ($content_text !== '' && trim(strip_tags($content_text)) !== '') {
             $out .= '<div class="event-o-content">' . $content_text . '</div>';
         } elseif ($excerpt !== '') {
@@ -317,6 +382,12 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
     }
 
     wp_reset_postdata();
+
+    if ($loadMoreEnabled) {
+        $out .= '<div class="event-o-list-loadmore-wrap">';
+        $out .= '<button type="button" class="event-o-list-loadmore">' . esc_html__('Mehr laden', 'event-o') . '</button>';
+        $out .= '</div>';
+    }
 
     $out .= '</div>';
     return $out;

@@ -24,6 +24,7 @@ function event_o_render_event_carousel_block(array $attrs, string $content = '',
     $showPrice = !empty($attrs['showPrice']);
     $showFilters = !empty($attrs['showFilters']);
     $showHighlightBadge = !empty($attrs['showHighlightBadge']);
+    $hoverExcerptWords = isset($attrs['hoverExcerptWords']) ? max(10, min(80, (int) $attrs['hoverExcerptWords'])) : 32;
     $highlightColor = event_o_get_highlight_badge_style_value($attrs);
 
     $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? $attrs['accentColor'] : '';
@@ -102,7 +103,11 @@ function event_o_render_event_carousel_block(array $attrs, string $content = '',
                 . '</span>';
         }
 
-        $excerpt = wp_strip_all_tags(get_the_excerpt($postId));
+        $excerptSource = get_the_excerpt($postId);
+        if ($excerptSource === '') {
+            $excerptSource = get_post_field('post_content', $postId);
+        }
+        $excerpt = wp_trim_words(wp_strip_all_tags((string) $excerptSource), $hoverExcerptWords, '...');
 
         if ($showImage) {
             $imageUrls = event_o_get_event_image_urls($postId, 'large');

@@ -8,7 +8,9 @@ if (!defined('ABSPATH')) {
 }
 
 // Meta key for venue term meta.
-const EVENT_O_VENUE_META_ADDRESS = 'event_o_venue_address';
+if (!defined('EVENT_O_VENUE_META_ADDRESS')) {
+    define('EVENT_O_VENUE_META_ADDRESS', 'event_o_venue_address');
+}
 
 /**
  * Register term meta for venues.

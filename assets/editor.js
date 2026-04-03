@@ -181,6 +181,9 @@
         attributes: {
             perPage: { type: 'number', default: 10 },
             showPast: { type: 'boolean', default: false },
+            showPastHeading: { type: 'boolean', default: false },
+            pastEventsFirst: { type: 'boolean', default: false },
+            enableLoadMore: { type: 'boolean', default: false },
             groupByMonth: { type: 'boolean', default: true },
             openFirst: { type: 'boolean', default: false },
             singleOpen: { type: 'boolean', default: false },
@@ -224,6 +227,24 @@
                             label: __('Show past events', 'event-o'),
                             checked: a.showPast,
                             onChange: function (v) { setAttributes({ showPast: v }); }
+                        }),
+                        a.showPast && el(ToggleControl, {
+                            label: __('Separate past events heading', 'event-o'),
+                            help: __('Shows upcoming events first and adds a "(Vergangene Events)" heading before older entries.', 'event-o'),
+                            checked: !!a.showPastHeading,
+                            onChange: function (v) { setAttributes({ showPastHeading: v }); }
+                        }),
+                        a.showPast && !!a.showPastHeading && el(ToggleControl, {
+                            label: __('Show past events first', 'event-o'),
+                            help: __('Places the past events section before the upcoming events section.', 'event-o'),
+                            checked: !!a.pastEventsFirst,
+                            onChange: function (v) { setAttributes({ pastEventsFirst: v }); }
+                        }),
+                        el(ToggleControl, {
+                            label: __('Enable load more button', 'event-o'),
+                            help: __('Uses the number of events above as the initial and additional batch size.', 'event-o'),
+                            checked: !!a.enableLoadMore,
+                            onChange: function (v) { setAttributes({ enableLoadMore: v }); }
                         }),
                         el(ToggleControl, {
                             label: __('Group by month', 'event-o'),
@@ -383,6 +404,7 @@
             showImage: { type: 'boolean', default: true },
             showVenue: { type: 'boolean', default: true },
             showPrice: { type: 'boolean', default: true },
+            hoverExcerptWords: { type: 'number', default: 32 },
             accentColor: { type: 'string', default: '' },
             showFilters: { type: 'boolean', default: false },
             filterByCategory: { type: 'boolean', default: true },
@@ -461,6 +483,15 @@
                             label: __('Show price', 'event-o'),
                             checked: a.showPrice,
                             onChange: function (v) { setAttributes({ showPrice: v }); }
+                        }),
+                        el(RangeControl, {
+                            label: __('Hover text length (words)', 'event-o'),
+                            help: __('Controls how much description text is shown in the image overlay.', 'event-o'),
+                            value: a.hoverExcerptWords || 32,
+                            min: 10,
+                            max: 80,
+                            step: 2,
+                            onChange: function (v) { setAttributes({ hoverExcerptWords: v || 32 }); }
                         })
                     ),
                     el(PanelBody, { title: __('Frontend Filters', 'event-o'), initialOpen: false },
@@ -540,6 +571,7 @@
             showCategory: { type: 'boolean', default: true },
             showVenue: { type: 'boolean', default: false },
             showPrice: { type: 'boolean', default: true },
+            hoverExcerptWords: { type: 'number', default: 32 },
             accentColor: { type: 'string', default: '' },
             showFilters: { type: 'boolean', default: false },
             filterByCategory: { type: 'boolean', default: true },
@@ -626,6 +658,15 @@
                             label: __('Show price', 'event-o'),
                             checked: a.showPrice,
                             onChange: function (v) { setAttributes({ showPrice: v }); }
+                        }),
+                        el(RangeControl, {
+                            label: __('Hover text length (words)', 'event-o'),
+                            help: __('Controls how much description text is shown in the image overlay.', 'event-o'),
+                            value: a.hoverExcerptWords || 32,
+                            min: 10,
+                            max: 80,
+                            step: 2,
+                            onChange: function (v) { setAttributes({ hoverExcerptWords: v || 32 }); }
                         })
                     ),
                     el(PanelBody, { title: __('Frontend Filters', 'event-o'), initialOpen: false },

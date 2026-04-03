@@ -4,28 +4,30 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-const EVENT_O_META_START_TS = '_event_o_start_ts';
-const EVENT_O_META_END_TS = '_event_o_end_ts';
-const EVENT_O_META_BEGIN_TIME = '_event_o_begin_time';
-const EVENT_O_META_START_TS_2 = '_event_o_start_ts_2';
-const EVENT_O_META_END_TS_2 = '_event_o_end_ts_2';
-const EVENT_O_META_BEGIN_TIME_2 = '_event_o_begin_time_2';
-const EVENT_O_META_START_TS_3 = '_event_o_start_ts_3';
-const EVENT_O_META_END_TS_3 = '_event_o_end_ts_3';
-const EVENT_O_META_BEGIN_TIME_3 = '_event_o_begin_time_3';
-const EVENT_O_META_PRICE = '_event_o_price';
-const EVENT_O_META_STATUS = '_event_o_status';
-const EVENT_O_META_STATUS_LABEL = '_event_o_status_label';
-const EVENT_O_META_BANDS = '_event_o_bands';
-const EVENT_O_META_GALLERY_IDS = '_event_o_gallery_ids';
-const EVENT_O_META_HIGHLIGHT = '_event_o_highlight';
-const EVENT_O_META_HIGHLIGHT_UNTIL = '_event_o_highlight_until_ts';
-const EVENT_O_META_RELATED_EVENT_ID = '_event_o_related_event_id';
+if (!defined('EVENT_O_META_START_TS')) {
+    define('EVENT_O_META_START_TS', '_event_o_start_ts');
+    define('EVENT_O_META_END_TS', '_event_o_end_ts');
+    define('EVENT_O_META_BEGIN_TIME', '_event_o_begin_time');
+    define('EVENT_O_META_START_TS_2', '_event_o_start_ts_2');
+    define('EVENT_O_META_END_TS_2', '_event_o_end_ts_2');
+    define('EVENT_O_META_BEGIN_TIME_2', '_event_o_begin_time_2');
+    define('EVENT_O_META_START_TS_3', '_event_o_start_ts_3');
+    define('EVENT_O_META_END_TS_3', '_event_o_end_ts_3');
+    define('EVENT_O_META_BEGIN_TIME_3', '_event_o_begin_time_3');
+    define('EVENT_O_META_PRICE', '_event_o_price');
+    define('EVENT_O_META_STATUS', '_event_o_status');
+    define('EVENT_O_META_STATUS_LABEL', '_event_o_status_label');
+    define('EVENT_O_META_BANDS', '_event_o_bands');
+    define('EVENT_O_META_GALLERY_IDS', '_event_o_gallery_ids');
+    define('EVENT_O_META_HIGHLIGHT', '_event_o_highlight');
+    define('EVENT_O_META_HIGHLIGHT_UNTIL', '_event_o_highlight_until_ts');
+    define('EVENT_O_META_RELATED_EVENT_ID', '_event_o_related_event_id');
 
-const EVENT_O_LEGACY_META_START_TS = '_evento_start_ts';
-const EVENT_O_LEGACY_META_END_TS = '_evento_end_ts';
-const EVENT_O_LEGACY_META_PRICE = '_evento_price';
-const EVENT_O_LEGACY_META_STATUS = '_evento_status';
+    define('EVENT_O_LEGACY_META_START_TS', '_evento_start_ts');
+    define('EVENT_O_LEGACY_META_END_TS', '_evento_end_ts');
+    define('EVENT_O_LEGACY_META_PRICE', '_evento_price');
+    define('EVENT_O_LEGACY_META_STATUS', '_evento_status');
+}
 
 function event_o_register_meta(): void
 {

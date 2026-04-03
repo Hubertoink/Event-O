@@ -21,6 +21,7 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
     $showPrice = !empty($attrs['showPrice']);
     $showFilters = !empty($attrs['showFilters']);
     $showHighlightBadge = !empty($attrs['showHighlightBadge']);
+    $hoverExcerptWords = isset($attrs['hoverExcerptWords']) ? max(10, min(80, (int) $attrs['hoverExcerptWords'])) : 32;
     $highlightColor = event_o_get_highlight_badge_style_value($attrs);
 
     $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? $attrs['accentColor'] : '';
@@ -74,9 +75,9 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
         $venueName = $showVenue ? event_o_get_first_term_name($postId, 'event_o_venue') : '';
         $excerpt = get_the_excerpt();
         if ($excerpt === '') {
-            $excerpt = wp_trim_words(wp_strip_all_tags(get_the_content()), 20, '...');
+            $excerpt = wp_trim_words(wp_strip_all_tags(get_the_content()), $hoverExcerptWords, '...');
         } else {
-            $excerpt = wp_trim_words($excerpt, 20, '...');
+            $excerpt = wp_trim_words(wp_strip_all_tags($excerpt), $hoverExcerptWords, '...');
         }
 
         $filterDataAttrs = $showFilters ? event_o_get_filter_data_attrs($postId) : '';

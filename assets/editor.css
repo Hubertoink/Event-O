@@ -1,1 +1,12 @@
-.wp-block-event-o-event-list, .wp-block-event-o-event-carousel{outline:1px dashed rgba(0,0,0,.15);outline-offset:2px;}
+.wp-block-event-o-event-list, .wp-block-event-o-event-carousel, .wp-block-event-o-event-grid{outline:1px dashed rgba(0,0,0,.15);outline-offset:2px;}
+
+.editor-styles-wrapper .wp-block-event-o-event-carousel .event-o-card-overlay,
+.editor-styles-wrapper .wp-block-event-o-event-grid .event-o-grid-overlay{
+	pointer-events: auto;
+}
+
+.editor-styles-wrapper .wp-block-event-o-event-carousel .event-o-card-excerpt,
+.editor-styles-wrapper .wp-block-event-o-event-grid .event-o-grid-excerpt{
+	user-select: text;
+	cursor: text;
+}

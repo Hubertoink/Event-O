@@ -95,7 +95,13 @@ function event_o_filter_translation_file_path(string $file, string $domain): str
         return $file;
     }
 
-    return EVENT_O_PLUGIN_DIR . 'languages/' . basename($file);
+    $pluginLocalFile = EVENT_O_PLUGIN_DIR . 'languages/' . basename($file);
+
+    if (!is_readable($pluginLocalFile)) {
+        return $file;
+    }
+
+    return $pluginLocalFile;
 }
 add_filter('load_textdomain_mofile', 'event_o_filter_translation_file_path', 10, 2);
 

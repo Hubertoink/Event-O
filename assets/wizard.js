@@ -49,7 +49,7 @@
         var $wrap = $('#event_o_event_details');
         if (!$wrap.length) return;
         var $btn = $('<div class="eo-wizard-launch"><button type="button" class="eo-wizard-launch-btn"><span class="dashicons dashicons-welcome-learn-more"></span> ' + esc(texts.openWizard || 'Event-Wizard öffnen') + '</button></div>');
-        $wrap.before($btn);
+        $('body').append($btn);
         $btn.on('click', function () { openWizard(); });
     }
 
@@ -265,6 +265,9 @@
         var step = steps[currentStep];
         var html = '';
 
+        // Close button (top right)
+        html += '<button type="button" class="eo-wizard-close-x" title="' + esc(texts.classicEditor || 'Klassischer Editor') + '">&times;</button>';
+
         // Progress
         html += '<div class="eo-wizard-progress">';
         for (var i = 0; i < totalSteps; i++) {
@@ -306,7 +309,7 @@
         // Bind nav
         $modal.find('.eo-wizard-back-btn').on('click', goBack);
         $modal.find('.eo-wizard-next-btn').on('click', goNext);
-        $modal.find('.eo-wizard-close-btn').on('click', function () {
+        $modal.find('.eo-wizard-close-btn, .eo-wizard-close-x').on('click', function () {
             collectCurrentStep();
             writeValuesToForm();
             closeWizard();

@@ -8,12 +8,14 @@ if (!defined('ABSPATH')) {
 }
 
 // Meta keys for organizer term meta.
-const EVENT_O_ORG_META_PHONE = 'event_o_phone';
-const EVENT_O_ORG_META_EMAIL = 'event_o_email';
-const EVENT_O_ORG_META_WEBSITE = 'event_o_website';
-const EVENT_O_ORG_META_INSTAGRAM = 'event_o_instagram';
-const EVENT_O_ORG_META_FACEBOOK = 'event_o_facebook';
-const EVENT_O_ORG_META_LOGO = 'event_o_logo';
+if (!defined('EVENT_O_ORG_META_PHONE')) {
+    define('EVENT_O_ORG_META_PHONE', 'event_o_phone');
+    define('EVENT_O_ORG_META_EMAIL', 'event_o_email');
+    define('EVENT_O_ORG_META_WEBSITE', 'event_o_website');
+    define('EVENT_O_ORG_META_INSTAGRAM', 'event_o_instagram');
+    define('EVENT_O_ORG_META_FACEBOOK', 'event_o_facebook');
+    define('EVENT_O_ORG_META_LOGO', 'event_o_logo');
+}
 
 /**
  * Register term meta for organizers.
@@ -288,7 +290,7 @@ function event_o_get_organizer_data(int $post_id): ?array
     $term = array_shift($terms);
     return [
         'name' => $term->name,
-        'description' => $term->description,
+        'description' => html_entity_decode((string) $term->description, ENT_QUOTES, 'UTF-8'),
         'phone' => get_term_meta($term->term_id, EVENT_O_ORG_META_PHONE, true),
         'email' => get_term_meta($term->term_id, EVENT_O_ORG_META_EMAIL, true),
         'website' => get_term_meta($term->term_id, EVENT_O_ORG_META_WEBSITE, true),

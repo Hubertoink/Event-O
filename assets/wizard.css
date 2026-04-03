@@ -37,6 +37,33 @@
     transform: translateY(0) scale(1);
 }
 
+/* --- Close X button --- */
+.eo-wizard-close-x {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 10;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: #757575;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    padding: 0;
+}
+
+.eo-wizard-close-x:hover {
+    background: #f0f0f1;
+    color: #1d2327;
+}
+
 /* --- Progress bar --- */
 .eo-wizard-progress {
     display: flex;
@@ -600,9 +627,13 @@
     background: #dcdcde;
 }
 
-/* --- Launch button (on the classic editor) --- */
+/* --- Launch button (floating bottom-left) --- */
 .eo-wizard-launch {
-    margin: 10px 0;
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 9999;
+    margin: 0;
 }
 
 .eo-wizard-launch-btn {
@@ -617,11 +648,14 @@
     color: #fff;
     border: none;
     cursor: pointer;
-    transition: background 0.15s;
+    transition: background 0.15s, opacity 0.2s;
+    opacity: 0.55;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
 }
 
 .eo-wizard-launch-btn:hover {
     background: #3d5530;
+    opacity: 1;
 }
 
 .eo-wizard-launch-btn .dashicons {

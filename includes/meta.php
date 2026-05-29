@@ -691,11 +691,13 @@ function event_o_save_event_meta(int $postId): void
         }
     }
 
-    $price = isset($_POST['event_o_price']) ? sanitize_text_field((string) $_POST['event_o_price']) : '';
-    if ($price !== '') {
-        update_post_meta($postId, EVENT_O_META_PRICE, $price);
-    } else {
-        delete_post_meta($postId, EVENT_O_META_PRICE);
+    if (array_key_exists('event_o_price', $_POST)) {
+        $price = sanitize_text_field((string) $_POST['event_o_price']);
+        if ($price !== '') {
+            update_post_meta($postId, EVENT_O_META_PRICE, $price);
+        } else {
+            delete_post_meta($postId, EVENT_O_META_PRICE);
+        }
     }
 
     $status = isset($_POST['event_o_status']) ? sanitize_text_field((string) $_POST['event_o_status']) : '';

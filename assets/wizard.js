@@ -83,6 +83,84 @@
         $(document).off('keydown.eoWizard');
     }
 
+    function getEditedPostMetaValue(metaKey) {
+        if (!isGutenberg) return null;
+
+        var editor = wp.data.select('core/editor');
+        if (!editor || typeof editor.getEditedPostAttribute !== 'function') {
+            return null;
+        }
+
+        var meta = editor.getEditedPostAttribute('meta');
+        if (!meta || typeof meta !== 'object') {
+            return null;
+        }
+
+        return Object.prototype.hasOwnProperty.call(meta, metaKey) ? meta[metaKey] : null;
+    }
+
+    function readTextField(selector, metaKey) {
+        var $field = $(selector);
+        if ($field.length) {
+            return $field.val() || '';
+        }
+
+        var metaValue = getEditedPostMetaValue(metaKey);
+        if (metaValue === null || typeof metaValue === 'undefined') {
+            return '';
+        }
+
+        return String(metaValue);
+    }
+
+    function getFallbackFieldRoot() {
+        var $root = $('#event-o-wizard-hidden-fields');
+        if ($root.length) {
+            return $root;
+        }
+
+        var $form = $('#post');
+        if (!$form.length) {
+            $form = $('form').first();
+        }
+        if (!$form.length) {
+            return $();
+        }
+
+        $root = $('<div id="event-o-wizard-hidden-fields" style="display:none" aria-hidden="true"></div>');
+        $form.append($root);
+        return $root;
+    }
+
+    function getFallbackField(name) {
+        var $root = getFallbackFieldRoot();
+        if (!$root.length) {
+            return $();
+        }
+
+        var $field = $root.children().filter(function () {
+            return this.name === name;
+        }).first();
+
+        if (!$field.length) {
+            $field = $('<input type="hidden">').attr('name', name);
+            $root.append($field);
+        }
+
+        return $field;
+    }
+
+    function removeFallbackField(name) {
+        var $root = $('#event-o-wizard-hidden-fields');
+        if (!$root.length) {
+            return;
+        }
+
+        $root.children().filter(function () {
+            return this.name === name;
+        }).remove();
+    }
+
     /* ================================================================
        READ EXISTING FORM VALUES INTO wizardState
        ================================================================ */
@@ -103,13 +181,13 @@
             beginTime3:  $('#event_o_begin_time_3').val() || '',
             venues:      getTaxIds('event_o_venue'),
             organizers:  getTaxIds('event_o_organizer'),
-            price:       $('#event_o_price').val() || '',
-            status:      $('#event_o_status').val() || '',
-            statusLabel: $('#event_o_status_label').val() || '',
+            price:       readTextField('#event_o_price', '_event_o_price'),
+            status:      readTextField('#event_o_status', '_event_o_status'),
+            statusLabel: readTextField('#event_o_status_label', '_event_o_status_label'),
             isHighlight: $('#event_o_highlight').is(':checked'),
             highlightUntil: $('#event_o_highlight_until').val() || '',
-            bands:       parseBands($('#event_o_bands').val() || ''),
-            galleryIds:  ($('#event_o_gallery_ids').val() || '').split(',').filter(Boolean).map(Number)
+            bands:       parseBands(readTextField('#event_o_bands', '_event_o_bands')),
+            galleryIds:  readTextField('#event_o_gallery_ids', '_event_o_gallery_ids').split(',').filter(Boolean).map(Number)
         };
 
         // On new posts, preselect single-option taxonomies
@@ -206,15 +284,15 @@
         }
 
         // Metabox fields (exist in both Gutenberg and classic editor)
-        setVal('#event_o_start_datetime', s.startDate1);
-        setVal('#event_o_end_datetime', s.endDate1);
-        setVal('#event_o_begin_time', s.beginTime1);
-        setVal('#event_o_start_datetime_2', s.startDate2);
-        setVal('#event_o_end_datetime_2', s.endDate2);
-        setVal('#event_o_begin_time_2', s.beginTime2);
-        setVal('#event_o_start_datetime_3', s.startDate3);
-        setVal('#event_o_end_datetime_3', s.endDate3);
-        setVal('#event_o_begin_time_3', s.beginTime3);
+        setVal('#event_o_start_datetime', s.startDate1, 'event_o_start_datetime');
+        setVal('#event_o_end_datetime', s.endDate1, 'event_o_end_datetime');
+        setVal('#event_o_begin_time', s.beginTime1, 'event_o_begin_time');
+        setVal('#event_o_start_datetime_2', s.startDate2, 'event_o_start_datetime_2');
+        setVal('#event_o_end_datetime_2', s.endDate2, 'event_o_end_datetime_2');
+        setVal('#event_o_begin_time_2', s.beginTime2, 'event_o_begin_time_2');
+        setVal('#event_o_start_datetime_3', s.startDate3, 'event_o_start_datetime_3');
+        setVal('#event_o_end_datetime_3', s.endDate3, 'event_o_end_datetime_3');
+        setVal('#event_o_begin_time_3', s.beginTime3, 'event_o_begin_time_3');
 
         if (s.startDate2 || s.endDate2 || s.beginTime2) {
             $('#event_o_term_2').removeClass('is-hidden');
@@ -223,20 +301,20 @@
             $('#event_o_term_3').removeClass('is-hidden');
         }
 
-        setVal('#event_o_price', s.price);
-        setVal('#event_o_status', s.status);
-        setVal('#event_o_status_label', s.status === 'soldout' ? s.statusLabel : '');
+        setVal('#event_o_price', s.price, 'event_o_price');
+        setVal('#event_o_status', s.status, 'event_o_status');
+        setVal('#event_o_status_label', s.status === 'soldout' ? s.statusLabel : '', 'event_o_status_label');
         $('#event_o_status').trigger('change');
-        $('#event_o_highlight').prop('checked', !!s.isHighlight).trigger('change');
-        setVal('#event_o_highlight_until', s.isHighlight ? s.highlightUntil : '');
+        setCheckboxVal('#event_o_highlight', !!s.isHighlight, 'event_o_highlight');
+        setVal('#event_o_highlight_until', s.isHighlight ? s.highlightUntil : '', 'event_o_highlight_until');
 
         var bandsStr = s.bands.map(function (b) {
             return [b.name, b.spotify, b.bandcamp, b.website].join(' | ');
         }).join('\n');
-        setVal('#event_o_bands', bandsStr);
+        setVal('#event_o_bands', bandsStr, 'event_o_bands');
 
         var gids = galleryImages.map(function (g) { return g.id; });
-        setVal('#event_o_gallery_ids', gids.join(','));
+        setVal('#event_o_gallery_ids', gids.join(','), 'event_o_gallery_ids');
 
         rebuildGalleryPreview();
     }
@@ -861,9 +939,41 @@
         return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    function setVal(sel, val) {
+    function setVal(sel, val, fieldName) {
         var $el = $(sel);
-        if ($el.length) $el.val(val);
+        if ($el.length) {
+            if (fieldName) {
+                removeFallbackField(fieldName);
+            }
+            $el.val(val);
+            return;
+        }
+
+        if (!fieldName) {
+            return;
+        }
+
+        getFallbackField(fieldName).val(val);
+    }
+
+    function setCheckboxVal(sel, checked, fieldName) {
+        var $el = $(sel);
+        if ($el.length) {
+            if (fieldName) {
+                removeFallbackField(fieldName);
+            }
+            $el.prop('checked', !!checked).trigger('change');
+            return;
+        }
+
+        if (!fieldName) {
+            return;
+        }
+
+        removeFallbackField(fieldName);
+        if (checked) {
+            getFallbackField(fieldName).val('1');
+        }
     }
 
     function truncate(str, len) {

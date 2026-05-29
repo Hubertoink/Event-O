@@ -1171,7 +1171,7 @@ function event_o_get_google_calendar_url(string $title, int $startTs, int $endTs
         $params['location'] = $location;
     }
 
-    return 'https://calendar.google.com/calendar/render?' . http_build_query($params);
+    return 'https://calendar.google.com/calendar/render?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 }
 
 /**
@@ -1203,7 +1203,7 @@ function event_o_get_outlook_calendar_url(string $title, int $startTs, int $endT
         $params['location'] = $location;
     }
 
-    return 'https://outlook.live.com/calendar/0/deeplink/compose?' . http_build_query($params);
+    return 'https://outlook.live.com/calendar/0/deeplink/compose?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 }
 
 /**

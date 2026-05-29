@@ -165,9 +165,13 @@
        READ EXISTING FORM VALUES INTO wizardState
        ================================================================ */
     function readExistingValues() {
+        var editorContent = getEditorContentState();
+
         wizardState = {
             title:       getTitle(),
-            description: getEditorContent(),
+            description: editorContent.text,
+            descriptionSourceText: editorContent.text,
+            descriptionDirty: false,
             categories:  getTaxIds('event_o_category'),
             tags:        getTagIds(),
             startDate1:  $('#event_o_start_datetime').val() || '',
@@ -236,14 +240,14 @@
        ================================================================ */
     function writeValuesToForm() {
         var s = wizardState;
+        var descriptionChanged = hasDescriptionChanged(s);
 
         if (isGutenberg) {
             // Title + Content + Taxonomies + Featured image via Gutenberg stores
             var postUpdate = { title: s.title };
 
-            // Content: insert as paragraph block
-            if (s.description) {
-                postUpdate.content = s.description;
+            if (descriptionChanged) {
+                postUpdate.content = buildEditorHtmlFromText(s.description);
             }
 
             // Taxonomies
@@ -259,21 +263,16 @@
 
             wp.data.dispatch('core/editor').editPost(postUpdate);
 
-            // Content as blocks (paragraph)
-            if (s.description) {
-                var paragraphs = s.description.split('\n').filter(function (p) { return p.trim(); });
-                var blocks = paragraphs.map(function (p) {
-                    return wp.blocks.createBlock('core/paragraph', { content: p });
-                });
-                if (blocks.length) {
-                    wp.data.dispatch('core/block-editor').resetBlocks(blocks);
-                }
+            if (descriptionChanged) {
+                wp.data.dispatch('core/block-editor').resetBlocks(buildParagraphBlocks(s.description));
             }
         } else {
             // Classic editor fallback
             if ($('#title').length) $('#title').val(s.title).trigger('change');
             if ($('#post_title').length) $('#post_title').val(s.title);
-            setEditorContent(s.description);
+            if (descriptionChanged) {
+                setEditorContent(s.description);
+            }
             setTaxCheckboxes('event_o_categorychecklist', s.categories);
             setTaxCheckboxes('event_o_venuechecklist', s.venues);
             setTaxCheckboxes('event_o_organizerchecklist', s.organizers);
@@ -472,6 +471,10 @@
         if (tags.length || canCreateTags) {
             initTagPicker($body);
         }
+
+        $body.on('input', '#eo_wiz_desc', function () {
+            wizardState.descriptionDirty = true;
+        });
 
         // Auto-focus title
         setTimeout(function () { $body.find('#eo_wiz_title').focus(); }, 100);
@@ -1007,39 +1010,95 @@
         });
     }
 
-    function getEditorContent() {
+    function getEditorContentState() {
         if (isGutenberg) {
-            var content = wp.data.select('core/editor').getEditedPostAttribute('content') || '';
-            if (!content) return '';
-            var tmp = document.createElement('div');
-            tmp.innerHTML = content;
-            return tmp.textContent || tmp.innerText || '';
+            var blockContent = wp.data.select('core/editor').getEditedPostAttribute('content') || '';
+            return {
+                html: blockContent,
+                text: htmlToText(blockContent)
+            };
         }
+
         // Classic editor
         var $content = $('#content');
         if ($content.length) {
             if (typeof tinymce !== 'undefined') {
                 var ed = tinymce.get('content');
                 if (ed && !ed.isHidden()) {
-                    return ed.getContent({ format: 'text' });
+                    var richContent = ed.getContent() || '';
+                    return {
+                        html: richContent,
+                        text: ed.getContent({ format: 'text' }) || ''
+                    };
                 }
             }
-            return $content.val() || '';
+            var rawContent = $content.val() || '';
+            return {
+                html: rawContent,
+                text: htmlToText(rawContent)
+            };
         }
-        return '';
+        return {
+            html: '',
+            text: ''
+        };
     }
 
     function setEditorContent(text) {
         var $content = $('#content');
         if ($content.length) {
-            $content.val(text);
+            var html = buildEditorHtmlFromText(text);
+            $content.val(html);
             if (typeof tinymce !== 'undefined') {
                 var ed = tinymce.get('content');
                 if (ed) {
-                    ed.setContent(text ? '<p>' + esc(text).replace(/\n/g, '</p><p>') + '</p>' : '');
+                    ed.setContent(html);
                 }
             }
         }
+    }
+
+    function htmlToText(html) {
+        if (!html) return '';
+        var tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        return tmp.textContent || tmp.innerText || '';
+    }
+
+    function buildParagraphBlocks(text) {
+        if (!text) {
+            return [];
+        }
+
+        return text.split('\n').filter(function (paragraph) {
+            return paragraph.trim();
+        }).map(function (paragraph) {
+            return wp.blocks.createBlock('core/paragraph', { content: paragraph });
+        });
+    }
+
+    function buildEditorHtmlFromText(text) {
+        if (!text) {
+            return '';
+        }
+
+        return text.split('\n').filter(function (paragraph) {
+            return paragraph.trim();
+        }).map(function (paragraph) {
+            return '<p>' + esc(paragraph) + '</p>';
+        }).join('');
+    }
+
+    function hasDescriptionChanged(state) {
+        if (!state.descriptionDirty) {
+            return false;
+        }
+
+        return normalizeTextForComparison(state.description) !== normalizeTextForComparison(state.descriptionSourceText || '');
+    }
+
+    function normalizeTextForComparison(text) {
+        return String(text || '').replace(/\r\n?/g, '\n').trim();
     }
 
     function getTitle() {

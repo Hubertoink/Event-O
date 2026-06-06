@@ -61,11 +61,13 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
     $singleOpen = !empty($attrs['singleOpen']);
 
     $showImage = !empty($attrs['showImage']);
+    $showWeekday = !empty($attrs['showWeekday']);
     $showVenue = !empty($attrs['showVenue']);
     $showOrganizer = !empty($attrs['showOrganizer']);
     $showPrice = !empty($attrs['showPrice']);
     $showTags = !empty($attrs['showTags']);
     $showMoreLink = isset($attrs['showMoreLink']) ? $attrs['showMoreLink'] : true;
+    $moreLinkLabel = isset($attrs['moreLinkLabel']) ? trim((string) $attrs['moreLinkLabel']) : '';
     $showFilters = !empty($attrs['showFilters']);
     $showHighlightBadge = !empty($attrs['showHighlightBadge']);
     $highlightColor = event_o_get_highlight_badge_style_value($attrs);
@@ -199,6 +201,12 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
 
                     $out .= '<div class="event-o-date-slot">';
                     $out .= '<span class="event-o-date">' . esc_html($slotDate) . '</span>';
+                    if ($showWeekday) {
+                        $weekday = event_o_get_german_weekday((int) $slotStart->format('w'));
+                        if ($weekday !== '') {
+                            $out .= '<span class="event-o-weekday">' . esc_html($weekday) . '</span>';
+                        }
+                    }
                     $out .= '<span class="event-o-time">' . esc_html($slotTime . ' Uhr') . '</span>';
                     $out .= '</div>';
                 } else {
@@ -354,7 +362,8 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
 
         if ($showMoreLink) {
             $out .= '<div class="event-o-actions">';
-            $out .= '<a class="event-o-link" href="' . esc_url($permalink) . '">' . esc_html__('MORE', 'event-o') . '</a>';
+            $linkLabel = $moreLinkLabel !== '' ? $moreLinkLabel : __('MORE', 'event-o');
+            $out .= '<a class="event-o-link" href="' . esc_url($permalink) . '">' . esc_html($linkLabel) . '</a>';
             $out .= '</div>';
         }
 

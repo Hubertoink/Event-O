@@ -94,6 +94,7 @@ while (have_posts()) {
 
     // Sidebar
     echo '<aside class="event-o-single-sidebar eo-anim">';
+    echo '<div class="event-o-single-sidebar-inner">';
 
     // Date & Time card
     echo '<div class="event-o-single-card">';
@@ -194,6 +195,7 @@ while (have_posts()) {
         'title_tag' => 'h3',
     ]);
 
+    echo '</div>';
     echo '</aside>';
 
     // Main content

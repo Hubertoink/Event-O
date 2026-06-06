@@ -180,6 +180,15 @@
     line-height: 1.3;
 }
 
+.event-o-when .event-o-weekday{
+    color: var(--event-o-block-accent, var(--event-o-primary));
+    font-weight: 900;
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    line-height: 1.25;
+    text-transform: uppercase;
+}
+
 .event-o-when .event-o-time{
     color: var(--event-o-muted);
     font-weight: 400;
@@ -206,6 +215,7 @@
 
 /* Multi-date slot (used across all blocks) */
 .event-o-accordion-summary .event-o-date-slot > .event-o-date,
+.event-o-accordion-summary .event-o-date-slot > .event-o-weekday,
 .event-o-accordion-summary .event-o-date-slot > .event-o-time{
     display: block;
 }
@@ -380,6 +390,11 @@
     color: color-mix(in srgb, var(--eo-list-highlight-accent) 82%, #111);
 }
 
+.event-o-accordion-item.is-highlighted > .event-o-accordion-summary .event-o-weekday,
+.event-o-accordion-item.is-highlighted > .event-o-accordion-summary .event-o-date-slot > .event-o-weekday{
+    color: var(--eo-list-highlight-accent);
+}
+
 .event-o-accordion-item.is-highlighted > .event-o-accordion-summary .event-o-time,
 .event-o-accordion-item.is-highlighted > .event-o-accordion-summary .event-o-date-slot > .event-o-time{
     color: color-mix(in srgb, var(--eo-list-highlight-accent) 52%, #666);
@@ -388,6 +403,11 @@
 .event-o-accordion-item.is-highlighted.has-highlight-gradient > .event-o-accordion-summary .event-o-date,
 .event-o-accordion-item.is-highlighted.has-highlight-gradient > .event-o-accordion-summary .event-o-date-slot > .event-o-date,
 .event-o-accordion-item.is-highlighted.has-highlight-gradient > .event-o-accordion-summary .event-o-date-slot-legacy{
+    color: #161616;
+}
+
+.event-o-accordion-item.is-highlighted.has-highlight-gradient > .event-o-accordion-summary .event-o-weekday,
+.event-o-accordion-item.is-highlighted.has-highlight-gradient > .event-o-accordion-summary .event-o-date-slot > .event-o-weekday{
     color: #161616;
 }
 
@@ -470,6 +490,11 @@
 .event-o-accordion-item.is-today > .event-o-accordion-summary .event-o-date-slot-legacy,
 .event-o-accordion-item.is-today > .event-o-accordion-summary .event-o-title{
     color: var(--eo-list-today-text);
+}
+
+.event-o-accordion-item.is-today > .event-o-accordion-summary .event-o-weekday,
+.event-o-accordion-item.is-today > .event-o-accordion-summary .event-o-date-slot > .event-o-weekday{
+    color: var(--event-o-block-accent, var(--event-o-primary));
 }
 
 .event-o-accordion-item.is-today > .event-o-accordion-summary .event-o-time,
@@ -2036,9 +2061,20 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
 }
 
 .event-o-single-sidebar{
+    align-self: start;
+    position: relative;
+}
+
+.event-o-single-sidebar-inner{
     display: flex;
     flex-direction: column;
     gap: 16px;
+    position: sticky;
+    top: 24px;
+}
+
+.admin-bar .event-o-single-sidebar-inner{
+    top: 56px;
 }
 
 .event-o-single-card{
@@ -2326,9 +2362,14 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
         grid-template-columns: 1fr;
     }
     .event-o-single-sidebar{
+        display: block;
+    }
+    .event-o-single-sidebar-inner{
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 16px;
+        position: static;
+        top: auto;
     }
     .event-o-single-card{
         flex: 1 1 auto;
@@ -3158,6 +3199,9 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
 .event-o-hero-overlay-white .event-o-hero-date {
     color: rgba(0, 0, 0, 0.75);
 }
+.event-o-hero-overlay-white .event-o-hero-weekday {
+    color: rgba(0, 0, 0, 0.7);
+}
 .event-o-hero-overlay-white .event-o-hero-date-time {
     color: rgba(0, 0, 0, 0.62);
 }
@@ -3384,7 +3428,24 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
 .event-o-hero-date.has-time {
     display: flex;
     flex-direction: column;
+    gap: 0.5rem;
+}
+
+.event-o-hero-date-slot {
+    display: flex;
+    flex-direction: column;
     gap: 0.15rem;
+}
+
+.event-o-hero-weekday {
+    display: block;
+    font-style: normal;
+    font-size: 0.78rem;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.92);
 }
 
 .event-o-hero-date-main {

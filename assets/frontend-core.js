@@ -896,6 +896,104 @@
         });
     }
 
+    function initSingleSidebarTracking() {
+        var single = document.querySelector('.event-o-single');
+        if (!single) return;
+
+        var layout = single.querySelector('.event-o-single-layout');
+        var sidebar = layout ? layout.querySelector('.event-o-single-sidebar') : null;
+        var inner = sidebar ? sidebar.querySelector('.event-o-single-sidebar-inner') : null;
+        var main = layout ? layout.querySelector('.event-o-single-main') : null;
+        var desktopQuery = window.matchMedia('(max-width: 900px)');
+        var resizeTimer = 0;
+        var ticking = false;
+
+        if (!layout || !sidebar || !inner || !main) {
+            return;
+        }
+
+        function topOffset() {
+            return document.body.classList.contains('admin-bar') ? 106 : 74;
+        }
+
+        function reset() {
+            inner.style.position = '';
+            inner.style.top = '';
+            inner.style.left = '';
+            inner.style.width = '';
+            inner.style.maxHeight = '';
+            inner.style.overflowY = '';
+            sidebar.style.minHeight = '';
+        }
+
+        function update() {
+            ticking = false;
+
+            if (desktopQuery.matches) {
+                reset();
+                return;
+            }
+
+            var sidebarRect = sidebar.getBoundingClientRect();
+            var mainRect = main.getBoundingClientRect();
+            var innerHeight = inner.offsetHeight;
+            var sidebarTop = window.scrollY + sidebarRect.top;
+            var start = Math.max(0, sidebarTop - topOffset());
+            var stop = (window.scrollY + mainRect.bottom) - topOffset() - innerHeight;
+
+            if (stop <= start) {
+                reset();
+                return;
+            }
+
+            if (window.scrollY <= start) {
+                reset();
+                return;
+            }
+
+            sidebar.style.minHeight = innerHeight + 'px';
+
+            if (window.scrollY >= stop) {
+                inner.style.position = 'absolute';
+                inner.style.top = Math.max(0, stop - sidebarTop) + 'px';
+                inner.style.left = '0';
+                inner.style.width = '100%';
+                inner.style.maxHeight = '';
+                inner.style.overflowY = '';
+                return;
+            }
+
+            inner.style.position = 'fixed';
+            inner.style.top = topOffset() + 'px';
+            inner.style.left = sidebarRect.left + 'px';
+            inner.style.width = sidebarRect.width + 'px';
+
+            var availableHeight = (window.innerHeight || document.documentElement.clientHeight || 0) - topOffset() - 24;
+            if (innerHeight > availableHeight && availableHeight > 180) {
+                inner.style.maxHeight = availableHeight + 'px';
+                inner.style.overflowY = 'auto';
+            } else {
+                inner.style.maxHeight = '';
+                inner.style.overflowY = '';
+            }
+        }
+
+        function queueUpdate() {
+            if (ticking) return;
+            ticking = true;
+            window.requestAnimationFrame(update);
+        }
+
+        window.addEventListener('scroll', queueUpdate, { passive: true });
+        window.addEventListener('resize', function () {
+            window.clearTimeout(resizeTimer);
+            resizeTimer = window.setTimeout(queueUpdate, 60);
+        }, { passive: true });
+        window.addEventListener('load', queueUpdate);
+
+        queueUpdate();
+    }
+
     frontend.registerInit(function initCoreFrontendFeatures() {
         initCopyButtons();
         initCalendarDropdowns();
@@ -905,5 +1003,6 @@
         initFilters();
         initListLoadMore();
         initImageLightboxes();
+        initSingleSidebarTracking();
     });
 })();

@@ -18,6 +18,7 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
     $preferHighlights = !array_key_exists('preferHighlights', $attrs) || !empty($attrs['preferHighlights']);
     $highlightColor = event_o_get_highlight_badge_style_value($attrs);
     $showDate = !array_key_exists('showDate', $attrs) || !empty($attrs['showDate']);
+    $showWeekday = $showDate && !empty($attrs['showWeekday']);
     $dateVariant = isset($attrs['dateVariant']) && $attrs['dateVariant'] === 'date-time' ? 'date-time' : 'date';
     $showDesc = !array_key_exists('showDesc', $attrs) || !empty($attrs['showDesc']);
     $descWordLimit = isset($attrs['descWordLimit']) ? max(5, min(60, (int) $attrs['descWordLimit'])) : 20;
@@ -57,6 +58,7 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
 
     $eventCount = 0;
     $seenCategories = [];
+    $tz = wp_timezone();
     foreach ($posts as $post) {
         $postId = $post->ID;
 
@@ -116,14 +118,27 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
             }
             $out .= '<div class="' . esc_attr($dateClasses) . '">';
             foreach ($dateSlots as $slot) {
-                if ($dateVariant === 'date-time') {
-                    $out .= '<span class="event-o-hero-date-main">' . esc_html($slot['formatted']) . '</span>';
-                } else {
-                    $tz = wp_timezone();
-                    $start = (new DateTimeImmutable('@' . $slot['start_ts']))->setTimezone($tz);
-                    $dateOnly = $start->format('j') . '. ' . event_o_get_german_month((int) $start->format('n')) . ' ' . $start->format('Y');
-                    $out .= '<span class="event-o-hero-date-main">' . esc_html($dateOnly) . '</span>';
+                $slotText = $slot['formatted'];
+                $weekday = '';
+                if (!empty($slot['start_ts'])) {
+                    $start = (new DateTimeImmutable('@' . (int) $slot['start_ts']))->setTimezone($tz);
+                    if ($showWeekday) {
+                        $weekday = event_o_get_german_weekday((int) $start->format('w'));
+                    }
+                    if ($dateVariant !== 'date-time') {
+                        $slotText = $start->format('j') . '. ' . event_o_get_german_month((int) $start->format('n')) . ' ' . $start->format('Y');
+                    }
                 }
+                $out .= '<span class="event-o-hero-date-slot">';
+                if ($weekday !== '') {
+                    $out .= '<span class="event-o-hero-weekday">' . esc_html($weekday) . '</span>';
+                }
+                if ($dateVariant === 'date-time') {
+                    $out .= '<span class="event-o-hero-date-main">' . esc_html($slotText) . '</span>';
+                } else {
+                    $out .= '<span class="event-o-hero-date-main">' . esc_html($slotText) . '</span>';
+                }
+                $out .= '</span>';
             }
             $out .= '</div>';
         }

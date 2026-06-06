@@ -191,11 +191,13 @@
             venues: { type: 'string', default: '' },
             organizers: { type: 'string', default: '' },
             showImage: { type: 'boolean', default: true },
+            showWeekday: { type: 'boolean', default: false },
             showVenue: { type: 'boolean', default: true },
             showOrganizer: { type: 'boolean', default: true },
             showPrice: { type: 'boolean', default: true },
             showTags: { type: 'boolean', default: false },
             showMoreLink: { type: 'boolean', default: true },
+            moreLinkLabel: { type: 'string', default: '' },
             accentColor: { type: 'string', default: '' },
             showFilters: { type: 'boolean', default: false },
             filterByCategory: { type: 'boolean', default: true },
@@ -287,6 +289,11 @@
                             onChange: function (v) { setAttributes({ showImage: v }); }
                         }),
                         el(ToggleControl, {
+                            label: __('Show weekday', 'event-o'),
+                            checked: !!a.showWeekday,
+                            onChange: function (v) { setAttributes({ showWeekday: v }); }
+                        }),
+                        el(ToggleControl, {
                             label: __('Show venue', 'event-o'),
                             checked: a.showVenue,
                             onChange: function (v) { setAttributes({ showVenue: v }); }
@@ -310,6 +317,12 @@
                             label: __('Show "More" link', 'event-o'),
                             checked: a.showMoreLink,
                             onChange: function (v) { setAttributes({ showMoreLink: v }); }
+                        }),
+                        a.showMoreLink && el(TextControl, {
+                            label: __('"More" link label', 'event-o'),
+                            help: __('Leave empty to use default: "MORE"', 'event-o'),
+                            value: a.moreLinkLabel || '',
+                            onChange: function (v) { setAttributes({ moreLinkLabel: v }); }
                         })
                     ),
                     el(PanelBody, { title: __('Frontend Filters', 'event-o'), initialOpen: false },
@@ -728,6 +741,7 @@
             venues: { type: 'string', default: '' },
             organizers: { type: 'string', default: '' },
             showDate: { type: 'boolean', default: true },
+            showWeekday: { type: 'boolean', default: false },
             dateVariant: { type: 'string', default: 'date' },
             showDesc: { type: 'boolean', default: true },
             descWordLimit: { type: 'number', default: 20 },
@@ -827,6 +841,11 @@
                             label: __('Show date', 'event-o'),
                             checked: a.showDate,
                             onChange: function (v) { setAttributes({ showDate: v }); }
+                        }),
+                        a.showDate && el(ToggleControl, {
+                            label: __('Show weekday', 'event-o'),
+                            checked: !!a.showWeekday,
+                            onChange: function (v) { setAttributes({ showWeekday: v }); }
                         }),
                         a.showDate && el('div', { style: { marginBottom: '16px' } },
                             el('label', { style: { display: 'block', marginBottom: '8px', fontWeight: '500' } }, __('Date style', 'event-o')),

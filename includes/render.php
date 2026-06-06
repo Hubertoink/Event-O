@@ -741,6 +741,21 @@ function event_o_get_german_month(int $monthNum): string
     return $months[$monthNum] ?? '';
 }
 
+function event_o_get_german_weekday(int $weekdayNum): string
+{
+    $weekdays = [
+        0 => 'Sonntag',
+        1 => 'Montag',
+        2 => 'Dienstag',
+        3 => 'Mittwoch',
+        4 => 'Donnerstag',
+        5 => 'Freitag',
+        6 => 'Samstag',
+    ];
+
+    return $weekdays[$weekdayNum] ?? '';
+}
+
 function event_o_format_datetime_german(int $startTs, int $endTs = 0): array
 {
     if ($startTs <= 0) {

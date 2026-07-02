@@ -39,7 +39,7 @@ while (have_posts()) {
     $organizerData = event_o_get_organizer_data($postId);
     $permalink = get_permalink();
     $title = get_the_title();
-    $heroImageUrls = event_o_get_event_image_urls($postId, 'full');
+    $heroImages = event_o_get_event_images($postId, 'full');
     $singleTitleLayout = (string) get_option(EVENT_O_OPTION_SINGLE_TITLE_LAYOUT, 'both');
     $showHeroTitle = in_array($singleTitleLayout, ['both', 'hero'], true);
     $showContentTitle = in_array($singleTitleLayout, ['both', 'content'], true);
@@ -60,10 +60,10 @@ while (have_posts()) {
 
     // Hero section with full-width image
     $heroParallax = (bool) get_option(EVENT_O_OPTION_HERO_PARALLAX, false);
-    if (!empty($heroImageUrls)) {
+    if (!empty($heroImages)) {
         $heroClass = 'event-o-single-hero eo-anim' . ($heroParallax ? ' event-o-parallax' : '');
         echo '<div class="' . esc_attr($heroClass) . '">';
-        echo event_o_render_event_image_crossfade($heroImageUrls, 'event-o-single-hero-fade', 'event-o-single-hero-img', $title);
+        echo event_o_render_event_image_crossfade($heroImages, 'event-o-single-hero-fade', 'event-o-single-hero-img', $title);
         if ($showHeroTitle) {
             echo '<div class="event-o-single-hero-overlay">';
             echo '<h1 class="event-o-single-hero-title">' . esc_html($title) . '</h1>';

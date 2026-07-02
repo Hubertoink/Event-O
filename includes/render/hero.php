@@ -98,11 +98,11 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
             $dateSlots = event_o_get_all_date_slots($postId);
         }
 
-        $imageUrls = event_o_get_event_image_urls($postId, 'full');
+        $images = event_o_get_event_images($postId, 'full');
         $filterDataAttrs = $showFilters ? event_o_get_filter_data_attrs($postId) : '';
 
         $out .= '<div class="event-o-hero-slide"' . $filterDataAttrs . '>';
-        $out .= event_o_render_event_bg_crossfade($imageUrls, 'event-o-hero-bg');
+        $out .= event_o_render_event_bg_crossfade($images, 'event-o-hero-bg');
         $out .= '<div class="event-o-hero-overlay"></div>';
 
         if ($preferHighlights && event_o_is_event_highlight_active($postId)) {

@@ -888,21 +888,38 @@ function event_o_render_date_slots_html(array $slots, string $itemClass = 'event
 }
 
 /**
- * Get ordered event images: featured image first + up to 2 gallery images.
+ * Get ordered event image data: featured image first + up to 2 gallery images.
  */
-function event_o_get_event_image_urls(int $postId, string $size = 'large'): array
+function event_o_get_event_images(int $postId, string $size = 'large'): array
 {
-    $urls = [];
+    $images = [];
     $usedIds = [];
 
-    $featuredId = (int) get_post_thumbnail_id($postId);
-    if ($featuredId > 0) {
-        $featuredUrl = wp_get_attachment_image_url($featuredId, $size);
-        if ($featuredUrl) {
-            $urls[] = $featuredUrl;
-            $usedIds[$featuredId] = true;
+    $appendImage = static function (int $imageId) use ($size, &$images, &$usedIds): void {
+        if ($imageId <= 0 || isset($usedIds[$imageId])) {
+            return;
         }
-    }
+
+        $url = wp_get_attachment_image_url($imageId, $size);
+        if (!$url) {
+            return;
+        }
+
+        $caption = wp_get_attachment_caption($imageId);
+        if ($caption === false) {
+            $caption = '';
+        }
+
+        $images[] = [
+            'id' => $imageId,
+            'url' => $url,
+            'credit' => trim(wp_strip_all_tags((string) $caption)),
+        ];
+        $usedIds[$imageId] = true;
+    };
+
+    $featuredId = (int) get_post_thumbnail_id($postId);
+    $appendImage($featuredId);
 
     $galleryRaw = (string) get_post_meta($postId, EVENT_O_META_GALLERY_IDS, true);
     if ($galleryRaw !== '') {
@@ -910,59 +927,146 @@ function event_o_get_event_image_urls(int $postId, string $size = 'large'): arra
         $galleryIds = array_slice(array_unique($galleryIds), 0, 2);
 
         foreach ($galleryIds as $imageId) {
-            if (isset($usedIds[$imageId])) {
-                continue;
-            }
-            $url = wp_get_attachment_image_url($imageId, $size);
-            if ($url) {
-                $urls[] = $url;
-                $usedIds[$imageId] = true;
-            }
+            $appendImage($imageId);
         }
     }
 
-    return $urls;
+    return $images;
 }
 
-function event_o_render_event_image_crossfade(array $urls, string $wrapperClass, string $imgClass = '', string $alt = ''): string
+/**
+ * Get ordered event image URLs: featured image first + up to 2 gallery images.
+ */
+function event_o_get_event_image_urls(int $postId, string $size = 'large'): array
 {
-    if (empty($urls)) {
+    return array_values(array_map(static fn($image) => (string) $image['url'], event_o_get_event_images($postId, $size)));
+}
+
+function event_o_format_image_credit_text(string $credit): string
+{
+    $credit = trim($credit);
+    if ($credit === '') {
+        return '';
+    }
+
+    if (preg_match('/^(picture|photo|image|bild)\s+by\s+/i', $credit)) {
+        return $credit;
+    }
+
+    return sprintf(__('Picture by %s', 'event-o'), $credit);
+}
+
+function event_o_render_event_image_crossfade(array $images, string $wrapperClass, string $imgClass = '', string $alt = ''): string
+{
+    if (empty($images)) {
+        return '';
+    }
+
+    $normalizedImages = [];
+    foreach ($images as $image) {
+        $url = is_array($image) ? (string) ($image['url'] ?? '') : (string) $image;
+        if ($url === '') {
+            continue;
+        }
+
+        $normalizedImages[] = [
+            'url' => $url,
+            'credit' => is_array($image) ? (string) ($image['credit'] ?? '') : '',
+        ];
+    }
+
+    if (empty($normalizedImages)) {
         return '';
     }
 
     $wrapperClass = trim($wrapperClass . ' event-o-crossfade');
     $out = '<div class="' . esc_attr($wrapperClass) . '"';
-    if (count($urls) > 1) {
+    if (count($normalizedImages) > 1) {
         $out .= ' data-event-o-crossfade="1" data-crossfade-interval="4500"';
     }
     $out .= '>';
 
-    foreach ($urls as $index => $url) {
+    $firstCredit = '';
+    $hasCredit = false;
+    foreach ($normalizedImages as $index => $image) {
+        $credit = $image['credit'];
+        if ($credit !== '') {
+            $hasCredit = true;
+            if ($firstCredit === '') {
+                $firstCredit = $credit;
+            }
+        }
         $slideClass = trim('event-o-crossfade-slide ' . $imgClass . ($index === 0 ? ' is-active' : ''));
         $loading = $index === 0 ? 'eager' : 'lazy';
-        $out .= '<img src="' . esc_url($url) . '" alt="' . esc_attr($alt) . '" class="' . esc_attr($slideClass) . '" loading="' . esc_attr($loading) . '">';
+        $out .= '<img src="' . esc_url($image['url']) . '" alt="' . esc_attr($alt) . '" class="' . esc_attr($slideClass) . '" loading="' . esc_attr($loading) . '"';
+        if ($credit !== '') {
+            $out .= ' data-credit="' . esc_attr($credit) . '"';
+        }
+        $out .= '>';
+    }
+
+    if ($hasCredit) {
+        $out .= '<span class="event-o-image-credit">' . esc_html(event_o_format_image_credit_text($firstCredit)) . '</span>';
     }
 
     $out .= '</div>';
     return $out;
 }
 
-function event_o_render_event_bg_crossfade(array $urls, string $wrapperClass = 'event-o-hero-bg'): string
+function event_o_render_event_bg_crossfade(array $images, string $wrapperClass = 'event-o-hero-bg'): string
 {
-    if (empty($urls)) {
+    if (empty($images)) {
         return '<div class="' . esc_attr($wrapperClass) . ' event-o-hero-bg-placeholder"></div>';
     }
 
-    if (count($urls) === 1) {
-        return '<div class="' . esc_attr($wrapperClass) . '" style="background-image: url(\'' . esc_url($urls[0]) . '\');"></div>';
+    $normalizedImages = [];
+    foreach ($images as $image) {
+        $url = is_array($image) ? (string) ($image['url'] ?? '') : (string) $image;
+        if ($url === '') {
+            continue;
+        }
+
+        $normalizedImages[] = [
+            'url' => $url,
+            'credit' => is_array($image) ? (string) ($image['credit'] ?? '') : '',
+        ];
+    }
+
+    if (empty($normalizedImages)) {
+        return '<div class="' . esc_attr($wrapperClass) . ' event-o-hero-bg-placeholder"></div>';
+    }
+
+    $firstCredit = '';
+    $hasCredit = false;
+    foreach ($normalizedImages as $image) {
+        if ($image['credit'] !== '') {
+            $hasCredit = true;
+            $firstCredit = $image['credit'];
+            break;
+        }
+    }
+
+    if (count($normalizedImages) === 1) {
+        $out = '<div class="' . esc_attr($wrapperClass) . '" style="background-image: url(\'' . esc_url($normalizedImages[0]['url']) . '\');"></div>';
+        if ($hasCredit) {
+            $out .= '<span class="event-o-image-credit">' . esc_html(event_o_format_image_credit_text($firstCredit)) . '</span>';
+        }
+        return $out;
     }
 
     $out = '<div class="' . esc_attr($wrapperClass) . ' event-o-bg-crossfade" data-event-o-crossfade="1" data-crossfade-interval="5000">';
-    foreach ($urls as $index => $url) {
+    foreach ($normalizedImages as $index => $image) {
         $slideClass = 'event-o-crossfade-slide event-o-bg-crossfade-slide' . ($index === 0 ? ' is-active' : '');
-        $out .= '<div class="' . esc_attr($slideClass) . '" style="background-image: url(\'' . esc_url($url) . '\');"></div>';
+        $out .= '<div class="' . esc_attr($slideClass) . '" style="background-image: url(\'' . esc_url($image['url']) . '\');"';
+        if ($image['credit'] !== '') {
+            $out .= ' data-credit="' . esc_attr($image['credit']) . '"';
+        }
+        $out .= '></div>';
     }
     $out .= '</div>';
+    if ($hasCredit) {
+        $out .= '<span class="event-o-image-credit">' . esc_html(event_o_format_image_credit_text($firstCredit)) . '</span>';
+    }
 
     return $out;
 }

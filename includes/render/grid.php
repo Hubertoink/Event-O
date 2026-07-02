@@ -109,7 +109,7 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
             $out .= event_o_render_highlight_badge($highlightColor);
         }
         if ($showImage) {
-            $imageUrls = event_o_get_event_image_urls($postId, 'large');
+            $imageUrls = event_o_get_event_images($postId, 'large');
             if (!empty($imageUrls)) {
                 $out .= event_o_render_event_image_crossfade($imageUrls, 'event-o-grid-fade', 'event-o-grid-img', $title);
                 if ($excerpt !== '') {

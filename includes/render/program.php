@@ -195,7 +195,7 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
         }
 
         if ($showImage) {
-            $imageUrls = event_o_get_event_image_urls($postId, 'medium_large');
+            $imageUrls = event_o_get_event_images($postId, 'medium_large');
         }
         if ($showImage && !empty($imageUrls)) {
             $out .= '<div class="event-o-program-image">';

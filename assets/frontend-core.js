@@ -593,7 +593,10 @@
                 '</button>',
                 '<figure class="event-o-lightbox-figure">',
                 '<img class="event-o-lightbox-image" alt="">',
-                '<figcaption class="event-o-lightbox-caption"></figcaption>',
+                '<figcaption class="event-o-lightbox-caption">',
+                '<span class="event-o-lightbox-caption-title"></span>',
+                '<span class="event-o-lightbox-credit"></span>',
+                '</figcaption>',
                 '</figure>',
                 '<button type="button" class="event-o-lightbox-nav event-o-lightbox-next" aria-label="Naechstes Bild">',
                 '<span aria-hidden="true">&rsaquo;</span>',
@@ -605,6 +608,8 @@
             var dialog = overlay.querySelector('.event-o-lightbox-dialog');
             var image = overlay.querySelector('.event-o-lightbox-image');
             var caption = overlay.querySelector('.event-o-lightbox-caption');
+            var captionTitle = overlay.querySelector('.event-o-lightbox-caption-title');
+            var credit = overlay.querySelector('.event-o-lightbox-credit');
             var prevButton = overlay.querySelector('.event-o-lightbox-prev');
             var nextButton = overlay.querySelector('.event-o-lightbox-next');
             var currentGroup = [];
@@ -621,8 +626,20 @@
                 return {
                     src: item.src,
                     alt: item.alt || '',
-                    caption: item.caption || item.alt || ''
+                    caption: item.caption || item.alt || '',
+                    credit: item.credit || ''
                 };
+            }
+
+            function formatCredit(value) {
+                var clean = (value || '').trim();
+                if (!clean) return '';
+
+                if (/^(picture|photo|image|bild)\s+by\s+/i.test(clean)) {
+                    return clean;
+                }
+
+                return 'Picture by ' + clean;
             }
 
             function updateView() {
@@ -631,8 +648,9 @@
 
                 image.src = item.src;
                 image.alt = item.alt || '';
-                caption.textContent = item.caption || '';
-                caption.hidden = caption.textContent === '';
+                captionTitle.textContent = item.caption || '';
+                credit.textContent = formatCredit(item.credit || '');
+                caption.hidden = captionTitle.textContent === '' && credit.textContent === '';
 
                 var hasMultiple = currentGroup.length > 1;
                 prevButton.hidden = !hasMultiple;
@@ -755,7 +773,8 @@
                 return {
                     src: img.currentSrc || img.getAttribute('src') || '',
                     alt: img.getAttribute('alt') || '',
-                    caption: img.getAttribute('alt') || ''
+                    caption: img.getAttribute('alt') || '',
+                    credit: img.getAttribute('data-credit') || ''
                 };
             }).filter(function (item) {
                 return item.src !== '';
@@ -792,7 +811,8 @@
                     return {
                         src: img.currentSrc || img.getAttribute('src') || '',
                         alt: img.getAttribute('alt') || '',
-                        caption: img.getAttribute('alt') || ''
+                        caption: img.getAttribute('alt') || '',
+                        credit: img.getAttribute('data-credit') || ''
                     };
                 }).filter(function (item) {
                     return item.src !== '';
@@ -836,7 +856,8 @@
                     return [{
                         src: parentLink && lightbox.isLikelyImageUrl(parentLink.getAttribute('href') || '') ? parentLink.getAttribute('href') : src,
                         alt: img.getAttribute('alt') || '',
-                        caption: img.getAttribute('alt') || ''
+                        caption: img.getAttribute('alt') || '',
+                        credit: img.getAttribute('data-credit') || ''
                     }];
                 }, function () {
                     return 0;

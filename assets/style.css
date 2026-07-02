@@ -883,6 +883,31 @@
     pointer-events: auto;
 }
 
+.event-o-image-credit{
+    position: absolute;
+    right: 8px;
+    bottom: 7px;
+    z-index: 4;
+    max-width: calc(100% - 16px);
+    padding: 2px 5px;
+    border-radius: 2px;
+    background: rgba(0,0,0,0.34);
+    color: rgba(255,255,255,0.88);
+    font-size: 10px;
+    line-height: 1.25;
+    text-align: right;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.65);
+    pointer-events: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.event-o-image-credit:empty,
+.event-o-image-credit[hidden]{
+    display: none;
+}
+
 .event-o-bg-crossfade{
     position: absolute;
     inset: 0;
@@ -1904,6 +1929,12 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
     height: 100%;
 }
 
+.event-o-single-hero .event-o-image-credit{
+    right: 14px;
+    bottom: 12px;
+    z-index: 3;
+}
+
 .event-o-lightbox-open{
     overflow: hidden;
 }
@@ -1988,10 +2019,35 @@ body:not(.block-editor-page) [data-animation]:not([data-animation="none"]) .eo-b
     font-size: 14px;
     line-height: 1.5;
     pointer-events: auto;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
-.event-o-lightbox-caption:empty{
+.event-o-lightbox-caption[hidden]{
     display: none;
+}
+
+.event-o-lightbox-caption-title:empty,
+.event-o-lightbox-credit:empty{
+    display: none;
+}
+
+.event-o-lightbox-credit{
+    color: rgba(255,255,255,0.68);
+    font-size: 12px;
+}
+
+.event-o-lightbox-caption-title:not(:empty) + .event-o-lightbox-credit:not(:empty)::before{
+    content: '';
+    display: inline-block;
+    width: 1px;
+    height: 1em;
+    margin-right: 10px;
+    vertical-align: -0.15em;
+    background: rgba(255,255,255,0.32);
 }
 
 .event-o-lightbox-nav{

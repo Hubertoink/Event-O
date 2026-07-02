@@ -110,7 +110,7 @@ function event_o_render_event_carousel_block(array $attrs, string $content = '',
         $excerpt = wp_trim_words(wp_strip_all_tags((string) $excerptSource), $hoverExcerptWords, '...');
 
         if ($showImage) {
-            $imageUrls = event_o_get_event_image_urls($postId, 'large');
+            $imageUrls = event_o_get_event_images($postId, 'large');
             if (!empty($imageUrls)) {
                 $out .= '<div class="event-o-card-media-wrap">';
                 $out .= $badgeHtml;

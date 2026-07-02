@@ -159,7 +159,7 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
 
         $openAttr = ($openFirst && $index === 0) ? ' open' : '';
         $filterDataAttrs = $showFilters ? event_o_get_filter_data_attrs($postId) : '';
-        $imageUrls = $showImage ? event_o_get_event_image_urls($postId, 'large') : [];
+        $images = $showImage ? event_o_get_event_images($postId, 'large') : [];
 
         $isHighlighted = $showHighlightBadge && event_o_is_event_highlight_active($postId);
         $isToday = event_o_is_event_today($postId, $tz);
@@ -320,12 +320,12 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
         $out .= '</aside>';
         $out .= '<div class="event-o-main">';
 
-        if (!empty($imageUrls)) {
+        if (!empty($images)) {
             $out .= '<div class="event-o-featured-image-wrap">';
             if ($isHighlighted) {
                 $out .= event_o_render_highlight_badge($highlightColor);
             }
-            $out .= event_o_render_event_image_crossfade($imageUrls, 'event-o-featured-image', '', $title);
+            $out .= event_o_render_event_image_crossfade($images, 'event-o-featured-image', '', $title);
             $out .= '</div>';
         } elseif ($isHighlighted) {
             $out .= '<div class="event-o-list-highlight-fallback">' . event_o_render_highlight_badge($highlightColor) . '</div>';

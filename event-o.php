@@ -54,6 +54,7 @@ require_once EVENT_O_PLUGIN_DIR . 'includes/blocks.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/assets.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/template.php';
 require_once EVENT_O_PLUGIN_DIR . 'includes/ical-download.php';
+require_once EVENT_O_PLUGIN_DIR . 'includes/social-meta.php';
 
 function event_o_load_translations(): void
 {

@@ -156,7 +156,7 @@ function event_o_save_category_color(int $termId): void
         return;
     }
 
-    $color = sanitize_hex_color($_POST['event_o_category_color']);
+    $color = sanitize_hex_color(wp_unslash($_POST['event_o_category_color']));
     if ($color) {
         update_term_meta($termId, 'event_o_category_color', $color);
     } else {

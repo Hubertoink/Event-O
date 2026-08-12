@@ -2,8 +2,8 @@
 
 A modern WordPress plugin for event management with beautiful Gutenberg blocks.
 
-![WordPress](https://img.shields.io/badge/WordPress-5.9+-blue.svg)
-![PHP](https://img.shields.io/badge/PHP-7.4+-purple.svg)
+![WordPress](https://img.shields.io/badge/WordPress-6.2+-blue.svg)
+![PHP](https://img.shields.io/badge/PHP-8.2+-purple.svg)
 ![License](https://img.shields.io/badge/License-GPL--2.0+-green.svg)
 
 ## Features
@@ -94,8 +94,8 @@ Navigate to **Settings → Event_O** in your WordPress admin:
 
 ## Requirements
 
-- WordPress 5.9+
-- PHP 7.4+
+- WordPress 6.2+
+- PHP 8.2+
 
 ## Screenshots
 

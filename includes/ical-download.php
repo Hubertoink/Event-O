@@ -51,7 +51,7 @@ function event_o_handle_ical_download(): void
     
     $post = get_post($postId);
     
-    if (!$post || $post->post_type !== 'event_o_event' || $post->post_status !== 'publish') {
+    if (!$post || $post->post_type !== 'event_o_event' || $post->post_status !== 'publish' || post_password_required($post)) {
         wp_die(__('Event nicht gefunden.', 'event-o'), 404);
     }
     
@@ -242,10 +242,11 @@ function event_o_handle_ical_feed(): void
     $args = [
         'post_type'      => 'event_o_event',
         'post_status'    => 'publish',
-        'posts_per_page' => -1,
+        'posts_per_page' => event_o_get_public_event_limit(),
         'meta_key'       => EVENT_O_META_START_TS,
         'orderby'        => 'meta_value_num',
         'order'          => 'ASC',
+        'has_password'   => false,
     ];
     $q = new WP_Query($args);
     $tz = wp_timezone();

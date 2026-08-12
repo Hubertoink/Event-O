@@ -24,7 +24,7 @@ function event_o_render_event_hero_block(array $attrs, string $content = '', WP_
     $descWordLimit = isset($attrs['descWordLimit']) ? max(5, min(60, (int) $attrs['descWordLimit'])) : 20;
     $showButton = !array_key_exists('showButton', $attrs) || !empty($attrs['showButton']);
     $buttonStyle = isset($attrs['buttonStyle']) ? $attrs['buttonStyle'] : 'rounded';
-    $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? $attrs['accentColor'] : '';
+    $accentColor = isset($attrs['accentColor']) ? event_o_sanitize_css_color((string) $attrs['accentColor']) : '';
     $heroHeight = isset($attrs['heroHeight']) ? max(520, min(720, (int) $attrs['heroHeight'])) : 520;
     $overlayColor = isset($attrs['overlayColor']) && $attrs['overlayColor'] === 'white' ? 'white' : 'black';
     $autoPlay = !isset($attrs['autoPlay']) || !empty($attrs['autoPlay']);

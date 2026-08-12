@@ -8,16 +8,16 @@ function event_o_render_event_calendar_block(array $attrs, string $content = '',
 {
     event_o_ensure_frontend_assets();
 
-    $theme = isset($attrs['theme']) ? (string) $attrs['theme'] : 'auto';
+    $theme = isset($attrs['theme']) && in_array($attrs['theme'], ['auto', 'light', 'dark'], true) ? (string) $attrs['theme'] : 'auto';
     $desktopPopupMatrix = isset($attrs['desktopPopupMatrix']) ? (string) $attrs['desktopPopupMatrix'] : '3x3';
     if (!in_array($desktopPopupMatrix, ['3x3', '3x2'], true)) {
         $desktopPopupMatrix = '3x3';
     }
-    $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? (string) $attrs['accentColor'] : '#4f6b3a';
-    $calBgLight = isset($attrs['calendarBgLight']) ? (string) $attrs['calendarBgLight'] : '#f3f5f7';
-    $calBgDark = isset($attrs['calendarBgDark']) ? (string) $attrs['calendarBgDark'] : '#10141a';
-    $dayBgLight = isset($attrs['dayBgLight']) ? (string) $attrs['dayBgLight'] : '#ffffff';
-    $dayBgDark = isset($attrs['dayBgDark']) ? (string) $attrs['dayBgDark'] : '#1b2330';
+    $accentColor = event_o_sanitize_css_color((string) ($attrs['accentColor'] ?? ''), '#4f6b3a');
+    $calBgLight = event_o_sanitize_css_color((string) ($attrs['calendarBgLight'] ?? ''), '#f3f5f7');
+    $calBgDark = event_o_sanitize_css_color((string) ($attrs['calendarBgDark'] ?? ''), '#10141a');
+    $dayBgLight = event_o_sanitize_css_color((string) ($attrs['dayBgLight'] ?? ''), '#ffffff');
+    $dayBgDark = event_o_sanitize_css_color((string) ($attrs['dayBgDark'] ?? ''), '#1b2330');
     $weekStart = !empty($attrs['weekStartsMonday']) ? '1' : '0';
     $popupBlur = !isset($attrs['popupBlur']) || !empty($attrs['popupBlur']) ? '1' : '0';
     $showSubscribe = !isset($attrs['showSubscribe']) || !empty($attrs['showSubscribe']);
@@ -55,10 +55,11 @@ function event_o_render_event_calendar_block(array $attrs, string $content = '',
     $queryArgs = [
         'post_type' => 'event_o_event',
         'post_status' => 'publish',
-        'posts_per_page' => -1,
+        'posts_per_page' => event_o_get_public_event_limit(),
         'meta_key' => EVENT_O_META_START_TS,
         'orderby' => 'meta_value_num',
         'order' => 'ASC',
+        'has_password' => false,
     ];
 
     if (count($taxQuery) > 1) {

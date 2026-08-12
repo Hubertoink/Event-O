@@ -19,7 +19,7 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
         $queryAttrs['sortOrder'] = $pastEventsFirst ? 'DESC' : 'ASC';
     }
 
-    $q = new WP_Query(event_o_get_event_query_args($queryAttrs, -1));
+    $q = new WP_Query(event_o_get_event_query_args($queryAttrs, event_o_get_public_event_limit()));
     $allPosts = event_o_filter_event_posts($q->posts, $queryAttrs, -1);
 
     if ($showPastHeading) {
@@ -72,7 +72,7 @@ function event_o_render_event_list_block(array $attrs, string $content = '', WP_
     $showHighlightBadge = !empty($attrs['showHighlightBadge']);
     $highlightColor = event_o_get_highlight_badge_style_value($attrs);
 
-    $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? $attrs['accentColor'] : '';
+    $accentColor = isset($attrs['accentColor']) ? event_o_sanitize_css_color((string) $attrs['accentColor']) : '';
     $styleAttr = $accentColor !== '' ? ' style="--event-o-block-accent:' . esc_attr($accentColor) . ';"' : '';
     $singleOpenAttr = ' data-single-open="' . ($singleOpen ? '1' : '0') . '"';
     $animationType = isset($attrs['animation']) ? $attrs['animation'] : 'none';

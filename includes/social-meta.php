@@ -15,7 +15,7 @@ function event_o_output_social_meta(): void
     }
 
     $postId = get_queried_object_id();
-    if ($postId <= 0 || !has_post_thumbnail($postId)) {
+    if ($postId <= 0 || post_password_required($postId) || !has_post_thumbnail($postId)) {
         return;
     }
 

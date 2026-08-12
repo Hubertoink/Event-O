@@ -3,8 +3,8 @@ Contributors: hubertoink
 Tags: events, gutenberg, blocks
 Requires at least: 6.2
 Tested up to: 6.5
-Requires PHP: 7.4
-Stable tag: 1.1.1
+Requires PHP: 8.2
+Stable tag: 1.1.2
 License: GPLv2 or later
 
 A clean event management plugin with Gutenberg blocks (list/accordion + carousel).
@@ -31,6 +31,11 @@ Event_O provides:
 Not in v0.1.0.
 
 == Changelog ==
+
+= 1.1.2 =
+- Hardened contributor permissions and REST taxonomy validation.
+- Limited public event queries and excluded password-protected events from public feeds and blocks.
+- Raised the minimum PHP version to a maintained release line.
 
 = 0.8.0 =
 - Show price in Event List sidebar (when set)

@@ -3,15 +3,17 @@
  * Event-O Capabilities, Category Restrictions & Review Workflow.
  *
  * Custom capabilities:
- *   edit_event_o_event, edit_event_o_events, edit_others_event_o_events,
- *   publish_event_o_events, read_event_o_event, read_private_event_o_events,
- *   delete_event_o_event, delete_event_o_events, delete_others_event_o_events,
+ *   edit_event_o_events, edit_others_event_o_events,
+ *   publish_event_o_events, read_private_event_o_events,
+ *   delete_event_o_events, delete_others_event_o_events,
  *   delete_published_event_o_events, delete_private_event_o_events,
- *   edit_published_event_o_events, edit_private_event_o_events
+ *   edit_published_event_o_events, edit_private_event_o_events,
+ *   event_o_edit_scoped_events
  *
  * Roles:
  *   event_o_contributor – can create & edit own events but NOT publish (pending review).
- *                          Optionally restricted to specific taxonomy terms via user-meta.
+ *                          It may also edit non-owned events within its configured
+ *                          taxonomy scope via event_o_edit_scoped_events.
  */
 
 if (!defined('ABSPATH')) {
@@ -28,10 +30,6 @@ if (!defined('ABSPATH')) {
 function event_o_get_all_caps(): array
 {
     return [
-        // Primitive / meta caps
-        'edit_event_o_event'             => true,
-        'read_event_o_event'             => true,
-        'delete_event_o_event'           => true,
         // Plural / type caps
         'edit_event_o_events'            => true,
         'edit_others_event_o_events'     => true,
@@ -43,6 +41,8 @@ function event_o_get_all_caps(): array
         'delete_others_event_o_events'   => true,
         'delete_published_event_o_events'=> true,
         'delete_private_event_o_events'  => true,
+        // Explicit capability for the optional taxonomy-scoped cross-edit workflow.
+        'event_o_edit_scoped_events'     => true,
     ];
 }
 
@@ -52,11 +52,9 @@ function event_o_get_all_caps(): array
 function event_o_get_contributor_caps(): array
 {
     return [
-        'edit_event_o_event'    => true,
-        'read_event_o_event'    => true,
-        'delete_event_o_event'  => true,
         'edit_event_o_events'   => true,
         'delete_event_o_events' => true,
+        'event_o_edit_scoped_events' => true,
         'read'                  => true, // basic WP dashboard access
         'upload_files'          => true, // allow featured images
     ];
@@ -86,18 +84,59 @@ function event_o_assign_capabilities(): void
         }
     }
 
-    // Create custom contributor role
-    $existing = get_role('event_o_contributor');
-    if ($existing) {
-        remove_role('event_o_contributor');
+    // Meta capabilities must not be assigned directly. WordPress maps them to
+    // context-specific primitive capabilities such as edit_published_*.
+    $legacyDirectMetaCaps = [
+        'edit_event_o_event',
+        'read_event_o_event',
+        'delete_event_o_event',
+    ];
+
+    foreach (['administrator', 'editor'] as $roleName) {
+        $role = get_role($roleName);
+        if ($role) {
+            foreach ($legacyDirectMetaCaps as $cap) {
+                $role->remove_cap($cap);
+            }
+        }
     }
 
-    add_role(
-        'event_o_contributor',
-        __('Event-O Beitragende/r', 'event-o'),
-        event_o_get_contributor_caps()
-    );
+    // Create or update the custom contributor role without dropping unrelated
+    // role configuration added by a site administrator.
+    $contributor = get_role('event_o_contributor');
+    if (!$contributor) {
+        add_role(
+            'event_o_contributor',
+            __('Event-O Beitragende/r', 'event-o'),
+            event_o_get_contributor_caps()
+        );
+        $contributor = get_role('event_o_contributor');
+    }
+
+    if ($contributor) {
+        foreach (event_o_get_contributor_caps() as $cap => $grant) {
+            $contributor->add_cap($cap, $grant);
+        }
+        foreach ($legacyDirectMetaCaps as $cap) {
+            $contributor->remove_cap($cap);
+        }
+    }
 }
+
+/**
+ * Apply capability migrations when an existing plugin installation is updated.
+ */
+function event_o_maybe_update_capabilities(): void
+{
+    $schemaVersion = (int) get_option('event_o_capability_schema_version', 0);
+    if ($schemaVersion >= 2) {
+        return;
+    }
+
+    event_o_assign_capabilities();
+    update_option('event_o_capability_schema_version', 2, false);
+}
+add_action('init', 'event_o_maybe_update_capabilities', 1);
 
 /**
  * Remove capabilities on plugin deactivation.
@@ -112,10 +151,14 @@ function event_o_remove_capabilities(): void
             foreach ($allCaps as $cap => $grant) {
                 $role->remove_cap($cap);
             }
+            foreach (['edit_event_o_event', 'read_event_o_event', 'delete_event_o_event'] as $legacyCap) {
+                $role->remove_cap($legacyCap);
+            }
         }
     }
 
     remove_role('event_o_contributor');
+    delete_option('event_o_capability_schema_version');
 }
 
 /* ──────────────────────────────────────────────
@@ -442,29 +485,10 @@ add_filter('manage_users_custom_column', 'event_o_render_users_event_column', 10
 /**
  * On save_post, enforce category restriction for event_o_contributor users.
  */
-function event_o_enforce_category_restriction(int $postId, \WP_Post $post, bool $update): void
+function event_o_restrict_contributor_event_terms(int $postId, int $userId): void
 {
-    if ($post->post_type !== 'event_o_event') {
-        return;
-    }
-
-    // Don't run during autosave or REST schema requests
-    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) {
-        return;
-    }
-
-    $user = wp_get_current_user();
-    if (!$user || !$user->exists()) {
-        return;
-    }
-
-    // Only restrict event_o_contributor role
-    if (!in_array('event_o_contributor', (array) $user->roles, true)) {
-        return;
-    }
-
     foreach (['event_o_category', 'event_o_venue', 'event_o_organizer'] as $taxonomy) {
-        $allowed = event_o_get_user_allowed_term_slugs((int) $user->ID, $taxonomy);
+        $allowed = event_o_get_user_allowed_term_slugs($userId, $taxonomy);
         if (empty($allowed)) {
             continue; // No restriction set → allow all
         }
@@ -483,6 +507,20 @@ function event_o_enforce_category_restriction(int $postId, \WP_Post $post, bool 
 
         wp_set_object_terms($postId, $validTerms, $taxonomy);
     }
+}
+
+function event_o_enforce_category_restriction(int $postId, \WP_Post $post, bool $update): void
+{
+    if ($post->post_type !== 'event_o_event' || (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE)) {
+        return;
+    }
+
+    $user = wp_get_current_user();
+    if (!$user || !$user->exists() || !in_array('event_o_contributor', (array) $user->roles, true)) {
+        return;
+    }
+
+    event_o_restrict_contributor_event_terms($postId, (int) $user->ID);
 }
 add_action('save_post', 'event_o_enforce_category_restriction', 20, 3);
 
@@ -533,6 +571,75 @@ function event_o_filter_organizer_terms(array $args, \WP_REST_Request $request):
     return event_o_filter_allowed_terms_for_rest($args, 'event_o_organizer');
 }
 add_filter('rest_event_o_organizer_query', 'event_o_filter_organizer_terms', 10, 2);
+
+/**
+ * Reject forged REST requests that try to assign terms outside a contributor's
+ * configured scope. Filtering the term list is only a UI convenience; this is
+ * the actual access-control check.
+ */
+function event_o_validate_rest_event_terms($preparedPost, \WP_REST_Request $request)
+{
+    $user = wp_get_current_user();
+    if (!$user || !in_array('event_o_contributor', (array) $user->roles, true)) {
+        return $preparedPost;
+    }
+
+    foreach (['event_o_category', 'event_o_venue', 'event_o_organizer'] as $taxonomy) {
+        if (!$request->has_param($taxonomy)) {
+            continue;
+        }
+
+        $allowedSlugs = event_o_get_user_allowed_term_slugs((int) $user->ID, $taxonomy);
+        if (empty($allowedSlugs)) {
+            continue;
+        }
+
+        $termIds = array_values(array_unique(array_filter(array_map('absint', (array) $request->get_param($taxonomy)))));
+        if (empty($termIds)) {
+            continue;
+        }
+
+        $terms = get_terms([
+            'taxonomy' => $taxonomy,
+            'include' => $termIds,
+            'hide_empty' => false,
+        ]);
+        if (is_wp_error($terms) || count($terms) !== count($termIds)) {
+            return new \WP_Error(
+                'event_o_rest_invalid_term',
+                __('Ein angegebener Event-O Begriff ist ungültig.', 'event-o'),
+                ['status' => 400]
+            );
+        }
+
+        foreach ($terms as $term) {
+            if (!in_array($term->slug, $allowedSlugs, true)) {
+                return new \WP_Error(
+                    'event_o_rest_term_not_allowed',
+                    __('Du darfst diesen Event-O Begriff nicht verwenden.', 'event-o'),
+                    ['status' => 403]
+                );
+            }
+        }
+    }
+
+    return $preparedPost;
+}
+add_filter('rest_pre_insert_event_o_event', 'event_o_validate_rest_event_terms', 10, 2);
+
+/**
+ * Defence in depth for REST writes: terms are applied after save_post by core.
+ */
+function event_o_enforce_rest_event_term_restriction(\WP_Post $post, \WP_REST_Request $request, bool $creating): void
+{
+    $user = wp_get_current_user();
+    if (!$user || !in_array('event_o_contributor', (array) $user->roles, true)) {
+        return;
+    }
+
+    event_o_restrict_contributor_event_terms((int) $post->ID, (int) $user->ID);
+}
+add_action('rest_after_insert_event_o_event', 'event_o_enforce_rest_event_term_restriction', 10, 3);
 
 /**
  * Also filter the classic editor / admin taxonomy checklist.
@@ -653,7 +760,7 @@ function event_o_map_meta_cap_scoped_edit(array $caps, string $cap, int $userId,
         return $caps;
     }
 
-    return ['edit_event_o_event'];
+    return ['event_o_edit_scoped_events'];
 }
 add_filter('map_meta_cap', 'event_o_map_meta_cap_scoped_edit', 20, 4);
 

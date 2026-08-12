@@ -128,7 +128,7 @@ function event_o_extend_search_with_taxonomies(string $searchSql, \WP_Query $que
         return $searchSql;
     }
 
-    $rawSearch = trim((string) $query->get('s'));
+    $rawSearch = trim(substr((string) $query->get('s'), 0, 200));
     if ($rawSearch === '') {
         return $searchSql;
     }
@@ -142,6 +142,7 @@ function event_o_extend_search_with_taxonomies(string $searchSql, \WP_Query $que
     $tokens = array_values(array_unique(array_filter(array_map('trim', $tokens), static function ($token) {
         return $token !== '';
     })));
+    $tokens = array_slice($tokens, 0, 8);
 
     if (!$tokens) {
         return $searchSql;
@@ -175,9 +176,7 @@ function event_o_extend_search_with_taxonomies(string $searchSql, \WP_Query $que
         $preparedArgs
     );
 
-    if (!is_user_logged_in()) {
-        $taxonomyExistsSql = '(' . $taxonomyExistsSql . " AND {$wpdb->posts}.post_password = '')";
-    }
+    $taxonomyExistsSql = '(' . $taxonomyExistsSql . " AND {$wpdb->posts}.post_password = '')";
 
     $searchBody = preg_replace('/^\s*AND\s*/', '', $searchSql, 1);
     if (!is_string($searchBody) || trim($searchBody) === '') {

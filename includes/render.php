@@ -12,6 +12,38 @@ function event_o_parse_slug_list(string $raw): array
 }
 
 /**
+ * Upper bound for public event collections. Sites with a very large archive
+ * can raise this deliberately rather than exposing unbounded queries.
+ */
+function event_o_get_public_event_limit(): int
+{
+    $limit = (int) apply_filters('event_o_public_event_limit', 500);
+    return max(50, min(1000, $limit));
+}
+
+/**
+ * Block attributes are stored content and must be treated as untrusted CSS.
+ */
+function event_o_sanitize_css_color(string $value, string $fallback = ''): string
+{
+    $color = sanitize_hex_color(trim($value));
+    return $color ?: $fallback;
+}
+
+function event_o_sanitize_css_gradient(string $value): string
+{
+    $value = trim($value);
+    if (
+        !preg_match('/^(?:linear|radial|conic)-gradient\\([a-zA-Z0-9#%(),.\\s+\\-]+\\)$/', $value)
+        || strlen($value) > 500
+    ) {
+        return '';
+    }
+
+    return $value;
+}
+
+/**
  * Collect taxonomy terms from queried posts for filter dropdowns.
  */
 function event_o_collect_filter_terms(WP_Query $q, array $attrs): array
@@ -425,7 +457,7 @@ function event_o_sort_event_posts(array $posts, array $attrs): array
 
 function event_o_get_event_query_args(array $attrs, ?int $postsPerPage = null): array
 {
-    $perPage = isset($attrs['perPage']) ? max(1, (int) $attrs['perPage']) : 10;
+    $perPage = isset($attrs['perPage']) ? max(1, min(event_o_get_public_event_limit(), (int) $attrs['perPage'])) : 10;
     $showPast = !empty($attrs['showPast']);
     $order = $showPast ? 'DESC' : 'ASC';
 
@@ -465,13 +497,19 @@ function event_o_get_event_query_args(array $attrs, ?int $postsPerPage = null): 
         ];
     }
 
+    $requestedPostsPerPage = $postsPerPage !== null ? $postsPerPage : $perPage;
+    if ($requestedPostsPerPage <= 0) {
+        $requestedPostsPerPage = event_o_get_public_event_limit();
+    }
+
     $args = [
         'post_type' => 'event_o_event',
         'post_status' => 'publish',
-        'posts_per_page' => $postsPerPage !== null ? $postsPerPage : $perPage,
+        'posts_per_page' => min($requestedPostsPerPage, event_o_get_public_event_limit()),
         'meta_key' => EVENT_O_META_START_TS,
         'orderby' => 'meta_value_num',
         'order' => $order,
+        'has_password' => false,
     ];
 
     if (!$showPast) {
@@ -487,7 +525,7 @@ function event_o_get_event_query_args(array $attrs, ?int $postsPerPage = null): 
 
 function event_o_event_query(array $attrs): WP_Query
 {
-    $query = new WP_Query(event_o_get_event_query_args($attrs, -1));
+    $query = new WP_Query(event_o_get_event_query_args($attrs, event_o_get_public_event_limit()));
     $filteredPosts = event_o_filter_event_posts($query->posts, $attrs, -1);
     $filteredPosts = event_o_sort_event_posts($filteredPosts, $attrs);
 
@@ -520,11 +558,12 @@ function event_o_is_event_highlight_active(int $postId): bool
 function event_o_get_highlight_badge_style_value(array $attrs): string
 {
     $gradient = isset($attrs['highlightGradient']) ? trim((string) $attrs['highlightGradient']) : '';
+    $gradient = event_o_sanitize_css_gradient($gradient);
     if ($gradient !== '') {
         return $gradient;
     }
 
-    return isset($attrs['highlightColor']) ? trim((string) $attrs['highlightColor']) : '';
+    return isset($attrs['highlightColor']) ? event_o_sanitize_css_color((string) $attrs['highlightColor']) : '';
 }
 
 function event_o_is_event_today(int $postId, ?DateTimeZone $timezone = null): bool
@@ -574,7 +613,7 @@ function event_o_get_hero_display_posts(array $attrs): array
     $perPage = isset($attrs['perPage']) ? max(1, (int) $attrs['perPage']) : 5;
     $onePerCategory = !empty($attrs['onePerCategory']);
     $preferHighlights = !array_key_exists('preferHighlights', $attrs) || !empty($attrs['preferHighlights']);
-    $query = new WP_Query(event_o_get_event_query_args($attrs, -1));
+    $query = new WP_Query(event_o_get_event_query_args($attrs, event_o_get_public_event_limit()));
     $orderedPosts = event_o_filter_event_posts($query->posts, $attrs, -1);
     $orderedPosts = event_o_sort_event_posts($orderedPosts, $attrs);
 
@@ -1516,12 +1555,13 @@ function event_o_get_related_events(int $excludeId, int $limit = 4, int $categor
     $args = [
         'post_type' => 'event_o_event',
         'post_status' => 'publish',
-        'posts_per_page' => $limit,
+        'posts_per_page' => min($limit, event_o_get_public_event_limit()),
         'post__not_in' => [$excludeId],
         'meta_key' => EVENT_O_META_START_TS,
         'orderby' => 'meta_value_num',
         'order' => 'ASC',
         'meta_query' => event_o_get_upcoming_meta_query(),
+        'has_password' => false,
     ];
 
     if ($categoryTermId > 0) {

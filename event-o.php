@@ -2,19 +2,19 @@
 /**
  * Plugin Name:       Event_O
  * Description:       Clean event management (CPT + Gutenberg blocks: list/accordion + carousel).
- * Version:           1.1.1
+ * Version:           1.1.2
  * Author:            Hubertoink
  * Text Domain:       event-o
  * Domain Path:       /languages
  * Requires at least: 6.2
- * Requires PHP:      7.4
+ * Requires PHP:      8.2
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-define('EVENT_O_VERSION', '1.1.1');
+define('EVENT_O_VERSION', '1.1.2');
 define('EVENT_O_TEXT_DOMAIN', 'event-o');
 define('EVENT_O_PLUGIN_FILE', __FILE__);
 define('EVENT_O_PLUGIN_DIR', plugin_dir_path(__FILE__));
@@ -140,6 +140,7 @@ register_activation_hook(__FILE__, function (): void {
     event_o_register_taxonomies();
     event_o_register_ical_endpoint();
     event_o_assign_capabilities();
+    update_option('event_o_capability_schema_version', 2, false);
     flush_rewrite_rules();
 });
 

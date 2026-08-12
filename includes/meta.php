@@ -29,15 +29,27 @@ if (!defined('EVENT_O_META_START_TS')) {
     define('EVENT_O_LEGACY_META_STATUS', '_evento_status');
 }
 
+/**
+ * Authorize REST meta writes against the concrete event, not the broad
+ * edit_posts capability. The REST controller has already authenticated the
+ * request; this keeps direct meta capability checks equally strict.
+ */
+function event_o_can_edit_event_meta($allowed, string $metaKey, int $postId, int $userId, string $cap = '', array $caps = []): bool
+{
+    if (!in_array($cap, ['add_post_meta', 'edit_post_meta', 'delete_post_meta'], true)) {
+        return (bool) $allowed;
+    }
+
+    return $postId > 0 && user_can($userId, 'edit_post', $postId);
+}
+
 function event_o_register_meta(): void
 {
     $metaArgs = [
         'type' => 'integer',
         'single' => true,
         'show_in_rest' => true,
-        'auth_callback' => static function () {
-            return current_user_can('edit_posts');
-        },
+        'auth_callback' => 'event_o_can_edit_event_meta',
     ];
 
     register_post_meta('event_o_event', EVENT_O_META_START_TS, $metaArgs);
@@ -46,9 +58,7 @@ function event_o_register_meta(): void
         'type' => 'string',
         'single' => true,
         'show_in_rest' => true,
-        'auth_callback' => static function () {
-            return current_user_can('edit_posts');
-        },
+        'auth_callback' => 'event_o_can_edit_event_meta',
         'sanitize_callback' => 'sanitize_text_field',
     ]);
     register_post_meta('event_o_event', EVENT_O_META_START_TS_2, $metaArgs);
@@ -57,9 +67,7 @@ function event_o_register_meta(): void
         'type' => 'string',
         'single' => true,
         'show_in_rest' => true,
-        'auth_callback' => static function () {
-            return current_user_can('edit_posts');
-        },
+        'auth_callback' => 'event_o_can_edit_event_meta',
         'sanitize_callback' => 'sanitize_text_field',
     ]);
     register_post_meta('event_o_event', EVENT_O_META_START_TS_3, $metaArgs);
@@ -68,9 +76,7 @@ function event_o_register_meta(): void
         'type' => 'string',
         'single' => true,
         'show_in_rest' => true,
-        'auth_callback' => static function () {
-            return current_user_can('edit_posts');
-        },
+        'auth_callback' => 'event_o_can_edit_event_meta',
         'sanitize_callback' => 'sanitize_text_field',
     ]);
 
@@ -78,9 +84,7 @@ function event_o_register_meta(): void
         'type' => 'string',
         'single' => true,
         'show_in_rest' => true,
-        'auth_callback' => static function () {
-            return current_user_can('edit_posts');
-        },
+        'auth_callback' => 'event_o_can_edit_event_meta',
         'sanitize_callback' => 'sanitize_text_field',
     ]);
 
@@ -88,9 +92,7 @@ function event_o_register_meta(): void
         'type' => 'string',
         'single' => true,
         'show_in_rest' => true,
-        'auth_callback' => static function () {
-            return current_user_can('edit_posts');
-        },
+        'auth_callback' => 'event_o_can_edit_event_meta',
         'sanitize_callback' => 'sanitize_text_field',
     ]);
 
@@ -98,9 +100,7 @@ function event_o_register_meta(): void
         'type' => 'string',
         'single' => true,
         'show_in_rest' => true,
-        'auth_callback' => static function () {
-            return current_user_can('edit_posts');
-        },
+        'auth_callback' => 'event_o_can_edit_event_meta',
         'sanitize_callback' => 'sanitize_text_field',
     ]);
 
@@ -108,9 +108,7 @@ function event_o_register_meta(): void
         'type' => 'string',
         'single' => true,
         'show_in_rest' => true,
-        'auth_callback' => static function () {
-            return current_user_can('edit_posts');
-        },
+        'auth_callback' => 'event_o_can_edit_event_meta',
         'sanitize_callback' => 'sanitize_textarea_field',
     ]);
 
@@ -118,9 +116,7 @@ function event_o_register_meta(): void
         'type' => 'string',
         'single' => true,
         'show_in_rest' => true,
-        'auth_callback' => static function () {
-            return current_user_can('edit_posts');
-        },
+        'auth_callback' => 'event_o_can_edit_event_meta',
         'sanitize_callback' => 'sanitize_text_field',
     ]);
 
@@ -128,9 +124,7 @@ function event_o_register_meta(): void
         'type' => 'boolean',
         'single' => true,
         'show_in_rest' => true,
-        'auth_callback' => static function () {
-            return current_user_can('edit_posts');
-        },
+        'auth_callback' => 'event_o_can_edit_event_meta',
         'sanitize_callback' => 'rest_sanitize_boolean',
     ]);
 
@@ -140,9 +134,7 @@ function event_o_register_meta(): void
         'type' => 'integer',
         'single' => true,
         'show_in_rest' => true,
-        'auth_callback' => static function () {
-            return current_user_can('edit_posts');
-        },
+        'auth_callback' => 'event_o_can_edit_event_meta',
         'sanitize_callback' => 'absint',
     ]);
 }

@@ -212,18 +212,18 @@ add_action('event_o_organizer_edit_form_fields', 'event_o_organizer_edit_form_fi
 function event_o_save_organizer_meta($term_id): void
 {
     $fields = [
-        'event_o_phone' => EVENT_O_ORG_META_PHONE,
-        'event_o_email' => EVENT_O_ORG_META_EMAIL,
-        'event_o_website' => EVENT_O_ORG_META_WEBSITE,
-        'event_o_instagram' => EVENT_O_ORG_META_INSTAGRAM,
-        'event_o_facebook' => EVENT_O_ORG_META_FACEBOOK,
-        'event_o_logo' => EVENT_O_ORG_META_LOGO,
+        'event_o_phone' => [EVENT_O_ORG_META_PHONE, 'sanitize_text_field'],
+        'event_o_email' => [EVENT_O_ORG_META_EMAIL, 'sanitize_email'],
+        'event_o_website' => [EVENT_O_ORG_META_WEBSITE, 'esc_url_raw'],
+        'event_o_instagram' => [EVENT_O_ORG_META_INSTAGRAM, 'esc_url_raw'],
+        'event_o_facebook' => [EVENT_O_ORG_META_FACEBOOK, 'esc_url_raw'],
+        'event_o_logo' => [EVENT_O_ORG_META_LOGO, 'esc_url_raw'],
     ];
 
-    foreach ($fields as $post_key => $meta_key) {
+    foreach ($fields as $post_key => [$metaKey, $sanitizer]) {
         if (isset($_POST[$post_key])) {
-            $value = sanitize_text_field(wp_unslash($_POST[$post_key]));
-            update_term_meta($term_id, $meta_key, $value);
+            $value = call_user_func($sanitizer, wp_unslash($_POST[$post_key]));
+            update_term_meta($term_id, $metaKey, $value);
         }
     }
 }

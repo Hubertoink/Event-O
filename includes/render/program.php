@@ -30,7 +30,7 @@ function event_o_render_event_program_block(array $attrs, string $content = '', 
     $highlightColor = event_o_get_highlight_badge_style_value($attrs);
     $preferHighlights = !array_key_exists('preferHighlights', $attrs) || !empty($attrs['preferHighlights']);
 
-    $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? $attrs['accentColor'] : '';
+    $accentColor = isset($attrs['accentColor']) ? event_o_sanitize_css_color((string) $attrs['accentColor']) : '';
     $styleAttr = $accentColor !== '' ? ' style="--event-o-block-accent:' . esc_attr($accentColor) . ';"' : '';
     $highContrast = (bool) get_option(EVENT_O_OPTION_HIGH_CONTRAST, false);
     $hcClass = $highContrast ? ' is-high-contrast' : '';

@@ -24,7 +24,7 @@ function event_o_render_event_grid_block(array $attrs, string $content = '', WP_
     $hoverExcerptWords = isset($attrs['hoverExcerptWords']) ? max(10, min(80, (int) $attrs['hoverExcerptWords'])) : 32;
     $highlightColor = event_o_get_highlight_badge_style_value($attrs);
 
-    $accentColor = isset($attrs['accentColor']) && $attrs['accentColor'] !== '' ? $attrs['accentColor'] : '';
+    $accentColor = isset($attrs['accentColor']) ? event_o_sanitize_css_color((string) $attrs['accentColor']) : '';
     $styleAttr = '--event-o-grid-cols:' . esc_attr((string) $columns) . ';';
     if ($accentColor !== '') {
         $styleAttr .= '--event-o-block-accent:' . esc_attr($accentColor) . ';';

@@ -9,6 +9,15 @@ get_header();
 while (have_posts()) {
     the_post();
 
+    // Do not reveal Event-O metadata before WordPress has accepted the post
+    // password. the_content() renders the standard password form here.
+    if (post_password_required()) {
+        echo '<main class="event-o event-o-single"><article class="event-o-content">';
+        the_content();
+        echo '</article></main>';
+        continue;
+    }
+
     $postId = get_the_ID();
     $startTs = (int) get_post_meta($postId, EVENT_O_META_START_TS, true);
     $endTs = (int) get_post_meta($postId, EVENT_O_META_END_TS, true);

@@ -65,7 +65,7 @@ add_action('event_o_venue_edit_form_fields', 'event_o_venue_edit_form_fields');
 function event_o_save_venue_meta_on_create($term_id): void
 {
     if (isset($_POST['event_o_venue_address'])) {
-        update_term_meta($term_id, EVENT_O_VENUE_META_ADDRESS, sanitize_textarea_field($_POST['event_o_venue_address']));
+        update_term_meta($term_id, EVENT_O_VENUE_META_ADDRESS, sanitize_textarea_field(wp_unslash($_POST['event_o_venue_address'])));
     }
 }
 add_action('created_event_o_venue', 'event_o_save_venue_meta_on_create');
@@ -76,7 +76,7 @@ add_action('created_event_o_venue', 'event_o_save_venue_meta_on_create');
 function event_o_save_venue_meta_on_update($term_id): void
 {
     if (isset($_POST['event_o_venue_address'])) {
-        update_term_meta($term_id, EVENT_O_VENUE_META_ADDRESS, sanitize_textarea_field($_POST['event_o_venue_address']));
+        update_term_meta($term_id, EVENT_O_VENUE_META_ADDRESS, sanitize_textarea_field(wp_unslash($_POST['event_o_venue_address'])));
     }
 }
 add_action('edited_event_o_venue', 'event_o_save_venue_meta_on_update');
